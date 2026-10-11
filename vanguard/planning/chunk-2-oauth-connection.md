@@ -75,3 +75,64 @@ TypeScript checking, linting of changed files, the dependency-boundary linter,
 and the Rolldown application build also pass. Tests use a mocked provider and
 real loopback callbacks; the deployment smoke test remains necessary to verify
 actual Doorkeeper configuration, browser behavior, and the OS credential store.
+
+## Provider requirements
+
+These are Rails implementation prerequisites for the [registration walkthrough](../operations/oauth-setup.md).
+
+### Configure Doorkeeper and discovery
+
+Enable authorization-code grants,
+`force_pkce` for public clients, `use_refresh_token`, and finite access-token
+lifetimes (e.g. `access_token_expires_in 1.hour`). Require S256 PKCE. Publish
+`/.well-known/openid-configuration` using the existing
+`doorkeeper-openid_connect` setup. Its `issuer` must match the configured
+origin; `authorization_endpoint`, `token_endpoint`, and `revocation_endpoint`
+must be HTTPS URLs on that same origin, without queries or fragments.
+Advertise `code_challenge_methods_supported: ["S256"]`. In Vanguard, set
+`OIDC_ISSUER_URL` to the public origin and keep `OIDC_SIGNING_KEY` in the Rails
+deployment's secret manager. Check proxy/HTTPS settings so discovery does not
+advertise internal hosts or HTTP. Allow the exact HTTP loopback redirect if
+your Doorkeeper version's redirect policy requires an exception; retain HTTPS
+enforcement for other redirects. Desktop uses discovery for OAuth metadata;
+it does not request or use ID tokens.
+
+### Deploy the authenticated context endpoint
+
+Implement
+`GET /api/v1/signal/context` with a delegated user token and `api:read`.
+Return the caller's effective permissions and only authorized roster scopes;
+enforce current server-side policy independently of OAuth scopes. Desktop
+expects this JSON shape (extra fields are ignored):
+
+```json
+{
+  "user_id": "usr_example",
+  "member_id": "mbr_example",
+  "capabilities": {
+    "read_members": true,
+    "read_signal_mappings": true,
+    "write_signal_mappings": false
+  },
+  "rosters": [{ "type": "unit", "id": "unit_example", "name": "Example unit" }]
+}
+```
+
+`member_id` may be null; roster types are `chapter_org`, `district`, `unit`,
+or `all_visible`. Every descriptor needs a stable nonempty ID and name.
+Return the complete authorized descriptor list, up to 10,000 entries;
+pagination is not supported in this chunk. Return 401 for invalid/revoked
+credentials and 403 for feature-level denial. An authorized user with no
+access can receive false capabilities and an empty roster list. Without this
+endpoint, OAuth tokens can be issued but Desktop cannot verify the connection.
+
+Register `signal_mappings:read` and `signal_mappings:write` in Doorkeeper’s
+`optional_scopes` and `scopes_by_grant_type[:authorization_code]`, preserving
+existing scopes. Permit them on the Desktop application as needed. Keep user
+consent and existing login/2FA requirements; do not grant app-only roster access.
+
+For deployment, permit outbound HTTPS to the provider and browser access to the
+loopback callback. No CORS exception is needed for main-process requests. Redact
+authorization codes, tokens, verifiers, and authorization headers in provider and
+proxy logs. Verify refresh/rotation, denied consent, cancellation, revoked access,
+provider outages, reconnect, account switching, and data erasure before rollout.

@@ -1,120 +1,127 @@
-# Vanguard OAuth deployment setup
+# Connect Signal Desktop to Vanguard
 
-Configure the Rails provider and the custom Desktop build before enabling
-**Settings → Account → Vanguard organization account**. Desktop uses a public
-OAuth client; **never ship a client secret in Desktop**. The reconciliation
-context endpoint below is a provider prerequisite, not an existing Rails route
-added by this Desktop change.
+Use this guide to fill out Vanguard's **New Application** form, copy the generated
+client ID into the Signal Desktop project, and sign in.
 
-1. **Choose the provider origin and callback.** Use a trusted HTTPS origin, e.g.
-   `https://vanguard.example.org`, with no path, query, or credentials. Desktop
-   binds only `127.0.0.1:47839` while signing in; register exactly
-   `http://127.0.0.1:47839/vanguard/oauth/callback`. If that port conflicts with
-   another application, choose another port above 1023 and update both the client
-   registration and Desktop configuration. Do not expose this port externally.
+**Before you start:** Vanguard still needs the Signal-specific scopes and
+`/api/v1/signal/context` endpoint described in the
+[provider requirements](../planning/chunk-2-oauth-connection.md#provider-requirements).
+Registering the application alone will not complete the connection until those
+server changes are deployed.
 
-2. **Configure Doorkeeper and discovery.** Enable authorization-code grants,
-   `force_pkce` for public clients, `use_refresh_token`, and finite access-token
-   lifetimes (e.g. `access_token_expires_in 1.hour`). Require S256 PKCE. Publish
-   `/.well-known/openid-configuration` using the existing
-   `doorkeeper-openid_connect` setup. Its `issuer` must match the configured
-   origin; `authorization_endpoint`, `token_endpoint`, and `revocation_endpoint`
-   must be HTTPS URLs on that same origin, without queries or fragments.
-   Advertise `code_challenge_methods_supported: ["S256"]`. In Vanguard, set
-   `OIDC_ISSUER_URL` to the public origin and keep `OIDC_SIGNING_KEY` in the Rails
-   deployment's secret manager. Check proxy/HTTPS settings so discovery does not
-   advertise internal hosts or HTTP. Allow the exact HTTP loopback redirect if
-   your Doorkeeper version's redirect policy requires an exception; retain HTTPS
-   enforcement for other redirects. Desktop uses discovery for OAuth metadata;
-   it does not request or use ID tokens.
+## Register the application in Vanguard
 
-3. **Register scopes and the public client.** Add `signal_mappings:read` and,
-   if needed, `signal_mappings:write` to Doorkeeper's `optional_scopes` and
-   `scopes_by_grant_type[:authorization_code]`. Keep the existing scopes in those
-   lists. Register the Desktop application through the admin UI or Rails console:
+1. **Open the New Application form** shown in the screenshot. In **Name**, enter:
 
-   ```ruby
-   desktop = Doorkeeper::Application.create!(
-     name: "Vanguard Signal Desktop",
-     redirect_uri: "http://127.0.0.1:47839/vanguard/oauth/callback",
-     confidential: false,
-     scopes: "api:read members:read signal_mappings:read"
-   )
-   puts desktop.uid
+   ```text
+   Signal Desktop
    ```
 
-   Copy only the UID/client ID. Any secret Doorkeeper generates is unused by
-   this client. For an approved write-enabled deployment, additionally allow
-   `api:write signal_mappings:write` on the application. Keep user consent and
-   existing login/2FA requirements. Do not grant this client app-only roster
-   access. See [Doorkeeper's PKCE guide](https://doorkeeper.gitbook.io/guides/ruby-on-rails/pkce-flow).
+2. **In Redirect URI, paste this exact address on one line:**
 
-4. **Deploy the authenticated context endpoint.** Implement
-   `GET /api/v1/signal/context` with a delegated user token and `api:read`.
-   Return the caller's effective permissions and only authorized roster scopes;
-   enforce current server-side policy independently of OAuth scopes. Desktop
-   expects this JSON shape (extra fields are ignored):
-
-   ```json
-   {
-     "user_id": "usr_example",
-     "member_id": "mbr_example",
-     "capabilities": {
-       "read_members": true,
-       "read_signal_mappings": true,
-       "write_signal_mappings": false
-     },
-     "rosters": [
-       { "type": "unit", "id": "unit_example", "name": "Example unit" }
-     ]
-   }
+   ```text
+   http://127.0.0.1:47839/vanguard/oauth/callback
    ```
 
-   `member_id` may be null; roster types are `chapter_org`, `district`, `unit`,
-   or `all_visible`. Every descriptor needs a stable nonempty ID and name.
-   Return the complete authorized descriptor list, up to 10,000 entries;
-   pagination is not supported in this chunk. Return 401 for invalid/revoked
-   credentials and 403 for feature-level denial. An authorized user with no
-   access can receive false capabilities and an empty roster list. Without this
-   endpoint, OAuth tokens can be issued but Desktop cannot verify the connection.
+   This address lets your browser return the sign-in result to Signal on your
+   computer. Keep `http`, the port `47839`, and the full path exactly as shown.
+   It is not your Vanguard website address.
 
-5. **Configure and package Desktop.** Merge the following into the custom build's
-   `config/local-production.json` (or `config/local-development.json` for a
-   development run), preserving existing keys:
+3. **Uncheck Confidential.** It is checked in the screenshot. Signal Desktop is
+   a public client: it uses PKCE to protect sign-in and does not use a client
+   secret. Leave this box unchecked even if Vanguard later displays a secret.
+
+4. **In Scopes, paste the following, separated by spaces:**
+
+   ```text
+   api:read members:read signal_mappings:read
+   ```
+
+   This starts with read-only access. Do not leave the field blank. If Vanguard
+   rejects `signal_mappings:read`, ask the Vanguard developer to deploy the scope
+   changes linked above before continuing.
+
+5. **Click Submit.** On the application's details page, copy the value labelled
+   **Application UID** or **Client ID**. You will paste it into `clientId` below.
+
+   **What about the generated secret?** Do not copy it into Signal, a `.env`
+   file, or source control. This integration has no `clientSecret` setting and
+   does not use that value. If you left **Confidential** checked, edit the
+   application and uncheck it before proceeding.
+
+## Put the client ID in the Signal project
+
+6. **Open the appropriate configuration file in your Signal-Desktop checkout.**
+   Paths below are relative to the project root:
+
+   | How you run Signal                                                   | File to create or edit          |
+   | -------------------------------------------------------------------- | ------------------------------- |
+   | Running locally from source with the default development environment | `config/local-development.json` |
+   | Building a packaged application for users                            | `config/local-production.json`  |
+
+   These are JSON configuration files, not `.env` files. The OAuth integration
+   does not read client settings from a `.env` file. These local configuration
+   files are already ignored by Git, so each developer or build environment must
+   supply its own copy.
+
+7. **Add the configuration below.** If the file is new, paste the entire example.
+   If it already contains settings, add `vanguardOAuth` alongside the existing
+   top-level keys; keep the other settings intact.
 
    ```json
    {
      "vanguardOAuth": {
-       "issuer": "https://vanguard.example.org",
-       "clientId": "PASTE_THE_APPLICATION_UID",
+       "issuer": "https://YOUR-VANGUARD-HOST",
+       "clientId": "PASTE-YOUR-APPLICATION-UID-HERE",
        "callbackPort": 47839,
        "requestWriteAccess": false
      }
    }
    ```
 
-   Use the file matching `SIGNAL_ENV` when packaging; the existing packaging
-   configuration includes `config/local-${env.SIGNAL_ENV}.json`. Set
-   `requestWriteAccess` to true only with the write scopes from step 3 and
-   corresponding provider permissions. No user-editable destination or client
-   secret is exposed in Settings. Omit `vanguardOAuth` to hide the integration.
+   Replace `issuer` with your Vanguard website's HTTPS origin, for example
+   `https://vanguard.example.org`. Do not include `/oauth/applications/new`,
+   `/api`, or any other path. Replace `clientId` with the value from step 5.
+   Keep `callbackPort` at `47839` to match step 2. Do not add a `clientSecret` key.
 
-6. **Prepare secure storage and networking.** Ensure the OS credential store is
-   available; Linux must use a real secret-store backend, not Electron's
-   `basic_text` fallback. Desktop refuses sign-in without secure encryption.
-   Tokens are encrypted using Electron `safeStorage` in the user's Signal
-   `config.json`; do not copy this file between machines. Permit outbound HTTPS
-   to the provider and local browser access to the loopback callback. Redact
-   authorization codes, tokens, verifiers, and authorization headers in provider
-   and proxy logs. No browser CORS exception is required for main-process API calls.
+8. **Save the file and restart your custom Signal Desktop app.** For an already
+   built development checkout, fully quit Signal and run `pnpm start` from the
+   project root. If you have not built the updated code yet, run `pnpm build:dev`
+   first using the project's usual development prerequisites.
 
-7. **Run a deployment smoke test.** Connect from Settings, complete login/2FA and
-   consent, and check the displayed user, rosters, and read-only/write access.
-   Restart Desktop and reopen Settings. Allow the access token to approach expiry
-   and use **Refresh connection** to verify refresh and token rotation. Test
-   denied consent, **Cancel sign-in**, provider outage, revoked access, reconnect,
-   and a second Signal account. **Disconnect** clears local credentials and
-   attempts revocation of both refresh and access tokens; if the provider is
-   unreachable, revoke the application's grant through Vanguard when available.
-   Verify unavailable secure storage prevents login and that data erasure clears
-   the connection. Signing out of Vanguard's browser session is a separate action.
+   For a packaged app, supply `config/local-production.json` **before building
+   the package**, then rebuild and install it. The standard release script uses
+   `SIGNAL_ENV=production` and includes that file in the package. Changing the
+   checkout's configuration does not change an app you have already installed.
+
+## Sign in and check the connection
+
+9. **In your custom Signal build, open Settings → Account.** Find **Vanguard
+   organization account** and click **Connect Vanguard**. Complete Vanguard login,
+   two-factor authentication, and consent in your browser. Return to Signal and
+   check that it shows **Connected**, your Vanguard identity, and your authorized
+   organization scopes. With the settings above, mapping access should be read-only.
+
+   Quit and reopen Signal, then revisit this panel to confirm the connection was
+   saved. Use **Disconnect** to remove the saved connection. If remote revocation
+   fails, Signal will tell you to revoke the application in Vanguard as well.
+
+## If something does not work
+
+| What you see                                                             | What to check                                                                                                                                                                                   |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No Vanguard section in Settings                                          | Use the custom build containing this integration. Check the configuration filename for your environment and restart Signal.                                                                     |
+| Invalid configuration                                                    | Check the JSON, HTTPS website origin, and client ID. Remove any `clientSecret` key.                                                                                                             |
+| Redirect URI rejected                                                    | Compare the registered URI with step 2 exactly. If Vanguard disallows it, its administrator must allow this specific loopback callback.                                                         |
+| Sign-in succeeds in the browser, but Signal cannot verify the connection | Ask the Vanguard developer to check the context endpoint, scopes, and discovery configuration in the linked provider requirements.                                                              |
+| Secure storage error                                                     | Unlock or enable your OS credential store. On Linux, a real secret-store backend is required; `basic_text` is unsupported. Signal saves tokens automatically—you do not paste them into a file. |
+| Callback port already in use                                             | Choose another port between 1024 and 65535, change it in both the registered Redirect URI and `callbackPort`, then restart Signal.                                                              |
+
+## Later, when mapping writes are enabled
+
+Edit the Vanguard application's **Scopes** to include
+`api:write signal_mappings:write` in addition to the three read scopes. Set
+`requestWriteAccess` to `true` in the same Signal configuration file, restart
+(or rebuild the packaged app), and click **Reconnect Vanguard** to authorize the
+additional access. Your Vanguard user must also have the corresponding server-side
+permissions. This setting does not add mapping-editing features to Chunk 2.
