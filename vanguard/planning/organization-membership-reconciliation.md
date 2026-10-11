@@ -103,6 +103,9 @@ Completion criteria:
 
 ## 2. Connection, authentication, and account settings
 
+Implementation: [Chunk 2 OAuth connection and account settings](chunk-2-oauth-connection.md).
+DevOps: [Vanguard OAuth deployment setup](../operations/oauth-setup.md).
+
 **Outcome:** An admin can connect, inspect, and disconnect their external account.
 
 Backend/main-process work:
