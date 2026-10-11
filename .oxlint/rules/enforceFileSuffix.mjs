@@ -278,6 +278,7 @@ const STD_PACKAGES = new Set([
   'url',
   'uuid',
   'zod',
+  'oauth4webapi',
 ]);
 
 export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
