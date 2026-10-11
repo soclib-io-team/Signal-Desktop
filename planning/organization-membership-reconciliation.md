@@ -13,6 +13,23 @@ acceptance into official Signal is a separate decision.
 
 ## Scope and design constraints
 
+- **Minimize changes to upstream Signal-Desktop code.** This is a fork that must
+  regularly rebase onto upstream with as few conflicts as possible.
+  - Put all integration code (services, state, components, IPC handlers, SQL
+    helpers, styles, tests, etc.) in new files under dedicated folders named
+    `vanguard`, e.g. `ts/vanguard/`, `app/vanguard/`, `ts/test-node/vanguard/`.
+  - Edit existing upstream files only where unavoidable: registering or loading
+    Vanguard modules (imports, reducers, IPC channels, preload exposure, routes,
+    migrations) and adding entry-point UI such as a button or menu item. Such an
+    edit should be a small hook that delegates to Vanguard code; the flow itself
+    must live in the Vanguard folders.
+  - Prefer extension points, wrappers, and composition over modifying upstream
+    logic. Do not refactor, reformat, rename, or move upstream code. If an upstream
+    function must be reused but is not exported or awaitable, make the smallest
+    possible change and note it.
+  - Every upstream-file edit must be justified in the chunk's detailed design.
+    This constraint overrides the placements suggested under
+    [Expected code touchpoints](#expected-code-touchpoints).
 - The operator must be a Signal group admin and have the required permissions in
   the external service. Recheck permissions when applying changes.
 - Use Signal's ACI (account identifier) as the primary portable identity mapping.
