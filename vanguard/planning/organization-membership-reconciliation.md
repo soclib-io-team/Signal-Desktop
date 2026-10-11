@@ -18,6 +18,8 @@ acceptance into official Signal is a separate decision.
   - Put all integration code (services, state, components, IPC handlers, SQL
     helpers, styles, tests, etc.) in new files under dedicated folders named
     `vanguard`, e.g. `ts/vanguard/`, `app/vanguard/`, `ts/test-node/vanguard/`.
+  - Put non-code project material (planning and design docs, notes, scripts) under
+    the top-level `vanguard/` folder, e.g. these docs in `vanguard/planning/`.
   - Edit existing upstream files only where unavoidable: registering or loading
     Vanguard modules (imports, reducers, IPC channels, preload exposure, routes,
     migrations) and adding entry-point UI such as a button or menu item. Such an
