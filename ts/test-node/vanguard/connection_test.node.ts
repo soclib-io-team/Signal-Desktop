@@ -3,6 +3,7 @@
 
 import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
+import { request as httpRequest } from 'node:http';
 import { VanguardConnection } from '../../../app/vanguard/connection.node.ts';
 import { configSchema } from '../../../app/vanguard/config.std.ts';
 import { createSessionStore } from '../../../app/vanguard/storage.node.ts';
@@ -438,6 +439,46 @@ describe('Vanguard callback and destination validation', () => {
         400
       );
       await fetch(`${callback.redirectUri}?state=expected&code=code`);
+      assert.equal((await callback.result).searchParams.get('code'), 'code');
+    } finally {
+      callback.close();
+    }
+  });
+  it('rejects malformed callback URLs and unexpected Host headers without closing the listener', async () => {
+    const controller = new AbortController();
+    const callback = await listenForCallback(0, 'state', controller.signal);
+    try {
+      const target = new URL(callback.redirectUri);
+      const status = await new Promise<number | undefined>(
+        (resolve, reject) => {
+          const request = httpRequest(
+            { hostname: target.hostname, port: target.port, path: 'http://[' },
+            response => {
+              response.resume();
+              resolve(response.statusCode);
+            }
+          );
+          request.on('error', reject);
+          request.end();
+        }
+      );
+      assert.equal(status, 400);
+      const hostStatus = await new Promise<number | undefined>(
+        (resolve, reject) => {
+          const request = httpRequest(
+            callback.redirectUri + '?state=state',
+            { headers: { Host: 'evil.example' } },
+            response => {
+              response.resume();
+              resolve(response.statusCode);
+            }
+          );
+          request.on('error', reject);
+          request.end();
+        }
+      );
+      assert.equal(hostStatus, 400);
+      await fetch(`${callback.redirectUri}?state=state&code=code`);
       assert.equal((await callback.result).searchParams.get('code'), 'code');
     } finally {
       callback.close();

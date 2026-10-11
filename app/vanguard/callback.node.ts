@@ -24,7 +24,13 @@ export async function listenForCallback(
   let redirectUri = '';
   let consumed = false;
   const server = createServer((request, response) => {
-    const url = new URL(request.url ?? '/', redirectUri);
+    let url: URL;
+    try {
+      url = new URL(request.url ?? '/', redirectUri);
+    } catch {
+      response.writeHead(400).end('Invalid OAuth callback.');
+      return;
+    }
     if (
       consumed ||
       request.method !== 'GET' ||

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { ipcMain } from 'electron';
+import { clearVanguard } from './vanguard/ipc.main.ts';
 
 import type { MainSQL } from '../ts/sql/main.main.ts';
 import { remove as removeUserConfig } from './user_config.main.ts';
@@ -83,6 +84,7 @@ export function initialize(mainSQL: typeof sql): void {
   });
 
   ipcMain.handle(ERASE_SQL_KEY, () => {
+    clearVanguard();
     removeUserConfig();
     removeEphemeralConfig();
   });

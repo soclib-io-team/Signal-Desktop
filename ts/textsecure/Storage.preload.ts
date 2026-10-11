@@ -1,6 +1,7 @@
 // Copyright 2020 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { clearConnectionForAccountChange } from '../vanguard/connection.preload.ts';
 import type {
   StorageAccessType as Access,
   StorageInterface,
@@ -69,6 +70,9 @@ export class Storage implements StorageInterface {
       log.error('Called storage.put before storage is ready. key:', key);
     }
 
+    if (key === 'uuid_id') {
+      clearConnectionForAccountChange(this.#items[key], value);
+    }
     this.#items[key] = value;
     window.reduxActions?.items.putItemExternal(key, value);
     await DataWriter.createOrUpdateItem({ id: key, value });
@@ -79,6 +83,9 @@ export class Storage implements StorageInterface {
       log.error('Called storage.remove before storage is ready. key:', key);
     }
 
+    if (key === 'uuid_id') {
+      clearConnectionForAccountChange(this.#items[key], undefined);
+    }
     delete this.#items[key];
     await DataWriter.removeItemById(key);
 

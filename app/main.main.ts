@@ -116,6 +116,7 @@ import { toggleMaximizedBrowserWindow } from '../ts/util/toggleMaximizedBrowserW
 import { ChallengeMainHandler } from '../ts/main/challengeMain.main.ts';
 import { NativeThemeNotifier } from '../ts/main/NativeThemeNotifier.main.ts';
 import { PowerChannel } from '../ts/main/powerChannel.main.ts';
+import { installVanguard } from './vanguard/ipc.main.ts';
 import { SettingsChannel } from '../ts/main/settingsChannel.main.ts';
 import { PDFWindowPropsSchema } from '../ts/windows/pdf/types.std.ts';
 import '../ts/main/clipboardMain.main.ts';
@@ -2259,6 +2260,7 @@ app.on('ready', async () => {
 
   settingsChannel = new SettingsChannel();
   settingsChannel.install();
+  installVanguard(() => mainWindow);
 
   settingsChannel.on('change:systemTraySetting', async rawSystemTraySetting => {
     const { openAtLogin } = app.getLoginItemSettings(
