@@ -34,12 +34,14 @@ server changes are deployed.
 4. **In Scopes, paste the following, separated by spaces:**
 
    ```text
-   api:read members:read signal_mappings:read
+   api:read api:write members:read signal_mappings:read signal_mappings:write
    ```
 
-   This starts with read-only access. Do not leave the field blank. If Vanguard
-   rejects `signal_mappings:read`, ask the Vanguard developer to deploy the scope
-   changes linked above before continuing.
+   Signal needs to read existing mappings and write the mappings reviewed by an
+   admin back to Vanguard. Mapping writes require both `api:write` and
+   `signal_mappings:write`. Do not leave the field blank. If Vanguard rejects
+   either mapping scope, ask the Vanguard developer to deploy the scope changes
+   linked above before continuing.
 
 5. **Click Submit.** On the application's details page, copy the value labelled
    **Application UID** or **Client ID**. You will paste it into `clientId` below.
@@ -74,7 +76,7 @@ server changes are deployed.
        "issuer": "https://YOUR-VANGUARD-HOST",
        "clientId": "PASTE-YOUR-APPLICATION-UID-HERE",
        "callbackPort": 47839,
-       "requestWriteAccess": false
+       "requestWriteAccess": true
      }
    }
    ```
@@ -82,7 +84,9 @@ server changes are deployed.
    Replace `issuer` with your Vanguard website's HTTPS origin, for example
    `https://vanguard.example.org`. Do not include `/oauth/applications/new`,
    `/api`, or any other path. Replace `clientId` with the value from step 5.
-   Keep `callbackPort` at `47839` to match step 2. Do not add a `clientSecret` key.
+   Keep `callbackPort` at `47839` to match step 2 and `requestWriteAccess` set to
+   `true` so Signal requests the write scopes registered above. Do not add a
+   `clientSecret` key.
 
 8. **Save the file and restart your custom Signal Desktop app.** For an already
    built development checkout, fully quit Signal and run `pnpm start` from the
@@ -100,7 +104,9 @@ server changes are deployed.
    organization account** and click **Connect Vanguard**. Complete Vanguard login,
    two-factor authentication, and consent in your browser. Return to Signal and
    check that it shows **Connected**, your Vanguard identity, and your authorized
-   organization scopes. With the settings above, mapping access should be read-only.
+   organization scopes. Confirm that it shows **Mapping write access**. Your
+   Vanguard user must also have permission to manage mappings within the relevant
+   organization; registering OAuth scopes alone does not grant that permission.
 
    Quit and reopen Signal, then revisit this panel to confirm the connection was
    saved. Use **Disconnect** to remove the saved connection. If remote revocation
@@ -117,11 +123,15 @@ server changes are deployed.
 | Secure storage error                                                     | Unlock or enable your OS credential store. On Linux, a real secret-store backend is required; `basic_text` is unsupported. Signal saves tokens automatically—you do not paste them into a file. |
 | Callback port already in use                                             | Choose another port between 1024 and 65535, change it in both the registered Redirect URI and `callbackPort`, then restart Signal.                                                              |
 
-## Later, when mapping writes are enabled
+## If you already connected with read-only access
 
-Edit the Vanguard application's **Scopes** to include
-`api:write signal_mappings:write` in addition to the three read scopes. Set
-`requestWriteAccess` to `true` in the same Signal configuration file, restart
-(or rebuild the packaged app), and click **Reconnect Vanguard** to authorize the
-additional access. Your Vanguard user must also have the corresponding server-side
-permissions. This setting does not add mapping-editing features to Chunk 2.
+Edit the Vanguard application's **Scopes** to match step 4, set
+`requestWriteAccess` to `true` in the Signal configuration file, and restart
+(or rebuild the packaged app). Click **Reconnect Vanguard** to authorize the
+additional access. If the panel still shows read-only access, ask the Vanguard
+administrator to check your user's mapping-management permissions and the granted
+OAuth scopes.
+
+This setup authorizes the intended read/write workflow. Chunk 2 provides the
+connection and permission display; the mapping-write operations are implemented
+in a later chunk.
