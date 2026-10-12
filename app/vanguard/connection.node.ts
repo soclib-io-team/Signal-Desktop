@@ -163,6 +163,7 @@ export class VanguardConnection {
   #options(signal: AbortSignal) {
     return {
       signal,
+      [oauth.allowInsecureRequests]: this.config.allowInsecureRequests,
       [oauth.customFetch]: (url: string, options: RequestInit) => {
         const target = new URL(url);
         if (

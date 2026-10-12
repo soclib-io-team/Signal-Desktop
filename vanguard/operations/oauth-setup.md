@@ -88,6 +88,13 @@ server changes are deployed.
    `true` so Signal requests the write scopes registered above. Do not add a
    `clientSecret` key.
 
+   **Running Vanguard locally:** when Signal runs from source in the development
+   environment, `issuer` may use HTTP on `localhost`, `127.0.0.1`, or `[::1]`,
+   for example `"issuer": "http://localhost:5000"`. Use a plain URL, without
+   Markdown link syntax. Vanguard's discovery issuer and OAuth endpoints must
+   use that same origin. Packaged apps and all other environments still require
+   HTTPS, as do non-loopback servers. The callback address in step 2 stays the same.
+
 8. **Save the file and restart your custom Signal Desktop app.** For an already
    built development checkout, fully quit Signal and run `pnpm start` from the
    project root. If you have not built the updated code yet, run `pnpm build:dev`

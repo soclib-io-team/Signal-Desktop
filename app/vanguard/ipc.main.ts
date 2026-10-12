@@ -5,7 +5,8 @@ import { ipcMain, safeStorage, shell } from 'electron';
 import type { BrowserWindow } from 'electron';
 import config from '../config.main.ts';
 import { userConfig } from '../user_config.main.ts';
-import { configSchema } from './config.std.ts';
+import { createConfigSchema } from './config.std.ts';
+import { Environment, getEnvironment } from '../../ts/environment.std.ts';
 import { createSessionStore } from './storage.node.ts';
 import { handleConnectionRequest } from './handler.std.ts';
 import { VanguardConnection } from './connection.node.ts';
@@ -28,7 +29,9 @@ export function installVanguard(
   if (config.has('vanguardOAuth')) {
     try {
       connection = new VanguardConnection(
-        configSchema.parse(config.get('vanguardOAuth')),
+        createConfigSchema(getEnvironment() === Environment.Development).parse(
+          config.get('vanguardOAuth')
+        ),
         createSessionStore(
           userConfig,
           {

@@ -5,7 +5,10 @@ import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { VanguardConnection } from '../../../app/vanguard/connection.node.ts';
-import { configSchema } from '../../../app/vanguard/config.std.ts';
+import {
+  configSchema,
+  createConfigSchema,
+} from '../../../app/vanguard/config.std.ts';
 import { createSessionStore } from '../../../app/vanguard/storage.node.ts';
 import type { Session } from '../../../app/vanguard/storage.node.ts';
 import { listenForCallback } from '../../../app/vanguard/callback.node.ts';
@@ -65,6 +68,7 @@ function fixture(saved?: Session) {
     clientId: 'desktop-client',
     callbackPort: 0,
     requestWriteAccess: false,
+    allowInsecureRequests: false,
   };
   const store = {
     assertAvailable: () => undefined,
@@ -134,6 +138,36 @@ function session(overrides: Partial<Session> = {}): Session {
 }
 
 describe('Vanguard OAuth connection', () => {
+  it('connects, refreshes and revokes with a development HTTP loopback issuer', async () => {
+    const f = fixture();
+    Object.assign(
+      f.config,
+      createConfigSchema(true).parse({
+        issuer: 'http://localhost:5000',
+        clientId: 'desktop-client',
+      }),
+      { callbackPort: 0 }
+    );
+    f.metadataResponse = () =>
+      json({
+        ...metadata,
+        issuer: f.config.issuer,
+        authorization_endpoint: `${f.config.issuer}/oauth/authorize`,
+        token_endpoint: `${f.config.issuer}/oauth/token`,
+        revocation_endpoint: `${f.config.issuer}/oauth/revoke`,
+      });
+    assert.equal((await f.service.act('connect', account)).status, 'connected');
+    required(f.stored).expiresAt = 0;
+    assert.equal((await f.service.act('status', account)).status, 'connected');
+    assert.equal(
+      f.calls.filter(call => call.url.endsWith('/oauth/token')).length,
+      2
+    );
+    await f.service.act('disconnect', account);
+    assert(f.calls.some(call => call.url.endsWith('/oauth/revoke')));
+    assert(f.calls.every(call => new URL(call.url).origin === f.config.issuer));
+  });
+
   it('uses system-browser S256 PKCE and exposes only validated account context', async () => {
     const f = fixture();
     let authURL: URL | undefined;
@@ -394,6 +428,35 @@ describe('Vanguard OAuth connection', () => {
 });
 
 describe('Vanguard callback and destination validation', () => {
+  it('allows HTTP only for development loopback issuers', () => {
+    for (const host of ['localhost', '127.0.0.1', '[::1]']) {
+      const input = { issuer: `http://${host}:5000`, clientId: 'client' };
+      assert.throws(() => configSchema.parse(input));
+      assert.equal(
+        createConfigSchema(true).parse(input).allowInsecureRequests,
+        true
+      );
+    }
+    for (const value of [
+      'http://example.com',
+      'http://192.168.1.10',
+      'http://localhost.example.com',
+      'http://localhost:5000/path',
+      'http://user:pass@localhost:5000',
+      'http://localhost:5000/?query=1',
+      'http://localhost:5000/#fragment',
+    ]) {
+      assert.throws(() =>
+        createConfigSchema(true).parse({ issuer: value, clientId: 'client' })
+      );
+    }
+    assert.equal(
+      createConfigSchema(true).parse({ issuer, clientId: 'client' })
+        .allowInsecureRequests,
+      false
+    );
+  });
+
   it('rejects insecure or credential-bearing deployment destinations', () => {
     for (const value of [
       'http://example.com',
