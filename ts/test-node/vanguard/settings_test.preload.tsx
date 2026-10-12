@@ -19,8 +19,11 @@ function render(state: ConnectionState, busy = false) {
 }
 
 describe('Vanguard connection settings', () => {
-  it('hides unconfigured integrations and explains disclosure before connecting', () => {
-    assert.equal(render({ status: 'unconfigured' }), '');
+  it('explains setup for unconfigured integrations and disclosure before connecting', () => {
+    assert.match(
+      render({ status: 'unconfigured' }),
+      /Vanguard is not configured/
+    );
     const html = render({ status: 'disconnected' });
     assert.match(html, /Connect Vanguard/);
     assert.match(html, /Signal account identifiers/);

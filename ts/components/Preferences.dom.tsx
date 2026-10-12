@@ -911,15 +911,24 @@ export function Preferences({
 
   if (settingsLocation.page === SettingsPage.Profile) {
     content = renderProfileEditor();
+  } else if (settingsLocation.page === SettingsPage.Vanguard) {
+    content = (
+      <PreferencesContent
+        contents={
+          vanguardConnection && (
+            <ConnectionSettings
+              key={me.serviceId}
+              connection={vanguardConnection}
+            />
+          )
+        }
+        contentsRef={settingsPaneRef}
+        title="Vanguard"
+      />
+    );
   } else if (settingsLocation.page === SettingsPage.Account) {
     const pageContents = (
       <AxoList.Group>
-        {vanguardConnection && (
-          <ConnectionSettings
-            key={me.serviceId}
-            connection={vanguardConnection}
-          />
-        )}
         {!weArePrimaryDevice && (
           <>
             <List>
@@ -2993,6 +3002,16 @@ export function Preferences({
                   setSettingsLocation({ page: SettingsPage.Backups })
                 }
               />
+              {vanguardConnection && (
+                <PreferencesButton
+                  symbol="person-circle"
+                  label="Vanguard"
+                  current={settingsLocation.page === SettingsPage.Vanguard}
+                  onClick={() =>
+                    setSettingsLocation({ page: SettingsPage.Vanguard })
+                  }
+                />
+              )}
               {isInternalUser ? (
                 <PreferencesButton
                   symbol="bolt"
