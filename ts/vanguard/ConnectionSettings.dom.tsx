@@ -84,8 +84,16 @@ export function ConnectionSettingsView({
   busy: boolean;
   onAction: (action: ConnectionAction) => void;
 }>): JSX.Element | null {
-  if (!state || state.status === 'unconfigured') {
+  if (!state) {
     return null;
+  }
+  if (state.status === 'unconfigured') {
+    return (
+      <p className={tw('p-4')}>
+        Vanguard is not configured. Follow the Vanguard OAuth setup guide for
+        this custom Signal build, then restart Signal.
+      </p>
+    );
   }
   return (
     <section

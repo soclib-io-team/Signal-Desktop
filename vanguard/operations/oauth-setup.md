@@ -100,7 +100,7 @@ server changes are deployed.
 
 ## Sign in and check the connection
 
-9. **In your custom Signal build, open Settings → Account.** Find **Vanguard
+9. **In your custom Signal build, open Settings → Vanguard.** Find **Vanguard
    organization account** and click **Connect Vanguard**. Complete Vanguard login,
    two-factor authentication, and consent in your browser. Return to Signal and
    check that it shows **Connected**, your Vanguard identity, and your authorized
@@ -116,7 +116,7 @@ server changes are deployed.
 
 | What you see                                                             | What to check                                                                                                                                                                                   |
 | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No Vanguard section in Settings                                          | Use the custom build containing this integration. Check the configuration filename for your environment and restart Signal.                                                                     |
+| No Vanguard sidebar item in Settings                                     | Use the custom build containing this integration. If the Vanguard page says it is not configured, check the configuration filename for your environment and restart Signal.                     |
 | Invalid configuration                                                    | Check the JSON, HTTPS website origin, and client ID. Remove any `clientSecret` key.                                                                                                             |
 | Redirect URI rejected                                                    | Compare the registered URI with step 2 exactly. If Vanguard disallows it, its administrator must allow this specific loopback callback.                                                         |
 | Sign-in succeeds in the browser, but Signal cannot verify the connection | Ask the Vanguard developer to check the context endpoint, scopes, and discovery configuration in the linked provider requirements.                                                              |
