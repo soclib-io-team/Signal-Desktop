@@ -222,7 +222,7 @@ existing chapter endpoint. Desktop never fetches that endpoint in this workflow.
 ### Flat Member listing
 
 ```http
-GET /api/v1/signal/members?limit=200
+GET /api/v1/signal/members?limit=1000
 Authorization: Bearer <access-token>
 ```
 
@@ -311,10 +311,29 @@ Data rules:
 
 ### Snapshot and pagination semantics
 
-Use a default page size of 200 and a server-enforced maximum, with opaque cursors
-and stable member-ID ordering. Return totals only within the authorized selection.
-The client considers a list complete only after every page succeeds and the last
-page returns `next_cursor: null`.
+Plan for authorized lists of 4,000–8,000 Members. Start with a default and
+server-enforced maximum page size of 1,000, using opaque cursors and stable member-ID
+ordering. Desktop requests 1,000 per page and automatically follows cursors until
+`next_cursor: null`, normally 4–8 requests at the expected size. A shorter page is
+not completion if a next cursor exists. Return an exact snapshot `total_count`
+within the authorized selection for progress reporting.
+
+Fetch every page into memory before enabling linking or Proposed Matches. Show
+progress such as “Loading members: 3,000 of 8,000”. The dropdown searches the
+complete list locally; pagination is a transport detail, not a partial dropdown
+or a user-operated Load more flow. Pagination bounds response sizes and retries,
+but does not reduce total data fetched or guarantee faster initial loading.
+
+Retry a transiently failed page with the same snapshot and cursor, bounded backoff,
+and `Retry-After` where applicable. Append a page only once after validation;
+retries must not duplicate entries. Keep partial data unavailable for linking.
+Expired/invalid snapshots require discarding partial data and restarting with a
+new snapshot; permission failures must not cause an endless automatic retry loop.
+
+Measure response sizes, end-to-end load time, memory, and provider query cost with
+4,000 and 8,000 representative records including roles before rollout. Tune page
+size and snapshot TTL from those measurements; never truncate the full list. The
+retained per-ChapterOrg endpoint keeps its existing pagination/response behavior.
 
 The initial members request creates a short-lived snapshot bound to user, OAuth
 application, authorized chapter set, and effective date. Subsequent member pages and the
@@ -336,7 +355,7 @@ state again; the snapshot is review context, not continuing write authorization.
 ### Mapping dictionary
 
 ```http
-GET /api/v1/signal/mappings?snapshot_id=opaque-snapshot&limit=200
+GET /api/v1/signal/mappings?snapshot_id=opaque-snapshot&limit=1000
 ```
 
 ```json
@@ -489,6 +508,8 @@ here should avoid implementing later chunks prematurely.
   uniqueness rule; actor attribution; no phone-number mutation.
 - Concurrent first assignment, replacement, and clearing; stale ETags; repeated
   operation keys; lost responses; retry after a subsequent admin update.
+- Full 4,000/8,000-record loading, progress totals, short pages with next cursors,
+  retry without duplicates, and no linking before completion.
 - Snapshot member/mapping consistency, permission loss between pages, expiration,
   explicit completion, oversized selections, and no silent truncation.
 

@@ -199,6 +199,16 @@ a new snapshot; snapshots must not become a long-lived Desktop cache. Include
 mapping values/versions inline so the default view needs no separate dictionary
 request. Preserve the optional mapping dictionary contract for other consumers.
 
+For expected lists of 4,000–8,000 Members, start with a 1,000-record default and
+maximum page size on the new endpoint. Desktop automatically fetches all pages,
+shows loaded/total progress, and enables linking/Proposed Matches only after full
+completion. Return exact snapshot totals and retryable cursors; transient page
+retries reuse the valid snapshot, while expiry/invalidation restarts the full read.
+Keep the existing per-chapter response behavior unchanged. Measure representative
+payloads and load times before finalizing page size/TTL. The Link dropdown searches
+all loaded Members locally and virtualizes options rather than rendering 8,000
+rows at once.
+
 ### Include former members in all Member-list endpoints
 
 **Required change to both the new flat endpoint and the retained per-ChapterOrg
@@ -256,6 +266,9 @@ Signal group rosters.
   transfers, missing chapters, and the existing chapter response/access policy work.
 - Member projection, ACI/null, role formatting, ChapterOrg STI associations,
   national null fields, excluded Unit/District roles, and field restrictions work.
+- Exercise 4,000/8,000-member lists, loaded/total progress, page retry without
+  duplicates, disabled linking until complete, and searching/selecting final-page
+  Members in the virtualized dropdown.
 - Pagination is complete and permission changes/expiry cannot appear as an empty
   roster. Every drill-down refetches; connect and group toggles fetch no Members.
 - Mapping concurrency, idempotent retries, permission loss, conflict disclosure,
