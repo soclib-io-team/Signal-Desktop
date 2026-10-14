@@ -32,7 +32,6 @@ const context = {
     read_signal_mappings: true,
     write_signal_mappings: true,
   },
-  rosters: [{ type: 'unit', id: 'unit-1', name: 'Example unit' }],
 };
 const metadata = {
   issuer,
@@ -138,6 +137,27 @@ function session(overrides: Partial<Session> = {}): Session {
 }
 
 describe('Vanguard OAuth connection', () => {
+  it('accepts identity-only context and never requests a roster', async () => {
+    const f = fixture(session());
+    const state = await f.service.act('status', account);
+    assert.equal(state.status, 'connected');
+    assert.equal(state.context?.user_id, context.user_id);
+    assert.deepEqual(
+      f.calls.map(call => call.url),
+      [`${issuer}/api/v1/signal/context`]
+    );
+    assert(!('rosters' in required(state.context)));
+  });
+
+  it('explains provider permission denial without exposing a context', async () => {
+    const f = fixture(session());
+    f.contextResponse = () => json({ error: { code: 'access_denied' } }, 403);
+    const state = await f.service.act('status', account);
+    assert.equal(state.status, 'error');
+    assert.match(required(state.message), /not permitted/);
+    assert.equal(state.context, undefined);
+  });
+
   it('connects, refreshes and revokes with a development HTTP loopback issuer', async () => {
     const f = fixture();
     Object.assign(

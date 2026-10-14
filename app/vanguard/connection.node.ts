@@ -364,6 +364,14 @@ export class VanguardConnection {
       this.store.clear();
       throw new Error('Access revoked');
     }
+    if (response.status === 403) {
+      this.#state = {
+        status: 'error',
+        message:
+          'Vanguard access is not permitted for this account or the granted permissions. Contact your administrator.',
+      };
+      return;
+    }
     if (!response.ok) {
       throw new Error('Context unavailable');
     }

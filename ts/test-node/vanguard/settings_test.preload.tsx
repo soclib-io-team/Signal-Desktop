@@ -48,12 +48,10 @@ describe('Vanguard connection settings', () => {
           read_signal_mappings: false,
           write_signal_mappings: false,
         },
-        rosters: [{ type: 'unit', id: 'unit-1', name: 'Example unit' }],
       },
     });
     assert.match(html, /Vanguard user: user-1/);
     assert.match(html, /Member: member-1/);
-    assert.match(html, /Example unit/);
     assert.match(html, /Read-only: mapping changes are not permitted/);
     assert.match(html, /Mapping reads: not permitted/);
     assert.match(html, /Reconnect Vanguard/);
