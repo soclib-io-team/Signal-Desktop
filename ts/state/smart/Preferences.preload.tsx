@@ -1,8 +1,7 @@
 // Copyright 2024 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { requestConnection } from '../../vanguard/connection.preload.ts';
-import type { ConnectionAction } from '../../vanguard/types.std.ts';
+import { useVanguardGroups } from '../../vanguard/groups.preload.ts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -266,10 +265,7 @@ export function SmartPreferences(): JSX.Element | null {
   const items = useSelector(getItems);
   const hasFailedStorySends = useSelector(getHasAnyFailedStorySends);
   const me = useSelector(getMe);
-  const vanguardConnection = useCallback(
-    (action: ConnectionAction) => requestConnection(action, me.serviceId ?? ''),
-    [me.serviceId]
-  );
+  const { connection: vanguardConnection } = useVanguardGroups();
   const navTabsCollapsed = useSelector(getNavTabsCollapsed);
   const otherTabsUnreadCount = useSelector(getOtherTabsUnreadCount);
   const preferredWidthFromStorage = useSelector(getPreferredLeftPaneWidth);

@@ -141,6 +141,7 @@ export type AcknowledgeGroupMemberNameCollisions = (
 export type ReviewConversationNameCollission = () => void;
 
 export type PropsDataType = {
+  vanguardMenu?: ReactNode;
   addedByName: ContactNameData | null;
   badge?: BadgeType;
   cannotLeaveBecauseYouAreLastAdmin: boolean;
@@ -204,6 +205,7 @@ export type PropsType = PropsDataType &
   PropsHousekeepingType;
 
 export const ConversationHeader = memo(function ConversationHeader({
+  vanguardMenu,
   addedByName,
   badge,
   cannotLeaveBecauseYouAreLastAdmin,
@@ -416,6 +418,7 @@ export const ConversationHeader = memo(function ConversationHeader({
                   />
                 </AxoDropdownMenu.Trigger>
                 <HeaderDropdownMenuContent
+                  vanguardMenu={vanguardMenu}
                   i18n={i18n}
                   conversation={conversation}
                   isTerminated={isTerminated}
@@ -635,6 +638,7 @@ function HeaderContent({
 }
 
 function HeaderDropdownMenuContent({
+  vanguardMenu,
   conversation,
   i18n,
   isMissingMandatoryProfileSharing,
@@ -661,6 +665,7 @@ function HeaderDropdownMenuContent({
   onViewAllMedia,
   onViewConversationDetails,
 }: {
+  vanguardMenu?: ReactNode;
   conversation: MinimalConversation;
   i18n: LocalizerType;
   isMissingMandatoryProfileSharing: boolean;
@@ -957,6 +962,7 @@ function HeaderDropdownMenuContent({
           >
             {i18n('icu:deleteConversation')}
           </AxoDropdownMenu.Item>
+          {vanguardMenu}
           {isGroup && !isTerminated && (
             <AxoDropdownMenu.Item
               symbol="leave"

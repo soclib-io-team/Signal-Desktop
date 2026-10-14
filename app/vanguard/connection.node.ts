@@ -147,7 +147,11 @@ export class VanguardConnection {
         }
       }
     }
-    return { ...this.#state, issuer: this.config.issuer };
+    return {
+      ...this.#state,
+      issuer: this.config.issuer,
+      clientId: this.config.clientId,
+    };
   }
 
   forget(): void {
