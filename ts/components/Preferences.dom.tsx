@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { ConnectionSettings } from '../vanguard/ConnectionSettings.dom.tsx';
-import type { ConnectionAPI } from '../vanguard/types.std.ts';
+import type { ConnectionAPI, ConnectionState } from '../vanguard/types.std.ts';
 import type { AudioDevice } from '@signalapp/ringrtc';
 import {
   useCallback,
@@ -133,6 +133,8 @@ export type BlockedConversation = {
 
 export type PropsDataType = {
   vanguardConnection?: ConnectionAPI;
+  vanguardConnectionState?: ConnectionState;
+  vanguardGroups?: ReactNode;
   // Settings
   backupKey: string | undefined;
   backupKeyHash: string | undefined;
@@ -466,6 +468,8 @@ const DEFAULT_ZOOM_FACTORS = [
 
 export function Preferences({
   vanguardConnection,
+  vanguardConnectionState,
+  vanguardGroups,
   addCustomColor,
   autoDownloadAttachment,
   availableCameras,
@@ -916,10 +920,14 @@ export function Preferences({
       <PreferencesContent
         contents={
           vanguardConnection && (
-            <ConnectionSettings
-              key={me.serviceId}
-              connection={vanguardConnection}
-            />
+            <>
+              <ConnectionSettings
+                key={me.serviceId}
+                connection={vanguardConnection}
+                connectionState={vanguardConnectionState}
+              />
+              {vanguardGroups}
+            </>
           )
         }
         contentsRef={settingsPaneRef}

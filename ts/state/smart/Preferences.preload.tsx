@@ -1,6 +1,7 @@
 // Copyright 2024 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { ConnectedGroups } from '../../vanguard/ConnectedGroups.dom.tsx';
 import { useVanguardGroups } from '../../vanguard/groups.preload.ts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -265,7 +266,7 @@ export function SmartPreferences(): JSX.Element | null {
   const items = useSelector(getItems);
   const hasFailedStorySends = useSelector(getHasAnyFailedStorySends);
   const me = useSelector(getMe);
-  const { connection: vanguardConnection } = useVanguardGroups();
+  const vanguard = useVanguardGroups();
   const navTabsCollapsed = useSelector(getNavTabsCollapsed);
   const otherTabsUnreadCount = useSelector(getOtherTabsUnreadCount);
   const preferredWidthFromStorage = useSelector(getPreferredLeftPaneWidth);
@@ -1045,7 +1046,17 @@ export function SmartPreferences(): JSX.Element | null {
   return (
     <AppProvider>
       <Preferences
-        vanguardConnection={vanguardConnection}
+        vanguardConnection={vanguard.connection}
+        vanguardConnectionState={vanguard.state.connection}
+        vanguardGroups={
+          <ConnectedGroups
+            state={vanguard.state}
+            conversations={vanguard.conversations}
+            onDisconnect={id => {
+              void vanguard.setConnected(id, false);
+            }}
+          />
+        }
         backupKey={backupKey}
         backupKeyHash={backupKeyHash}
         addCustomColor={addCustomColor}

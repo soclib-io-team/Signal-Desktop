@@ -76,6 +76,47 @@ above the list with checkboxes and **Link Signal users to members**. No Member
 fetch is triggered by OAuth connect/reconnect, group connect, or the group list.
 Live mapping checks after writes are permitted within the active drill-down.
 
+## Implemented group-selection slice
+
+The Desktop implementation now accepts the identity/capabilities-only context,
+adds the admin-only group menu toggle, and displays connected groups in Settings
+with current Signal names/counts and local Disconnect buttons. Rows do not navigate
+and no Member/roster endpoint is called in this slice.
+
+Group selections use a `vanguardGroups` item in Signal's existing encrypted local
+SQL settings datastore, alongside settings such as pinned conversations. It stores
+only local conversation IDs and the Signal account/Vanguard issuer/client/user
+binding. No database schema migration or Signal group protocol changes are needed.
+This is local Desktop configuration and is neither synced nor exported as a new
+Signal group property. The explicit disconnect path awaits local cleanup before
+remote revocation; failures remain visible and retryable. Same-user reconnects
+preserve selections. Account replacement/removal clears the item, and unlink
+cleanup classifies it as an item to remove, not preserve.
+
+The group menu and preferences share `GroupConnectionsController` and the
+`useVanguardGroups` adapter. React subscriptions update both surfaces after a
+successful save. Group names/counts come from current Redux conversation data;
+missing groups remain removable as “Unavailable group”. Disconnect in Settings
+is local cleanup and remains possible after group-admin access is lost.
+
+Additional minimal upstream hooks for this slice:
+
+| File                                                    | Reason                                                                   |
+| ------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `ts/types/StorageKeys.std.ts`                           | Type the local settings item and remove it on unlink.                    |
+| `ts/textsecure/Storage.preload.ts`                      | Clear group selections before replacing/removing the Signal account ID.  |
+| `ts/state/smart/ConversationHeader.preload.tsx`         | Bind current group/admin state to the isolated Vanguard menu item.       |
+| `ts/components/conversation/ConversationHeader.dom.tsx` | Optional menu-content slot; implementation stays in Vanguard components. |
+| `ts/state/smart/Preferences.preload.tsx`                | Bind shared connection state and current Signal groups to preferences.   |
+| `ts/components/Preferences.dom.tsx`                     | Mount the connected-groups section and shared connection state.          |
+
+Manual acceptance for the deployed custom build: connect OAuth, verify the empty
+list, connect two admin-managed groups through their menus, restart and verify
+retention, disconnect from either surface, and verify explicit OAuth disconnect
+clears all selections. Check that non-admin/direct/left groups cannot be connected;
+exercise same-account reconnect and account switching. Drill-down, roster ETag
+handling, mappings, and Proposed Matches remain later slices.
+
 ## Upstream hooks
 
 | File                                     | Reason for the small integration edit                                      |

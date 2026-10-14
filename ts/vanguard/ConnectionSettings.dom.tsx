@@ -12,7 +12,11 @@ import type {
 
 export function ConnectionSettings({
   connection,
-}: Readonly<{ connection: ConnectionAPI }>): JSX.Element | null {
+  connectionState,
+}: Readonly<{
+  connection: ConnectionAPI;
+  connectionState?: ConnectionState;
+}>): JSX.Element | null {
   const [state, setState] = useState<ConnectionState>();
   const [busy, setBusy] = useState(false);
   const revision = useRef(0);
@@ -66,7 +70,7 @@ export function ConnectionSettings({
   }
   return (
     <ConnectionSettingsView
-      state={state}
+      state={connectionState ?? state}
       busy={busy}
       onAction={action => {
         void act(action);
