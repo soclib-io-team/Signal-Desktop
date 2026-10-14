@@ -138,17 +138,15 @@ Proposed table: `member_signal_mappings`.
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `member_id`            | Foreign key and unique index: one mapping resource per member.                                                                      |
 | `aci`                  | Nullable PostgreSQL UUID, serialized as canonical lowercase UUID text. Reject `PNI:` values, usernames, and local conversation IDs. |
-| `lock_version`         | Monotonically increasing revision for optimistic concurrency.                                                                       |
 | `source`               | Controlled value such as `manual_assignment` or `confirmed_lookup`; provenance, not proof of identity.                              |
 | `confirmed_at`         | Server time of the admin-confirmed assignment.                                                                                      |
 | `updated_by_user_id`   | Actor obtained from the bearer token, never trusted from request JSON.                                                              |
 | `oauth_application_id` | Calling client identity for audit attribution.                                                                                      |
 | timestamps             | Creation/update timestamps under normal Rails conventions.                                                                          |
 
-Keep the row with `aci = null` after clearing a mapping so revisions cannot reset
-through a delete/recreate cycle. A member with no row has logical revision 0;
-concurrent first writes must serialize on the member record or otherwise use a
-transaction and the unique member index safely.
+An absent mapping row represents an unmapped Member. Clearing may delete the row;
+no revision history or optimistic-lock column is required. Retain ordinary audit
+history separately and enforce one mapping per Member with a database constraint.
 
 Provisional recommendation: also enforce a partial unique index on non-null ACI
 within this Vanguard deployment. This prevents one account from silently mapping
@@ -180,9 +178,9 @@ it. Responses are JSON; examples use illustrative, shortened Vanguard IDs.
 | `GET /api/v1/signal/context`                       | Caller IDs and effective capabilities; optional legacy roster descriptors.       |
 | `GET /api/v1/signal/members`                       | Default flat authorized Member list, inline mappings/roles, and snapshot handle. |
 | `GET /api/v1/signal/mappings`                      | Member-ID-to-ACI dictionary for the same scoped snapshot.                        |
-| `GET /api/v1/signal/members/:member_id/mapping`    | Current mapping, including an unmapped state, and its concurrency token.         |
+| `GET /api/v1/signal/members/:member_id/mapping`    | Current mapping, including an unmapped state.                                    |
 | `PUT /api/v1/signal/members/:member_id/mapping`    | Create or replace that member's ACI mapping.                                     |
-| `DELETE /api/v1/signal/members/:member_id/mapping` | Clear the mapping without deleting the member or revision history.               |
+| `DELETE /api/v1/signal/members/:member_id/mapping` | Clear the mapping without deleting the Member.                                   |
 
 No Signal group mutation endpoint belongs in Vanguard. No bulk-write, webhook,
 global reverse-ACI lookup, or shared group-association endpoint is required for the
@@ -244,7 +242,6 @@ Authorization: Bearer <access-token>
       "unit_ids": [],
       "district_ids": [],
       "signal_user_id": "70a81aac-7237-4bc1-9a72-33d055f455ab",
-      "mapping_version": 3,
       "user_roles": [
         {
           "role_slug": "chapter_leader",
@@ -274,7 +271,7 @@ Data rules:
   above plus full name, chapter name, mapping, and roles. IDs, names, and status
   are authoritative Vanguard values; optional profile/contact fields may be null.
 - `signal_user_id` is the canonical Signal ACI, identical to the mapping API's
-  `aci`, or null for an authorized unmapped Member. Include `mapping_version`.
+  `aci`, or null for an authorized unmapped Member.
   Do not use phone numbers, PNI, usernames, or local conversation IDs as this key.
   Require mapping-read OAuth scope and permission for this mapping-bearing list;
   reject insufficient permission explicitly rather than substituting nulls.
@@ -341,7 +338,7 @@ mapping dictionary reference the same `snapshot_id`. A timestamp alone is not a
 consistency guarantee.
 
 Implementation recommendation for chunk 3: materialize the authorized selected
-member projection and mapping versions from one consistent database view into an
+member projection and mapping values from one consistent database view into an
 expiring server-side snapshot. Do not hold a database transaction open between
 HTTP requests. Establish a size cap/TTL from measured roster sizes; never silently
 truncate a response. A revision-based alternative is acceptable only if it
@@ -364,10 +361,6 @@ GET /api/v1/signal/mappings?snapshot_id=opaque-snapshot&limit=1000
     "mbr_example": "70a81aac-7237-4bc1-9a72-33d055f455ab",
     "mbr_other": null
   },
-  "versions": {
-    "mbr_example": 3,
-    "mbr_other": 0
-  },
   "meta": {
     "snapshot_id": "opaque-snapshot",
     "total_count": 2,
@@ -388,60 +381,51 @@ be read or changed only by someone with continuing appropriate access.
 
 ### Read, replace, and clear one mapping
 
-`GET .../:member_id/mapping` returns the live state with a strong ETag. An
-authorized member with no mapping returns `200`, `aci: null`, and a revision token,
-not `404`.
+`GET .../:member_id/mapping` returns the live state. An authorized Member with no
+mapping returns `200` with `aci: null`, not `404`.
 
 ```http
 PUT /api/v1/signal/members/mbr_example/mapping
-If-Match: "mapping-mbr_example-v3"
-Idempotency-Key: <client-generated-operation-uuid>
 Content-Type: application/json
 
 {"aci":"70a81aac-7237-4bc1-9a72-33d055f455ab","source":"manual_assignment"}
 ```
 
-Successful PUT/DELETE returns `200` with `{ member_id, aci, version, confirmed_at,
-updated_at }` and a fresh ETag. DELETE uses the same precondition/idempotency
-headers and returns `aci: null`. Replacing an existing ACI is a normal PUT; it does
-not append an additional association. Sending the current value or clearing an
-already-empty mapping with a current precondition is a successful no-op.
+Successful PUT/DELETE returns `200` with `{ member_id, aci, confirmed_at,
+updated_at }`; a cleared/absent mapping returns null for ACI and mapping timestamps.
+PUT sets or replaces the Member's ACI; DELETE clears it. Setting the current value
+or clearing an already-empty mapping succeeds without a duplicate audit change.
 
-Inside a transaction, enforce the current authorization, expected revision,
-member uniqueness, and any adopted reverse-ACI uniqueness rule. Increment the
-revision on actual changes and write the audit entry atomically.
+Keep these ordinary mapping writes simple: no idempotency keys, operation-receipt
+store, ETags, required version headers, or mapping revision fields. Authorize each
+request and enforce database uniqueness and ordinary audit attribution. Overlapping
+valid writes use last-write-wins behavior; preventing a rare intervening admin edit
+is not a requirement for this low-volume workflow. Do not silently move an ACI
+from another Member when the reverse uniqueness constraint rejects an assignment.
 
-Persist an idempotency receipt scoped to actor/client and operation key, including
-target, request fingerprint, and response. After reauthorization, an exact retry
-returns its stored result before checking the now-stale original precondition.
-Reusing the key for a different request is a conflict. Bound receipt retention;
-after expiry, Desktop must reread and review current state rather than blindly
-replaying an old mutation. Do not repeat a successful replacement after a later
-admin has changed it again.
-
-An idempotency response describes that operation's historical outcome; refresh
-the live mapping before displaying it as current. This API provides no atomic
-transaction with Signal group updates.
+If a response is lost or times out, Desktop rereads the current mapping and shows
+that state. If it matches the intended result, display it as linked/unlinked; if
+it differs, show the current state and let the user retry explicitly. Do not build
+automatic write replay or durable client operation receipts for manual/bulk linking.
+This API provides no atomic transaction with Signal group updates.
 
 ### Error contract
 
 Use machine-readable errors for new endpoints, e.g.
-`{ "error": { "code": "mapping_version_conflict", "message": "Refresh this mapping before retrying." } }`.
+`{ "error": { "code": "aci_assignment_conflict", "message": "This Signal account is already linked." } }`.
 Do not require changing existing endpoints' error format.
 
-| Status | Meaning                                                                                         |
-| ------ | ----------------------------------------------------------------------------------------------- |
-| `400`  | Malformed parameters, invalid cursor, or unsupported filter.                                    |
-| `401`  | Missing/expired bearer token or invalid user principal.                                         |
-| `403`  | Required OAuth scope missing; feature-level access denial without resource disclosure.          |
-| `404`  | Member/scope does not exist or is not visible to the caller.                                    |
-| `409`  | ACI assignment conflict, idempotency-key reuse, or invalidated snapshot (distinct error codes). |
-| `410`  | Expired snapshot; restart the read workflow.                                                    |
-| `412`  | Stale `If-Match`; fetch and review current mapping.                                             |
-| `422`  | Invalid ACI or unsupported provenance value.                                                    |
-| `428`  | Mapping mutation missing the required precondition.                                             |
-| `429`  | Rate limited; honor `Retry-After`.                                                              |
-| `5xx`  | Transient/unknown outcome; use idempotency recovery for writes.                                 |
+| Status | Meaning                                                                                |
+| ------ | -------------------------------------------------------------------------------------- |
+| `400`  | Malformed parameters, invalid cursor, or unsupported filter.                           |
+| `401`  | Missing/expired bearer token or invalid user principal.                                |
+| `403`  | Required OAuth scope missing; feature-level access denial without resource disclosure. |
+| `404`  | Member/scope does not exist or is not visible to the caller.                           |
+| `409`  | ACI assignment conflict or invalidated snapshot (distinct error codes).                |
+| `410`  | Expired snapshot; restart the read workflow.                                           |
+| `422`  | Invalid ACI or unsupported provenance value.                                           |
+| `429`  | Rate limited; honor `Retry-After`.                                                     |
+| `5xx`  | Transient/unknown outcome; reread the mapping before a user retries a write.           |
 
 For OAuth middleware failures, retain the provider's standard OAuth error format;
 the Desktop adapter must normalize both formats. Redact token, phone, and ACI
@@ -466,7 +450,7 @@ values from routine logs; detailed mapping audit access is separately controlled
   client caches. Later operation journals must remain separate from roster storage.
 - Do not promise mappings or local group connection flags will sync through
   Signal. Shared mappings are reloaded from Vanguard.
-- Retention for mapping audit history, snapshot data, and idempotency receipts is
+- Retention for mapping audit history and snapshot data is
   a rollout decision; none should become an unbounded identity-history store.
 
 ## Implementation work packages within Chunk 1
@@ -479,7 +463,7 @@ values from routine logs; detailed mapping audit access is separately controlled
    schemas, nullable fields, pagination, scope requirements, and error examples to
    Vanguard's OpenAPI document. Record compatibility with the existing roster API.
 3. **Specify storage and operations.** Design the mapping migration, constraints,
-   audited operations, concurrency tokens, and bounded idempotency receipt store.
+   and audited set/clear operations; no concurrency-token or receipt storage.
    Follow Vanguard's operations pattern and Sorbet conventions when implementing.
 4. **Specify shared scope and serialization services.** Define policy tests and
    eager-loaded queries for current/last chapter membership and filtered CombinedUserRoles; settle snapshot
@@ -506,8 +490,8 @@ here should avoid implementing later chunks prematurely.
   data, and cross-scope mapping IDs. Existing chapter API shape/access stay intact; verify its expanded status eligibility.
 - Zero/one mapping; replacement; clearing; invalid ACI/PNI; adopted reverse
   uniqueness rule; actor attribution; no phone-number mutation.
-- Concurrent first assignment, replacement, and clearing; stale ETags; repeated
-  operation keys; lost responses; retry after a subsequent admin update.
+- Set/replace/clear, repeated same-value writes, lost responses followed by a
+  current-state read, and explicit user retry; no version-precondition contract.
 - Full 4,000/8,000-record loading, progress totals, short pages with next cursors,
   retry without duplicates, and no linking before completion.
 - Snapshot member/mapping consistency, permission loss between pages, expiration,

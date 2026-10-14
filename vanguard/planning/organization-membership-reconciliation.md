@@ -82,15 +82,14 @@ Work:
   permissions, pagination, rate limits, and mapping storage.
 - Define stable provider, organization, roster, and person identifiers. Specify
   how active membership, departures, guests, and multiple rosters are represented.
-- Define organization/person-to-ACI mappings, with provenance, verification time,
-  and version information for conflicting updates.
+- Define organization/person-to-ACI mappings, with provenance and verification time.
 - Keep zero or one ACI per Member; settle reverse uniqueness and how duplicate
   person records or conflicting account assignments are resolved.
 - Persist a local connected-to-Vanguard flag for each selected Signal group;
   there is no ChapterOrg/roster selection or group-to-roster association.
 - Specify a provider adapter for fetching complete rosters and reading, saving,
-  correcting, and deleting identity mappings. Require safe retry behavior and
-  concurrency protection for writes, or define how to supply them.
+  correcting, and deleting identity mappings. Use simple set/clear writes and
+  reread current state after uncertain outcomes; no write-receipt infrastructure.
 - Decide which data is authoritative remotely, cached locally, retained for
   recovery, and cleared on disconnect or Signal-account change.
 - Call Vanguard directly; Vanguard owns mapping persistence. No companion backend
@@ -213,14 +212,16 @@ Completion criteria:
 - **Confirm** persists the selected Member/ACI through the provider PUT endpoint;
   **Cancel** closes without a write. Existing conflicting mappings must never be
   silently replaced or stolen; show the conflict and require separate resolution.
-- Use live mapping reads, ETags, idempotency keys, and current server authorization
-  as specified in chunk 1. Refresh affected live state after successful writes;
-  errors and uncertain outcomes must not appear as saved changes.
+- Use ordinary PUT/DELETE requests with current server authorization as specified
+  in chunk 1. No idempotency keys, ETags, or mandatory version checks are required.
+  Refresh affected live state after writes or uncertain responses; if it differs
+  from the intended result, show that state and let the user retry explicitly.
 
 Completion criteria:
 
 - Link/Unlink survives a fresh drill-down and is visible to authorized other admins.
-- Concurrent edits and duplicate assignments cannot silently overwrite mappings.
+- Database uniqueness rejects duplicate assignments. Rare overlapping valid edits
+  use last-write-wins behavior; no optimistic concurrency workflow is required.
 - Member details, roles, permission failures, and retry behavior are covered.
 - Verify full-list search, keyboard selection, and responsive virtualized rendering
   with 8,000 Members, including records loaded from the final page.
@@ -240,20 +241,21 @@ save selected mappings without adding or removing Signal group members.
   unresolvable candidates outside the actionable selection.
 - Below the section, show **Link Signal users to members**, disabled when none
   are selected or writes are unavailable. Clicking processes only selected pairs
-  using the existing mapping PUT contract, bounded concurrency, individual ETags,
-  and individual idempotency keys. A new bulk endpoint is unnecessary initially.
-- Revalidate current mapping state and permissions before each write. Abort stale
-  proposals for renewed review. Prevent duplicate ACI/Member selection.
-- Report each success, conflict, failure, and uncertain result. Retry unresolved
-  operations safely without replaying completed writes. Refresh mappings and
-  indicators after processing; clear resolved proposals and stale selections.
+  using the simple mapping PUT contract with bounded concurrency and per-item
+  outcomes. A new bulk endpoint is unnecessary initially.
+- Enforce current server permissions on each write and prevent duplicate
+  ACI/Member selection. No per-item version preflight is required.
+- Report each success, conflict, failure, and uncertain result. Reread mappings
+  after uncertain responses and show current state. Users may explicitly retry
+  unresolved items; do not automatically replay writes or resubmit completed items.
+  Refresh indicators and clear resolved proposals/selections after processing.
 - Leaving the view or disconnecting stops work not yet started. In-flight writes
   may already have committed; a subsequent fresh read resolves actual state.
 
 Completion criteria:
 
 - Only explicitly selected proposals are linked; no Signal membership changes occur.
-- Partial success, concurrent admin changes, unavailable numbers, ambiguous
+- Partial success, current-state reads after lost responses, unavailable numbers, ambiguous
   matches, cancellation, and lost responses have tested, visible outcomes.
 
 ## 6. Reviewed group removals and operation recovery
