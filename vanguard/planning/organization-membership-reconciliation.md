@@ -170,7 +170,13 @@ Member fetching and drill-down:
   disconnect, or account change; ignore late responses using generation checks.
   Do not reuse a previous drill-down's snapshot or persist Member data in Signal.
   A short-lived provider pagination snapshot is not a Desktop cache.
-- Show explicit loading, failed, incomplete, and retry states. A failed/partial
+- Automatically fetch all pages at an initial page size of 1,000 (normally 4–8
+  requests for the expected 4,000–8,000 Members). Show progress such as “Loading
+  members: 3,000 of 8,000”. Enable linking and Proposed Matches only after every
+  page succeeds and the terminal cursor confirms completion.
+- Show explicit loading, failed, incomplete, and retry states. Retry a transiently
+  failed page against the same valid snapshot without duplicating entries; on
+  snapshot expiry/invalidation discard partial data and restart. A failed/partial
   read must not render users as definitively unmapped or enable linking.
 - For each current Signal group user, show their nickname, falling back to their
   profile name, and an Actions dropdown. Join using ACI, never display name.
@@ -201,6 +207,9 @@ Completion criteria:
   `full_name (chapter_org_name)`. Selecting a Member closes the dropdown and shows
   full name, chapter name, and roles (`role_name`, `chapter_org_name`); national
   roles show “National” for their null chapter. Empty roles show an empty state.
+- Make the dropdown searchable across the full in-memory list by member/chapter
+  name and virtualize its options so only visible rows render. Preserve keyboard
+  navigation and accessible selection; searching must not fetch another API page.
 - **Confirm** persists the selected Member/ACI through the provider PUT endpoint;
   **Cancel** closes without a write. Existing conflicting mappings must never be
   silently replaced or stolen; show the conflict and require separate resolution.
@@ -213,6 +222,8 @@ Completion criteria:
 - Link/Unlink survives a fresh drill-down and is visible to authorized other admins.
 - Concurrent edits and duplicate assignments cannot silently overwrite mappings.
 - Member details, roles, permission failures, and retry behavior are covered.
+- Verify full-list search, keyboard selection, and responsive virtualized rendering
+  with 8,000 Members, including records loaded from the final page.
 
 ## 5. Proposed Matches and selected bulk linking
 
