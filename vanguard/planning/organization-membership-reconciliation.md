@@ -164,21 +164,26 @@ Group settings and entry points:
 Member fetching and drill-down:
 
 - On every group entry/re-entry, create a new request for the flat Members list
-  across ChapterOrgs authorized by `member:show`. Fetch all pages before treating
-  absence as unmapped. Include candidates, full members, members on leave, and
+  across ChapterOrgs authorized by `member:show`. Fetch all pages (or revalidate a
+  retained complete list with 304) before treating absence as unmapped. Include candidates, full members, members on leave, and
   former members (last ChapterOrg), plus mappings and the filtered user roles
   specified in chunk 1. Never enumerate/fetch per-ChapterOrg rosters in Desktop.
-- Keep the fetched data in memory only for the current view. Discard it on exit,
-  disconnect, or account change; ignore late responses using generation checks.
-  Do not reuse a previous drill-down's snapshot or persist Member data in Signal.
-  A short-lived provider pagination snapshot is not a Desktop cache. Roster GET
-  ETags may be evaluated as a bandwidth optimization separately from mapping
-  writes (see chunk 1). They do not eliminate re-entry downloads when the prior
-  response body has been discarded; retaining it across visits is not yet planned.
-- Automatically fetch all pages at an initial page size of 1,000 (normally 4–8
+- Retain the complete flat roster and its whole-roster ETag in memory across group
+  navigation, scoped to provider/Vanguard user/client and Signal account. On each
+  drill-down, revalidate through the initial Members URL with `If-None-Match`:
+  304 reuses the complete roster; 200 downloads a fresh complete snapshot before
+  replacing it. Never persist it to disk or skip validation based on cache age.
+- Keep the previous roster while a replacement loads, but disable linking and
+  Proposed Matches until successful validation or full replacement. Failed
+  validation shows a retry state, not actionable stale data. Drop incomplete
+  replacements on cancellation, not the last complete roster. Clear retained data
+  on OAuth disconnect, identity/provider changes, data erasure, or process exit;
+  ignore obsolete responses. Group disconnect leaves the account-level cache intact.
+- On an initial/changed response, automatically fetch all pages at a page size of 1,000 (normally 4–8
   requests for the expected 4,000–8,000 Members). Show progress such as “Loading
   members: 3,000 of 8,000”. Enable linking and Proposed Matches only after every
-  page succeeds and the terminal cursor confirms completion.
+  page succeeds and the terminal cursor confirms completion, or a 304 validates
+  a previously complete roster. Refresh current Signal group state on each entry.
 - Show explicit loading, failed, incomplete, and retry states. Retry a transiently
   failed page against the same valid snapshot without duplicating entries; on
   snapshot expiry/invalidation discard partial data and restart. A failed/partial
@@ -195,7 +200,8 @@ Member fetching and drill-down:
 Completion criteria:
 
 - Group flags survive restart; OAuth disconnect clears them durably.
-- Every drill-down fetches fresh data, including when revisiting the same group.
+- Every drill-down validates freshness with Vanguard. Unchanged rosters transfer
+  no Member bodies; changed rosters replace the cache only after complete loading.
 - Empty, partial, inaccessible, and failed data are distinguishable, and all three
   status indicators, names, counts, and account-isolation behavior are tested.
 
@@ -222,6 +228,8 @@ Completion criteria:
   in chunk 1. No idempotency keys, mapping-write ETags, or mandatory version checks are required.
   Refresh affected live state after writes or uncertain responses; if it differs
   from the intended result, show that state and let the user retry explicitly.
+  Invalidate the retained roster ETag after attempted writes, including uncertain
+  outcomes; do not reuse the old tag with locally edited mapping data.
 
 Completion criteria:
 

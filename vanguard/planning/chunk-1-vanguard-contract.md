@@ -217,7 +217,8 @@ Capabilities are UI hints and must be enforced again on every read/write.
 
 Desktop stores only a connected flag for a Signal group, never a selected chapter,
 district, unit, or roster. Only entering a connected group's Settings drill-down
-triggers `GET /api/v1/signal/members`. Other API clients can explicitly choose the
+triggers `GET /api/v1/signal/members`, conditionally when a complete roster is
+already retained in memory. Other API clients can explicitly choose the
 existing chapter endpoint. Desktop never fetches that endpoint in this workflow.
 
 ### Flat Member listing
@@ -318,7 +319,9 @@ ordering. Desktop requests 1,000 per page and automatically follows cursors unti
 not completion if a next cursor exists. Return an exact snapshot `total_count`
 within the authorized selection for progress reporting.
 
-Fetch every page into memory before enabling linking or Proposed Matches. Show
+On an initial or changed response, fetch every page into memory before enabling
+linking or Proposed Matches. An unchanged 304 validates the retained complete list
+without downloading pages. Show
 progress such as “Loading members: 3,000 of 8,000”. The dropdown searches the
 complete list locally; pagination is a transport detail, not a partial dropdown
 or a user-operated Load more flow. Pagination bounds response sizes and retries,
@@ -327,15 +330,17 @@ but does not reduce total data fetched or guarantee faster initial loading.
 Retry a transiently failed page with the same snapshot and cursor, bounded backoff,
 and `Retry-After` where applicable. Append a page only once after validation;
 retries must not duplicate entries. Keep partial data unavailable for linking.
-Expired/invalid snapshots require discarding partial data and restarting with a
-new snapshot; permission failures must not cause an endless automatic retry loop.
+Expired/invalid snapshots require discarding partial replacement data and
+restarting with a new snapshot; any previous complete roster remains retained but
+unavailable for actions until revalidated or replaced; permission failures must not cause an endless automatic retry loop.
 
 Measure response sizes, end-to-end load time, memory, and provider query cost with
 4,000 and 8,000 representative records including roles before rollout. Tune page
 size and snapshot TTL from those measurements; never truncate the full list. The
 retained per-ChapterOrg endpoint keeps its existing pagination/response behavior.
 
-The initial members request creates a short-lived snapshot bound to user, OAuth
+An unconditional initial request or a conditional request whose roster has changed
+creates a short-lived snapshot bound to user, OAuth
 application, authorized chapter set, and effective date. Subsequent member pages and the
 mapping dictionary reference the same `snapshot_id`. A timestamp alone is not a
 consistency guarantee.
@@ -352,36 +357,86 @@ caller loses relevant visibility. Return a specific expired/invalid snapshot
 error so Desktop restarts the comparison. Before applying actions, fetch current
 state again; the snapshot is review context, not continuing write authorization.
 
-### Roster GET ETags: optional bandwidth optimization
+### Whole-roster ETags and mandatory revalidation
 
-Conditional roster reads are separate from the rejected mapping-write concurrency
-mechanism. Assess support for `ETag` / `If-None-Match` on both the flat and
-per-chapter GET endpoints if a correct validator is cheap to generate. A matching
-validator allows `304 Not Modified` without the response body; this requires the
-client to retain that exact body. It does not require idempotency receipts or
-mapping version headers. See [HTTP conditional GET semantics](https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.2).
+Support `ETag` / `If-None-Match` on both the flat and per-chapter member-list GET
+endpoints. This is read-side bandwidth optimization, separate from mapping-write
+concurrency; it requires no write receipts or mandatory `If-Match` headers.
 
-Do not assume `MAX(members.updated_at)` is sufficient. The representation also
-changes with chapter assignments/names, mappings, eligible roles, permission
-changes, deletions, and date-effective associations. Authorize the request before
-returning 304, and scope validators to the caller's authorized representation,
-query/page, and serialization format. If using response-body hashing, it saves
-wire bytes but still pays for the query and serialization; measure those costs.
-Do not add broad revision-tracking infrastructure solely to make validation cheap.
+Desktop retains one complete flat roster and its ETag in memory across group
+navigation, scoped to Vanguard issuer, OAuth user/client, and local Signal account.
+The roster is independent of the selected Signal group. On **every** drill-down:
 
-For pagination, a page ETag validates only that page, not the entire Members list.
-A snapshot page validator cannot prove the live roster is still unchanged, and a
-new snapshot ID/cursor/as-of value may change the response even if Members did
-not. Do not reuse an expired cursor or skip full-list loading on a first-page 304.
-Evaluate this with the snapshot design before committing to an optimization.
+1. With no complete retained roster/ETag, request the initial Members URL normally.
+2. Otherwise request that same initial URL with `If-None-Match: W/"<roster-tag>"`,
+   without a snapshot ID or cursor. This validates the live authorized collection,
+   not an old snapshot. Await the server result before enabling linking or proposals.
+3. Vanguard authenticates and authorizes against current permissions, computes the
+   current whole-roster validator, and returns `304 Not Modified` with its ETag
+   and no body if unchanged. Desktop can then use the complete retained roster;
+   it need not fetch any pages or recreate an expired pagination snapshot.
+4. On change, return `200` with a new ETag and the first page of a fresh consistent
+   snapshot. Desktop downloads every remaining page into a separate buffer, with
+   progress, and atomically replaces the retained roster/ETag only on completion.
 
-The current Desktop lifecycle discards Members on leaving the drill-down. Thus
-re-entry has no stored body to reuse and must fetch the full list, even if ETags
-are supported. ETags can benefit repeated reads whose bodies are still held in
-memory; meaningful savings across visits would require a separately agreed change
-to retain an in-memory copy and revalidate it on every entry. No disk persistence
-or unvalidated cache reuse is proposed. Conditional GET support is an evaluation
-item, not a prerequisite for initial delivery or a change to the agreed lifecycle.
+Keep the old complete roster while replacement loads or fails, but do not enable
+linking/Proposed Matches from it until a successful revalidation or replacement.
+A 304 without a complete matching local roster is unusable: retry unconditionally.
+Do not promote partial downloads to the retained cache. Cancel/ignore obsolete
+view requests; navigating away may abandon an incomplete replacement but must
+not erase the last complete roster. Refresh Signal group membership on each entry
+and rebuild comparison/proposals from that group plus the validated roster.
+
+#### Validator scope and pagination contract
+
+The initial response's ETag is a **weak semantic validator for the entire ordered,
+authorized Member collection**, including inline mappings, roles, field visibility,
+and capabilities. It is not a hash of only page one. Changing a Member on page eight
+must change the initial-request validator. The per-chapter endpoint applies the
+same rule to its chapter collection. Scope tags to the authorized principal,
+endpoint/query representation, and serialization schema; never share one user's
+validated data with another. Use `Cache-Control: private, no-cache` so retained
+responses require validation and are not reusable by shared caches. Desktop must
+keep these sensitive bodies in its explicit memory store, not a disk HTTP cache.
+
+Pagination snapshot IDs, cursors, and retrieval timestamps are transport metadata,
+not roster identity. They must not cause a new roster tag merely because a new
+snapshot was allocated. Use weak validators because byte-identical response
+metadata is not promised. The initial tag and all downloaded pages must derive
+from the same consistent data view; never compute the tag before a change and
+then serialize the replacement after it. Subsequent pages reference that snapshot
+and are downloaded normally. Do not treat a page-specific 304 as validation of the
+whole roster, or resume an expired cursor after whole-roster revalidation.
+
+Vanguard must cover every dependency: member fields/status, mappings (including
+unlink), current/last chapter assignments and names, eligible CombinedUserRoles,
+permission/role-field visibility, insertions/deletions, and date-effective changes.
+`MAX(members.updated_at)` alone is insufficient. Always authorize before returning
+304; access loss must produce the appropriate denial or changed authorized list,
+not validation of formerly visible data.
+
+Start with a deterministic digest of the complete authorized projection from the
+consistent read already needed for the list, unless an existing reliable revision
+source covers all dependencies more cheaply. Digesting the projection still costs
+query/serialization work but avoids sending unchanged bodies and remaining pages.
+Benchmark 4,000/8,000-record validation cost, bandwidth, and changed-list loading;
+optimize generation without adding broad revision-tracking infrastructure or
+weakening correctness. Do not create/store a pagination snapshot on an unchanged
+304 solely to validate an already complete roster.
+
+After any attempted Link/Unlink or bulk write, invalidate the retained ETag because
+mappings may have changed, including when a response is lost. Live mapping reads
+may update the current view, but do not make a locally patched roster eligible for
+conditional reuse with its old tag. On the next drill-down, fetch a new complete
+roster unless it has already been fully refreshed with a new server tag.
+
+Retain the roster only in process memory. Clear it on OAuth disconnect, identity/
+provider/Signal-account changes, data erasure, or process exit. Ordinary group
+navigation or group disconnect does not erase this account-level roster. Transient
+validation errors retain it but disable actions and show a retry state; authorization
+denial clears inaccessible data. Always contact Vanguard on entry; never use a TTL
+or offline fallback to skip validation. HTTP semantics reference:
+[conditional GET](https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.2).
 
 ### Mapping dictionary
 
@@ -477,11 +532,12 @@ values from routine logs; detailed mapping audit access is separately controlled
 - Store tokens using the chunk 2 secure-storage design. Namespace any Desktop
   cache/journal by Vanguard issuer/user and Signal account to prevent cross-account
   reuse. Clear roster caches on logout, disconnect, or account switch.
-- Keep Members and mappings in memory only for the current drill-down. Fetch a
-  new snapshot on every entry, discard data on exit, and reject late responses
-  after disconnect/account change. No persisted Member cache is needed in Signal.
-  Provider pagination snapshots are short-lived consistency aids, not reusable
-  client caches. Later operation journals must remain separate from roster storage.
+- Retain the complete Members/mappings list and roster ETag in memory across
+  drill-downs, with mandatory server revalidation on every entry. Clear on OAuth
+  disconnect, account/provider change, data erasure, or process exit; never persist
+  Member data to disk. Ignore late responses from obsolete views/connections.
+  Provider pagination snapshots are short-lived download aids, not the retained
+  client roster. Later operation journals remain separate from roster storage.
 - Do not promise mappings or local group connection flags will sync through
   Signal. Shared mappings are reloaded from Vanguard.
 - Retention for mapping audit history and snapshot data is
@@ -528,6 +584,10 @@ here should avoid implementing later chunks prematurely.
   current-state read, and explicit user retry; no version-precondition contract.
 - Full 4,000/8,000-record loading, progress totals, short pages with next cursors,
   retry without duplicates, and no linking before completion.
+- Whole-roster 304 reuse across groups; changes confined to later pages; mapping,
+  role, chapter, permission, deletion, and date-effective changes invalidate tags.
+- Authorization before 304; no-body-cache fallback; complete replacement only;
+  failed revalidation disables actions; cache isolation/clearing and write invalidation.
 - Snapshot member/mapping consistency, permission loss between pages, expiration,
   explicit completion, oversized selections, and no silent truncation.
 
@@ -541,7 +601,7 @@ here should avoid implementing later chunks prematurely.
 | Former-member chapter (confirmed)   | Use the last ChapterOrg with current authorization; never infer departure from absence.                                 |
 | User roles (confirmed)              | ChapterOrg-associated and no-org national roles only; exclude Unit/District roles.                                      |
 | Group settings (confirmed)          | Local Signal group-settings persistence; clear flags on OAuth disconnect; no roster selection.                          |
-| Member data lifecycle (confirmed)   | In memory for the current drill-down, fresh fetch on every entry.                                                       |
+| Member data lifecycle (confirmed)   | Retain complete roster/ETag in memory across groups; revalidate on every entry.                                         |
 | Deployment, retention, and scale    | Confirm runtime API/issuer URLs, roster sizes, and approved retention before implementation/rollout.                    |
 
 Confirmed rows record product decisions. Reverse uniqueness and deployment/retention

@@ -64,9 +64,13 @@ provider, and Vanguard user; do not add a server/protocol synchronization promis
 Group disconnect clears that flag, closes/cancels its active drill-down, and leaves
 Vanguard mappings intact. OAuth disconnect clears all such flags for the connection.
 
-Only opening/reopening a connected group's drill-down fetches a new complete flat
-Member list. Keep it in memory for that view, discard on exit, and ignore late
-responses after navigation/disconnect. Chunk 3 specifies member icons and names;
+Opening/reopening a connected group's drill-down always validates the flat Member
+list with Vanguard. Retain a complete roster and its ETag in memory across groups:
+first entry fetches all pages; later entries send `If-None-Match` to the initial
+Members URL. A 304 reuses the complete roster; a 200 downloads a replacement into a
+separate buffer and swaps it in only after all pages complete. Disable linking and
+Proposed Matches while validation/replacement is pending or failed. Ignore late
+responses after obsolete navigation/disconnect; do not persist Member data to disk. Chunk 3 specifies member icons and names;
 chunk 4 adds Link/Unlink and its Member detail modal; chunk 5 adds Proposed Matches
 above the list with checkboxes and **Link Signal users to members**. No Member
 fetch is triggered by OAuth connect/reconnect, group connect, or the group list.
@@ -195,15 +199,15 @@ District, and other non-ChapterOrg roles. National chapter fields are null; no
 login/roles yields `[]`. Respect role-field visibility and mark withheld expansions.
 
 Use complete paginated reads with short-lived, consistent provider snapshots and
-current authorization on every page as specified in chunk 1. Each drill-down starts
-a new snapshot; snapshots must not become a long-lived Desktop cache. Include
+current authorization on every page as specified in chunk 1. Each drill-down
+revalidates the whole roster; only initial or changed downloads need a new snapshot. Include
 mapping values inline so the default view needs no separate dictionary
 request. Keep the optional mapping dictionary contract as a separate API option.
 
 For expected lists of 4,000–8,000 Members, start with a 1,000-record default and
 maximum page size on the new endpoint. Desktop automatically fetches all pages,
 shows loaded/total progress, and enables linking/Proposed Matches only after full
-completion. Return exact snapshot totals and retryable cursors; transient page
+completion or a 304 validating the already complete retained roster. Return exact snapshot totals and retryable cursors; transient page
 retries reuse the valid snapshot, while expiry/invalidation restarts the full read.
 Keep the existing per-chapter response behavior unchanged. Measure representative
 payloads and load times before finalizing page size/TTL. The Link dropdown searches
@@ -232,20 +236,32 @@ add regression tests for both endpoints; do not silently retain active-only beha
 for one of them. Preserve all other route/response/access behavior. No unrelated
 Member API is in scope for this roster change.
 
-### Evaluate conditional roster GETs separately from mapping writes
+### Implement whole-roster conditional GETs
 
-Roster ETags were not intended to be prohibited by removing mapping-write version
-checks. Evaluate `ETag` / `If-None-Match` on both member-list endpoints if a correct
-validator is cheap. Authorize before returning 304 and account for all fields and
-associations that affect the response; a Member timestamp alone is insufficient.
-See chunk 1's roster ETag section for pagination/snapshot constraints and tests to
-consider. Benchmark validator generation versus full query/serialization and wire
-cost before adding infrastructure.
+Support `ETag` / `If-None-Match` on both member-list endpoints. On the flat initial
+request (no cursor/snapshot ID), validate the entire live authorized collection:
+return 304 without a body when unchanged; otherwise return 200 with a new ETag and
+the first page of a fresh snapshot. A change on any page must invalidate the tag.
+Desktop retains the complete list/ETag across groups and contacts Vanguard on every
+drill-down. It enables actions only after a 304 or complete replacement download.
 
-The current client discards Member bodies on leaving the view, so ETags alone do
-not avoid downloads on re-entry. Retaining an in-memory response across visits
-for mandatory server revalidation would be a separate lifecycle decision. Do not
-change that lifecycle or add persisted caching as part of this context revision.
+Follow chunk 1's weak semantic whole-roster validator contract: exclude transient
+pagination metadata, include all Member/mapping/role/chapter/permission dependencies,
+authorize before 304, and generate the tag and changed response from a consistent
+view. Revalidation must not rely on an expired snapshot. Use private, revalidated
+responses and explicit client memory storage, never a persisted HTTP body cache.
+
+A deterministic digest of the complete projection is the baseline; reuse a cheaper
+reliable revision source only if it covers all dependencies. This saves wire bytes
+even if the query/serialization still runs. Benchmark 4,000/8,000 records; do not
+introduce broad revision tracking solely to optimize tag generation.
+
+Clear the cache on OAuth disconnect, identity/provider changes, data erasure, or
+process exit, not ordinary group navigation. Failed validation keeps prior data
+unavailable for actions; authorization denial clears inaccessible data. After any
+mapping write attempt, invalidate the old roster tag so locally patched data is
+never conditionally reused as its original representation. No mapping-write ETags,
+version headers, or operation receipts are reintroduced.
 
 ### Provide mapping operations for manual and proposed links
 
@@ -290,12 +306,18 @@ Signal group rosters.
   duplicates, disabled linking until complete, and searching/selecting final-page
   Members in the virtualized dropdown.
 - Pagination is complete and permission changes/expiry cannot appear as an empty
-  roster. Every drill-down refetches; connect and group toggles fetch no Members.
+  roster. Every drill-down revalidates; connect and group toggles fetch no Members.
+- Unchanged revalidation returns 304 without Member pages; later-page changes
+  invalidate the whole-roster tag. Cover all dependency changes, permission loss,
+  304 without a local body, atomic complete replacement, and failed-validation UI.
+- Verify that tag generation and replacement pages describe the same snapshot,
+  and that attempted mapping writes invalidate the retained tag.
 - Simple mapping set/clear, current-state reads after lost responses, explicit
   user retries, permission loss, conflict disclosure,
   and partial bulk success are covered; both member-list endpoint options work.
 - Desktop group flags survive restart and clear durably on disconnect/account
   change, including offline revocation and late responses. Member data is not
-  persisted; leaving the view discards it.
+  persisted; leaving the view retains the complete roster/tag, and account teardown
+  clears them. Incomplete replacement downloads never replace the complete cache.
 
 These are planned acceptance checks, not tests run by this documentation revision.
