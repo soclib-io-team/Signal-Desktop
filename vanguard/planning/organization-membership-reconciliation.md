@@ -2,10 +2,12 @@
 
 ## Purpose
 
-Add an admin-assisted workflow to Signal Desktop that compares a chosen Signal
-group with an external organization's membership roster. The admin can review
-matches, save or correct identity mappings in the external service, remove group
-members, and add organization members to the group.
+Add a Vanguard connection and group-management workflow to Signal Desktop.
+OAuth connects the account without fetching Members. The user marks Signal groups
+as connected, then opens them under Settings > Vanguard to fetch a fresh flat
+Members list, review Signal identities, and link or unlink mappings in Vanguard.
+Proposed Matches follows immediately after this core workflow. Reviewed additions
+and removals are later implementation steps.
 
 This document divides the work into implementation chunks. Each chunk should get
 its own detailed design before implementation. It assumes a custom Desktop build;
@@ -54,16 +56,16 @@ acceptance into official Signal is a separate decision.
 
 ## Delivery sequence
 
-| Chunk | Deliverable                                      | Dependencies |
-| ----- | ------------------------------------------------ | ------------ |
-| 1     | Provider contract and identity model             | None         |
-| 2     | Connection, authentication, and account settings | 1            |
-| 3     | External roster API and browsing UI              | 1, 2         |
-| 4     | Group comparison and proposed matches            | 3            |
-| 5     | Manual mapping and conflict resolution           | 4            |
-| 6     | Reviewed group removals and operation recovery   | 4, 5         |
-| 7     | Additions, invitations, and mapping persistence  | 5, 6         |
-| 8     | End-to-end hardening and pilot rollout           | 2–7          |
+| Chunk | Deliverable                                               | Dependencies |
+| ----- | --------------------------------------------------------- | ------------ |
+| 1     | Provider contract and identity model                      | None         |
+| 2     | Connection, authentication, and account settings          | 1            |
+| 3     | Connected groups, fresh Members API, and group drill-down | 1, 2         |
+| 4     | Manual Link/Unlink and mapping conflict resolution        | 3            |
+| 5     | Proposed Matches and selected bulk linking                | 3, 4         |
+| 6     | Reviewed group removals and operation recovery            | 3–5          |
+| 7     | Additions, invitations, and mapping persistence           | 5, 6         |
+| 8     | End-to-end hardening and pilot rollout                    | 2–7          |
 
 Testing belongs in every chunk. Chunk 8 validates the integrated workflow rather
 than deferring testing until the end.
@@ -76,24 +78,23 @@ Detailed design: [Vanguard provider contract and identity model](chunk-1-vanguar
 
 Work:
 
-- Identify the external service, authentication mechanism, API permissions,
-  pagination, rate limits, and supported mapping storage.
+- Preserve Vanguard OAuth and define the additive flat-list contract, API
+  permissions, pagination, rate limits, and mapping storage.
 - Define stable provider, organization, roster, and person identifiers. Specify
   how active membership, departures, guests, and multiple rosters are represented.
 - Define organization/person-to-ACI mappings, with provenance, verification time,
   and version information for conflicting updates.
-- Decide whether one person may map to multiple Signal accounts and how duplicate
+- Keep zero or one ACI per Member; settle reverse uniqueness and how duplicate
   person records or conflicting account assignments are resolved.
-- Define the separate association between a roster and a Signal group, including
-  whether that association is local or shared between administrators.
+- Persist a local connected-to-Vanguard flag for each selected Signal group;
+  there is no ChapterOrg/roster selection or group-to-roster association.
 - Specify a provider adapter for fetching complete rosters and reading, saving,
   correcting, and deleting identity mappings. Require safe retry behavior and
   concurrency protection for writes, or define how to supply them.
 - Decide which data is authoritative remotely, cached locally, retained for
   recovery, and cleared on disconnect or Signal-account change.
-- Decide whether a companion backend is needed. The default is a direct Desktop
-  connector; a backend may be necessary for confidential credentials or mapping
-  storage the provider cannot support.
+- Call Vanguard directly; Vanguard owns mapping persistence. No companion backend
+  or confidential Desktop client secret is required.
 
 Completion criteria:
 
@@ -110,14 +111,15 @@ DevOps: [Vanguard OAuth deployment setup](../operations/oauth-setup.md).
 
 Backend/main-process work:
 
-- Implement login, callback validation, token refresh, expiration, and logout.
-- If OAuth is supported, use Authorization Code + PKCE in the system browser.
+- Preserve implemented login, callback validation, refresh, expiration, and logout.
+- Keep Authorization Code + PKCE in the system browser.
   Do not embed a confidential client secret in Desktop.
 - Keep tokens and external HTTP requests behind a narrow, validated Electron IPC
   interface. Validate configured service destinations.
 - Protect persisted tokens using available secure storage; define behavior when
   secure storage is unavailable instead of silently persisting plaintext secrets.
-- Expose the connected account, organization access, and relevant capabilities.
+- Expose the connected account and relevant capabilities without fetching Members
+  or inspecting per-ChapterOrg rosters.
 
 Frontend work:
 
@@ -132,88 +134,116 @@ Completion criteria:
   to UI state or logs.
 - An account without write permission is clearly limited to permitted actions.
 
-## 3. External roster API and browsing UI
+## 3. Connected groups, fresh Members API, and group drill-down
 
-**Outcome:** The admin can select and inspect the organization roster independently
-of making any Signal changes.
+**Outcome:** Settings > Vanguard lists the Signal groups the user has connected;
+opening a group fetches current Vanguard data and displays its Signal users.
 
-Service work:
+Group settings and entry points:
 
-- Implement organization/roster selection and complete paginated member reads.
-- Validate responses and normalize phone numbers using existing utilities.
-- Preserve source identifiers, membership status, and available identity mappings.
-- Track snapshot completeness, retrieval time, and version where available.
-- Handle retries, rate limits, cancellation, and stale cached data explicitly.
+- In the Signal Group view's `...` menu, show **Connect to Vanguard** when the
+  group is disconnected, otherwise **Disconnect from Vanguard**. Only show these
+  options when an OAuth connection exists; retain the plan's Signal-admin checks.
+- Persist the flag through Signal's existing local conversation/group-settings
+  datastore and update mechanism, using a minimal hook into Vanguard-owned code.
+  Scope it to the Signal account, provider, and Vanguard user. No new Signal
+  protocol field or cross-device/admin synchronization is implied.
+- Marking a group connected does not fetch Members or select a ChapterOrg.
+- OAuth disconnect persistently clears all flags for that connection, cancels
+  requests, and discards in-memory data even if remote revocation fails. Group
+  disconnect clears only that group's flag; neither action deletes mappings.
+- A temporary outage or same-account reconnect does not clear group flags.
+  Switching Vanguard/Signal accounts clears the previous connection's flags.
+- Under Settings > Vanguard, show **Groups connected to Vanguard** only while
+  connected. Initially empty, each row shows the current Signal group name,
+  current member count, and **Disconnect** button. Clicking the row drills down;
+  clicking Disconnect must not also navigate. Counts come from Signal.
 
-Frontend work:
+Member fetching and drill-down:
 
-- Add roster browsing with search and useful membership filters.
-- Show organization identity, available phone/Signal identity information, and
-  loading, empty, incomplete, stale, and error states.
-- Make a complete empty roster distinguishable from a failed or partial response.
-
-Completion criteria:
-
-- Large and paginated rosters display correctly.
-- Partial fetches and missing permissions cannot look like a complete roster.
-
-## 4. Group comparison and proposed matches
-
-**Outcome:** A read-only reconciliation screen explains how the selected roster
-corresponds to a chosen Signal group.
-
-Service work:
-
-- Snapshot current full members, pending invitations, join requests, and relevant
-  group permissions/revision.
-- Build a reconciliation engine independent of UI components.
-- Match existing ACI mappings first. Use available phone information and bounded,
-  user-initiated discovery through existing Signal lookup facilities for proposals.
-  Support supplied usernames without assuming group members expose usernames.
-- Classify matched entries, unmapped group members, organization members missing
-  from the group, inactive mapped members, pending invitations, conflicts, and
-  unresolved lookups.
-- Preserve match evidence and uncertainty. Never resolve ambiguous identities by
-  display name alone or silently replace a conflicting saved mapping.
-
-Frontend work:
-
-- Add a reconciliation entry point in group details for admins.
-- Let the admin choose the roster, review categories, inspect match evidence,
-  refresh the comparison, and leave entries unresolved.
+- On every group entry/re-entry, create a new request for the flat Members list
+  across ChapterOrgs authorized by `member:show`. Fetch all pages before treating
+  absence as unmapped. Include candidates, full members, members on leave, and
+  former members (last ChapterOrg), plus mappings and the filtered user roles
+  specified in chunk 1. Never enumerate/fetch per-ChapterOrg rosters in Desktop.
+- Keep the fetched data in memory only for the current view. Discard it on exit,
+  disconnect, or account change; ignore late responses using generation checks.
+  Do not reuse a previous drill-down's snapshot or persist Member data in Signal.
+  A short-lived provider pagination snapshot is not a Desktop cache.
+- Show explicit loading, failed, incomplete, and retry states. A failed/partial
+  read must not render users as definitively unmapped or enable linking.
+- For each current Signal group user, show their nickname, falling back to their
+  profile name, and an Actions dropdown. Join using ACI, never display name.
+- Show a green circle/checkmark for a mapped Member whose status is not
+  `former_member`, a red circle/white X for a mapped former member, and an orange
+  circle/question mark when no authorized mapping is found. Provide accessible
+  text labels. Orange is unresolved within visibility, not proof no mapping exists.
+- Pending invitations lacking an ACI remain unresolved and cannot be linked as
+  though their PNI were an ACI. No discovery or automatic mapping occurs on entry.
 
 Completion criteria:
 
-- Comparison makes no external mapping writes or group membership changes.
-- Hidden numbers, duplicate records, stale identities, and failed discovery have
-  explicit, non-destructive outcomes.
+- Group flags survive restart; OAuth disconnect clears them durably.
+- Every drill-down fetches fresh data, including when revisiting the same group.
+- Empty, partial, inaccessible, and failed data are distinguishable, and all three
+  status indicators, names, counts, and account-isolation behavior are tested.
 
-## 5. Manual mapping and conflict resolution
+## 4. Manual Link/Unlink and mapping conflict resolution
 
-**Outcome:** The admin can connect an existing Signal group account to the correct
-organization person and persist that association externally.
+**Outcome:** The user saves or clears Signal-user-to-Member associations in Vanguard.
 
-Service work:
-
-- Implement mapping creation, correction, and unlinking through the provider
-  adapter, with validation, concurrency checks, and safe retries.
-- Save the ACI and verification provenance. Only save phone information when it
-  is available and appropriate under the agreed contract.
-- Detect duplicate/conflicting assignments and require explicit resolution.
-- Refresh the affected records after writes and reconcile local caches.
-
-Frontend work:
-
-- Provide person search and a side-by-side identity review before saving.
-- Show exactly which identity fields will be written externally.
-- Distinguish saved, pending, conflicting, and failed changes. Allow retry and
-  correction without changing Signal group membership.
+- Actions shows **Unlink** only for a mapped user and **Link** only for an unmapped
+  user. Disable writes with an explanation when OAuth scopes or current explicit
+  mapping permission do not allow them; visibility alone never authorizes writes.
+- Unlink clears the Member's mapping through the provider DELETE endpoint. It
+  does not remove the user from Signal and affects that mapping in every group.
+- Link opens a modal with a dropdown of all loaded authorized Members, labelled
+  `full_name (chapter_org_name)`. Selecting a Member closes the dropdown and shows
+  full name, chapter name, and roles (`role_name`, `chapter_org_name`); national
+  roles show “National” for their null chapter. Empty roles show an empty state.
+- **Confirm** persists the selected Member/ACI through the provider PUT endpoint;
+  **Cancel** closes without a write. Existing conflicting mappings must never be
+  silently replaced or stolen; show the conflict and require separate resolution.
+- Use live mapping reads, ETags, idempotency keys, and current server authorization
+  as specified in chunk 1. Refresh affected live state after successful writes;
+  errors and uncertain outcomes must not appear as saved changes.
 
 Completion criteria:
 
-- Mappings survive a fresh fetch and are available to other authorized admins
-  through the external service.
-- Concurrent edits cannot silently overwrite another admin's mapping.
+- Link/Unlink survives a fresh drill-down and is visible to authorized other admins.
+- Concurrent edits and duplicate assignments cannot silently overwrite mappings.
+- Member details, roles, permission failures, and retry behavior are covered.
+
+## 5. Proposed Matches and selected bulk linking
+
+**Outcome:** Immediately after chunks 2–4, users can review proposed matches and
+save selected mappings without adding or removing Signal group members.
+
+- Place **Proposed Matches** above the Signal-user list in the same drill-down.
+- Build proposals from the freshly loaded Members and current group state. Use
+  available phone evidence and bounded user-initiated Signal discovery where
+  needed. Never infer identity from display names alone; preserve evidence and
+  uncertainty. Do not propose already-linked or conflicting assignments as safe.
+- Each proposal shows both identities, chapter, and supporting evidence with a
+  checkbox. Start unchecked; allow selection/deselection. Keep ambiguous or
+  unresolvable candidates outside the actionable selection.
+- Below the section, show **Link Signal users to members**, disabled when none
+  are selected or writes are unavailable. Clicking processes only selected pairs
+  using the existing mapping PUT contract, bounded concurrency, individual ETags,
+  and individual idempotency keys. A new bulk endpoint is unnecessary initially.
+- Revalidate current mapping state and permissions before each write. Abort stale
+  proposals for renewed review. Prevent duplicate ACI/Member selection.
+- Report each success, conflict, failure, and uncertain result. Retry unresolved
+  operations safely without replaying completed writes. Refresh mappings and
+  indicators after processing; clear resolved proposals and stale selections.
+- Leaving the view or disconnecting stops work not yet started. In-flight writes
+  may already have committed; a subsequent fresh read resolves actual state.
+
+Completion criteria:
+
+- Only explicitly selected proposals are linked; no Signal membership changes occur.
+- Partial success, concurrent admin changes, unavailable numbers, ambiguous
+  matches, cancellation, and lost responses have tested, visible outcomes.
 
 ## 6. Reviewed group removals and operation recovery
 
@@ -223,7 +253,7 @@ execution without repeating completed changes.
 Service work:
 
 - Introduce a durable operation journal for reviewed actions and their outcomes,
-  scoped to the Signal account, group, and external organization.
+  scoped to the Signal account, group, and Vanguard issuer/user.
 - Refresh relevant group/roster state and permissions before execution. If the
   reviewed facts change materially, request a new review.
 - Reuse existing group removal logic, with awaitable results and post-operation
@@ -331,16 +361,16 @@ These are starting points for detailed design, not commitments to exact placemen
 
 - Reuse existing React/Redux, HTTP facilities, Zod, and phone-number utilities.
   No new library is inherently required for roster browsing or comparison.
-- An OAuth/OIDC library may be needed once the provider and supported flow are
-  known. Select and review it during chunk 2; do not implement a bespoke protocol.
+- Keep the existing `oauth4webapi` integration in chunk 2.
 - A provider SDK is optional and should be justified against a small typed adapter.
 - Electron `safeStorage` is already available, but secure-backend availability
   requires explicit handling.
-- A companion backend depends on provider authentication and mapping-storage
-  capabilities; it is not assumed to exist.
-- Before implementation, settle the provider, roster eligibility rules, mapping
-  cardinality, guest exceptions, identity verification expectations, shared group
-  associations, and external audit/retention requirements.
+- Vanguard provides authentication and mapping storage; no companion backend is needed.
+- Vanguard is the provider; `member:show` defines flat-list chapter visibility.
+  Former members are included through their last chapter. Group flags are local,
+  mappings are shared through Vanguard, and Member lists are memory-only.
+- Finalize reverse-ACI uniqueness, mapping permission grants, guest exceptions,
+  evidence standards, and external audit/retention requirements before rollout.
 
 ## Reference material
 
