@@ -186,7 +186,7 @@ also require `signal_mappings:read` and explicit `signal_mapping:read` permissio
 Insufficient mapping access must be explicit, not represented as unmapped Members.
 
 Return the explicit Member projection, `full_name`, nullable `signal_user_id`
-(Signal ACI), mapping version, `chapter_org_name`, and `user_roles` per chunk 1.
+(Signal ACI), `chapter_org_name`, and `user_roles` per chunk 1.
 For each CombinedUserRole include `role_slug`, title-cased `role_name`, associated
 ChapterOrg name, and the unmodified `organization_type` as `chapter_org_type`.
 Include only ChapterOrg-associated roles and no-org national roles; exclude Unit,
@@ -196,7 +196,7 @@ login/roles yields `[]`. Respect role-field visibility and mark withheld expansi
 Use complete paginated reads with short-lived, consistent provider snapshots and
 current authorization on every page as specified in chunk 1. Each drill-down starts
 a new snapshot; snapshots must not become a long-lived Desktop cache. Include
-mapping values/versions inline so the default view needs no separate dictionary
+mapping values inline so the default view needs no separate dictionary
 request. Preserve the optional mapping dictionary contract for other consumers.
 
 For expected lists of 4,000–8,000 Members, start with a 1,000-record default and
@@ -235,19 +235,22 @@ Member API is in scope for this roster change.
 
 Implement or complete the chunk 1 mapping resource contract:
 
-- `GET /api/v1/signal/members/:member_id/mapping`: current mapping and strong ETag,
-  including `aci: null` with a revision for an authorized unmapped Member.
+- `GET /api/v1/signal/members/:member_id/mapping`: current mapping,
+  including `aci: null` for an authorized unmapped Member.
 - `PUT /api/v1/signal/members/:member_id/mapping`: link/replace with
   `{ "aci": "<Signal ACI>", "source": "manual_assignment" }` (or the documented
   confirmed-lookup provenance for reviewed proposals).
-- `DELETE /api/v1/signal/members/:member_id/mapping`: unlink, retaining revision
-  history and returning the cleared state.
+- `DELETE /api/v1/signal/members/:member_id/mapping`: unlink and return the cleared state.
 
-PUT/DELETE require `If-Match`, an idempotency key, delegated `api:write` +
+PUT/DELETE require delegated `api:write` +
 `signal_mappings:write`, and current explicit `signal_mapping:write` permission
 within member visibility. Apply these checks to former members too. Reads require
 the mapping-read scope/permission. Audit the OAuth actor and enforce cardinality
-and conflict handling transactionally; see chunk 1 for exact responses/errors.
+and ordinary uniqueness constraints; see chunk 1 for exact responses/errors.
+No idempotency keys/receipts, ETags, mapping revisions, or mandatory version checks
+are required. Overlapping valid edits use last-write-wins behavior. After a lost
+response, Desktop rereads current state and lets the user explicitly retry if
+needed; no automatic mapping-write replay or receipt store is planned.
 
 Proposed Matches bulk processing uses these individual operations with bounded
 concurrency and per-item outcomes, not an atomic batch or a new bulk endpoint.
@@ -271,7 +274,8 @@ Signal group rosters.
   Members in the virtualized dropdown.
 - Pagination is complete and permission changes/expiry cannot appear as an empty
   roster. Every drill-down refetches; connect and group toggles fetch no Members.
-- Mapping concurrency, idempotent retries, permission loss, conflict disclosure,
+- Simple mapping set/clear, current-state reads after lost responses, explicit
+  user retries, permission loss, conflict disclosure,
   and partial bulk success are covered; existing chapter consumers remain supported.
 - Desktop group flags survive restart and clear durably on disconnect/account
   change, including offline revocation and late responses. Member data is not
