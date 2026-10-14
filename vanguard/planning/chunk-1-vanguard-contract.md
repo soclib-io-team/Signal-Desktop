@@ -1,7 +1,8 @@
 # Chunk 1: Vanguard provider contract and identity model
 
-Status: revised contract. OAuth and the original context requirements have been
-implemented; the additive member/mapping work and remaining decisions are below.
+Status: revised contract for unreleased Desktop and provider code. Vanguard has
+implementation in progress; there are no older clients or compatibility paths to
+support. Preserve useful implemented code while revising it to this contract.
 
 Parent plan: [Organization membership reconciliation](organization-membership-reconciliation.md).
 
@@ -80,9 +81,9 @@ list. Do not implement the flat option by making one request per chapter.
 Keep the existing endpoint's route, response envelope, fields, and access rules.
 The intentional eligibility change is to include former members using their last
 ChapterOrg; current members on leave must also remain visible. Document this
-behavior change for existing clients and test it. Reuse query/serialization logic
-where appropriate without replacing the existing implementation. The new endpoint
-provides the richer mapping/role projection; legacy consumers need not migrate.
+eligibility rule and test it. Reuse query/serialization logic where appropriate
+without discarding the existing implementation. Retain the chapter endpoint as
+an intentional API option, not as an older-client compatibility requirement.
 
 ## Authorization and visibility contract
 
@@ -175,7 +176,7 @@ it. Responses are JSON; examples use illustrative, shortened Vanguard IDs.
 | Method and path                                    | Purpose                                                                          |
 | -------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `GET /api/v1/chapter_orgs/:chapter_org_id/members` | Retained chapter-specific roster, with expanded status eligibility.              |
-| `GET /api/v1/signal/context`                       | Caller IDs and effective capabilities; optional legacy roster descriptors.       |
+| `GET /api/v1/signal/context`                       | Caller IDs and effective capabilities only; never rosters or descriptors.        |
 | `GET /api/v1/signal/members`                       | Default flat authorized Member list, inline mappings/roles, and snapshot handle. |
 | `GET /api/v1/signal/mappings`                      | Member-ID-to-ACI dictionary for the same scoped snapshot.                        |
 | `GET /api/v1/signal/members/:member_id/mapping`    | Current mapping, including an unmapped state.                                    |
@@ -206,11 +207,13 @@ No new OAuth server gem is needed for this plan.
 
 ### Connection context and endpoint selection
 
-Desktop requests `GET /api/v1/signal/context?include_rosters=false` at connection
-and capability refresh. Return caller IDs and current effective capabilities,
-without constructing roster descriptors or reading Member collections. Keep the
-existing no-parameter context response compatible for older clients. Capabilities
-are UI hints and must be enforced again on every read/write.
+Desktop requests `GET /api/v1/signal/context` at connection and capability
+refresh. Return caller IDs and current effective capabilities only. Never construct
+or return roster descriptors or Member collections. Remove roster fields and their
+query/serialization code from the unreleased provider implementation. Do not
+implement or support an `include_rosters` parameter or alternate roster-bearing
+context response. Update Desktop validation and tests to the single response shape.
+Capabilities are UI hints and must be enforced again on every read/write.
 
 Desktop stores only a connected flag for a Signal group, never a selected chapter,
 district, unit, or roster. Only entering a connected group's Settings drill-down
@@ -286,7 +289,7 @@ Data rules:
   Missing chapter associations cannot be authorized by this chapter-based query
   and are excluded, not silently assigned to a chapter. Deduplicate member IDs.
 - Former members are a required supported case, not an optional later historical
-  filter. Remove the legacy active-only filter/current-association inner join
+  filter. Remove the existing active-only filter/current-association inner join
   where it prevents former members or members on leave from being returned.
   Unit/district arrays still describe current assignments, not expired ones.
 - `user_roles` comes from the Member's login User's `CombinedUserRole` records.
@@ -349,6 +352,37 @@ caller loses relevant visibility. Return a specific expired/invalid snapshot
 error so Desktop restarts the comparison. Before applying actions, fetch current
 state again; the snapshot is review context, not continuing write authorization.
 
+### Roster GET ETags: optional bandwidth optimization
+
+Conditional roster reads are separate from the rejected mapping-write concurrency
+mechanism. Assess support for `ETag` / `If-None-Match` on both the flat and
+per-chapter GET endpoints if a correct validator is cheap to generate. A matching
+validator allows `304 Not Modified` without the response body; this requires the
+client to retain that exact body. It does not require idempotency receipts or
+mapping version headers. See [HTTP conditional GET semantics](https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.2).
+
+Do not assume `MAX(members.updated_at)` is sufficient. The representation also
+changes with chapter assignments/names, mappings, eligible roles, permission
+changes, deletions, and date-effective associations. Authorize the request before
+returning 304, and scope validators to the caller's authorized representation,
+query/page, and serialization format. If using response-body hashing, it saves
+wire bytes but still pays for the query and serialization; measure those costs.
+Do not add broad revision-tracking infrastructure solely to make validation cheap.
+
+For pagination, a page ETag validates only that page, not the entire Members list.
+A snapshot page validator cannot prove the live roster is still unchanged, and a
+new snapshot ID/cursor/as-of value may change the response even if Members did
+not. Do not reuse an expired cursor or skip full-list loading on a first-page 304.
+Evaluate this with the snapshot design before committing to an optimization.
+
+The current Desktop lifecycle discards Members on leaving the drill-down. Thus
+re-entry has no stored body to reuse and must fetch the full list, even if ETags
+are supported. ETags can benefit repeated reads whose bodies are still held in
+memory; meaningful savings across visits would require a separately agreed change
+to retain an in-memory copy and revalidate it on every entry. No disk persistence
+or unvalidated cache reuse is proposed. Conditional GET support is an evaluation
+item, not a prerequisite for initial delivery or a change to the agreed lifecycle.
+
 ### Mapping dictionary
 
 ```http
@@ -397,7 +431,7 @@ PUT sets or replaces the Member's ACI; DELETE clears it. Setting the current val
 or clearing an already-empty mapping succeeds without a duplicate audit change.
 
 Keep these ordinary mapping writes simple: no idempotency keys, operation-receipt
-store, ETags, required version headers, or mapping revision fields. Authorize each
+store, mapping-write ETags, required version headers, or mapping revision fields. Authorize each
 request and enforce database uniqueness and ordinary audit attribution. Overlapping
 valid writes use last-write-wins behavior; preventing a rare intervening admin edit
 is not a requirement for this low-volume workflow. Do not silently move an ACI
@@ -461,7 +495,7 @@ values from routine logs; detailed mapping audit access is separately controlled
    deployment URL/issuer and authorized Desktop client registration owner.
 2. **Publish the API schema.** Add proposed endpoints, reusable member/mapping
    schemas, nullable fields, pagination, scope requirements, and error examples to
-   Vanguard's OpenAPI document. Record compatibility with the existing roster API.
+   Vanguard's OpenAPI document. Document both flat and per-chapter roster options.
 3. **Specify storage and operations.** Design the mapping migration, constraints,
    and audited set/clear operations; no concurrency-token or receipt storage.
    Follow Vanguard's operations pattern and Sorbet conventions when implementing.
