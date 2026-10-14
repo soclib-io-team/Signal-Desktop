@@ -3,7 +3,8 @@
 Implements the Desktop side of the
 [Chunk 1 contract](chunk-1-vanguard-contract.md). Deployment instructions are in
 [OAuth setup](../operations/oauth-setup.md). The original provider requirements (OAuth configuration, discovery, context, and
-scope registration) are implemented. This revision preserves connect/reconnect and
+scope registration) are implemented or in progress in unreleased code. There are no older clients to
+support. This revision preserves connect/reconnect and
 describes the additional provider and Desktop work. Member fetching and mapping
 UI follow in chunks 3–5; connection alone never loads a Member roster.
 
@@ -27,7 +28,7 @@ UI follow in chunks 3–5; connection alone never loads a Member roster.
   connection context, with a 60-second expiry margin; concurrent checks share the
   current operation and rotating refresh tokens are saved before further use.
 - The authenticated context endpoint supplies Vanguard identity and capabilities
-  via `?include_rosters=false`; it does not enumerate roster descriptors or Members. Effective UI permissions intersect server capabilities with granted
+  only; it never enumerates or returns roster descriptors or Members. Effective UI permissions intersect server capabilities with granted
   OAuth scopes. Context validation failure, outages, and missing permissions
   never appear as a successful empty roster. The UI receives no OAuth tokens;
   raw provider errors are not logged or returned through IPC.
@@ -129,15 +130,16 @@ loopback redirect, revocation, consent, and login/2FA unchanged. Keep the existi
 `signal_mappings:write` registrations/allowlists. Desktop still uses discovery for
 OAuth metadata, not ID tokens. No new scope or OAuth flow is needed for this revision.
 
-### Extend context with a lightweight option
+### Make context identity-and-capabilities only
 
-The existing `GET /api/v1/signal/context` already returns caller IDs, capabilities,
-and authorized roster descriptors. Preserve that no-parameter response for existing
-clients. Add `include_rosters=false`, used by the revised Desktop, to skip descriptor
-construction and omit `rosters` entirely:
+Revise the unreleased provider's `GET /api/v1/signal/context` to return caller IDs
+and capabilities only. Remove roster descriptor construction and the `rosters`
+response field. Do not implement or support `include_rosters` in any form. There
+is one context response shape and no older-client compatibility branch. Rosters
+are obtained only from the flat or per-chapter member-list endpoint below.
 
 ```http
-GET /api/v1/signal/context?include_rosters=false
+GET /api/v1/signal/context
 ```
 
 ```json
@@ -159,10 +161,9 @@ and `signal_mapping:write`. Effective Desktop permissions also intersect granted
 OAuth scopes; reauthorize every actual resource operation. An authenticated user
 with no eligible chapters may connect with false capabilities.
 
-Update the Desktop validator so omitted `rosters` is valid for this request and
-remove roster inspection from connection settings. Keep existing legacy descriptor
-types, IDs/names, limits, and error behavior for callers requesting descriptors.
-This prevents a large descriptor list from blocking a lightweight OAuth connection.
+Update the Desktop validator and tests to this response shape and remove roster
+inspection from connection settings. Remove descriptor types, enumeration limits,
+and roster-related error paths from context; they are not part of this endpoint.
 
 ### Add the default flat Members endpoint; retain the chapter endpoint
 
@@ -173,7 +174,7 @@ API clients choose by URL, without changing the existing endpoint's purpose:
 | `GET /api/v1/signal/members`                       | New flat list across all ChapterOrgs authorized by `member:show`; the default and only Member-list endpoint used by the revised Desktop. |
 | `GET /api/v1/chapter_orgs/:chapter_org_id/members` | Preserve the implemented per-ChapterOrg roster for clients that explicitly request a chapter.                                            |
 
-Do not delete, replace, or require migration from the per-chapter implementation.
+Retain and revise the per-chapter implementation as a supported API option.
 Preserve its envelope, existing fields, OAuth requirements, and established access
 policy. Share underlying queries/serialization where useful. Desktop must not
 loop over chapters or inspect their rosters at connection or at any later point.
@@ -197,7 +198,7 @@ Use complete paginated reads with short-lived, consistent provider snapshots and
 current authorization on every page as specified in chunk 1. Each drill-down starts
 a new snapshot; snapshots must not become a long-lived Desktop cache. Include
 mapping values inline so the default view needs no separate dictionary
-request. Preserve the optional mapping dictionary contract for other consumers.
+request. Keep the optional mapping dictionary contract as a separate API option.
 
 For expected lists of 4,000–8,000 Members, start with a 1,000-record default and
 maximum page size on the new endpoint. Desktop automatically fetches all pages,
@@ -225,11 +226,26 @@ return the former member's last chapter ID/name. Do not grant access through eve
 historic chapter or include transferred current Members under their old chapter.
 Members with no resolvable chapter are outside this chapter-based list.
 
-This intentionally broadens status eligibility in the existing endpoint, including
-for its existing authorized consumers. Document it in OpenAPI/release notes and
+This intentionally broadens status eligibility in the unreleased chapter endpoint.
+Document the target behavior in OpenAPI and
 add regression tests for both endpoints; do not silently retain active-only behavior
 for one of them. Preserve all other route/response/access behavior. No unrelated
 Member API is in scope for this roster change.
+
+### Evaluate conditional roster GETs separately from mapping writes
+
+Roster ETags were not intended to be prohibited by removing mapping-write version
+checks. Evaluate `ETag` / `If-None-Match` on both member-list endpoints if a correct
+validator is cheap. Authorize before returning 304 and account for all fields and
+associations that affect the response; a Member timestamp alone is insufficient.
+See chunk 1's roster ETag section for pagination/snapshot constraints and tests to
+consider. Benchmark validator generation versus full query/serialization and wire
+cost before adding infrastructure.
+
+The current client discards Member bodies on leaving the view, so ETags alone do
+not avoid downloads on re-entry. Retaining an in-memory response across visits
+for mandatory server revalidation would be a separate lifecycle decision. Do not
+change that lifecycle or add persisted caching as part of this context revision.
 
 ### Provide mapping operations for manual and proposed links
 
@@ -247,7 +263,7 @@ PUT/DELETE require delegated `api:write` +
 within member visibility. Apply these checks to former members too. Reads require
 the mapping-read scope/permission. Audit the OAuth actor and enforce cardinality
 and ordinary uniqueness constraints; see chunk 1 for exact responses/errors.
-No idempotency keys/receipts, ETags, mapping revisions, or mandatory version checks
+No idempotency keys/receipts, mapping-write ETags, mapping revisions, or mandatory version checks
 are required. Overlapping valid edits use last-write-wins behavior. After a lost
 response, Desktop rereads current state and lets the user explicitly retry if
 needed; no automatic mapping-write replay or receipt store is planned.
@@ -261,8 +277,9 @@ Signal group rosters.
 ### Validation required for this revision
 
 - Existing OAuth connect/reconnect/refresh/revocation tests continue to pass.
-- Lightweight context returns identity/capabilities without enumerating descriptors
-  or Members; legacy context callers retain their response contract.
+- Context returns identity/capabilities only, with no roster descriptors, Members,
+  or supported `include_rosters` parameter. Remove tests expecting roster-bearing
+  context and cover the single revised contract.
 - New flat visibility uses `member:show`, including ancestor grants, overlapping
   chapters, denied chapters, and narrow Unit/District grants.
 - Both list endpoints include former/on-leave members; last-chapter authorization,
@@ -276,7 +293,7 @@ Signal group rosters.
   roster. Every drill-down refetches; connect and group toggles fetch no Members.
 - Simple mapping set/clear, current-state reads after lost responses, explicit
   user retries, permission loss, conflict disclosure,
-  and partial bulk success are covered; existing chapter consumers remain supported.
+  and partial bulk success are covered; both member-list endpoint options work.
 - Desktop group flags survive restart and clear durably on disconnect/account
   change, including offline revocation and late responses. Member data is not
   persisted; leaving the view discards it.

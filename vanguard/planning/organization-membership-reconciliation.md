@@ -11,7 +11,8 @@ and removals are later implementation steps.
 
 This document divides the work into implementation chunks. Each chunk should get
 its own detailed design before implementation. It assumes a custom Desktop build;
-acceptance into official Signal is a separate decision.
+acceptance into official Signal is a separate decision. Desktop and Vanguard
+provider changes are unreleased; there are no older clients to support.
 
 ## Scope and design constraints
 
@@ -118,7 +119,9 @@ Backend/main-process work:
 - Protect persisted tokens using available secure storage; define behavior when
   secure storage is unavailable instead of silently persisting plaintext secrets.
 - Expose the connected account and relevant capabilities without fetching Members
-  or inspecting per-ChapterOrg rosters.
+  or inspecting per-ChapterOrg rosters. `/api/v1/signal/context` returns only
+  identity/capabilities, never roster descriptors, and has no `include_rosters`
+  option. Obtain Member rosters only through the two member-list endpoints.
 
 Frontend work:
 
@@ -168,7 +171,10 @@ Member fetching and drill-down:
 - Keep the fetched data in memory only for the current view. Discard it on exit,
   disconnect, or account change; ignore late responses using generation checks.
   Do not reuse a previous drill-down's snapshot or persist Member data in Signal.
-  A short-lived provider pagination snapshot is not a Desktop cache.
+  A short-lived provider pagination snapshot is not a Desktop cache. Roster GET
+  ETags may be evaluated as a bandwidth optimization separately from mapping
+  writes (see chunk 1). They do not eliminate re-entry downloads when the prior
+  response body has been discarded; retaining it across visits is not yet planned.
 - Automatically fetch all pages at an initial page size of 1,000 (normally 4–8
   requests for the expected 4,000–8,000 Members). Show progress such as “Loading
   members: 3,000 of 8,000”. Enable linking and Proposed Matches only after every
@@ -213,7 +219,7 @@ Completion criteria:
   **Cancel** closes without a write. Existing conflicting mappings must never be
   silently replaced or stolen; show the conflict and require separate resolution.
 - Use ordinary PUT/DELETE requests with current server authorization as specified
-  in chunk 1. No idempotency keys, ETags, or mandatory version checks are required.
+  in chunk 1. No idempotency keys, mapping-write ETags, or mandatory version checks are required.
   Refresh affected live state after writes or uncertain responses; if it differs
   from the intended result, show that state and let the user retry explicitly.
 
