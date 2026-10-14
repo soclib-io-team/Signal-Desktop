@@ -116,7 +116,7 @@ import { PreferencesList } from './preferences/PreferencesList.dom.tsx';
 import { PreferencesLanguageDialog } from './preferences/PreferencesLanguageDialog.dom.tsx';
 import { DeleteAccountConfirmDialog } from './preferences/DeleteAccountConfirmDialog.dom.tsx';
 import { ConnectionSettings } from '../vanguard/ConnectionSettings.dom.tsx';
-import type { ConnectionAPI } from '../vanguard/types.std.ts';
+import type { ConnectionAPI, ConnectionState } from '../vanguard/types.std.ts';
 
 const { isNumber, noop } = lodash;
 
@@ -125,6 +125,8 @@ type SelectChangeHandlerType<T = string | number> = (value: T) => unknown;
 
 export type PropsDataType = {
   vanguardConnection?: ConnectionAPI;
+  vanguardConnectionState?: ConnectionState;
+  vanguardGroups?: ReactNode;
   // Settings
   backupKey: string | undefined;
   backupKeyHash: string | undefined;
@@ -449,6 +451,8 @@ const DEFAULT_ZOOM_FACTORS = [
 
 export function Preferences({
   vanguardConnection,
+  vanguardConnectionState,
+  vanguardGroups,
   addCustomColor,
   autoDownloadAttachment,
   availableCameras,
@@ -782,10 +786,14 @@ export function Preferences({
       <PreferencesContent
         contents={
           vanguardConnection && (
-            <ConnectionSettings
-              key={me.serviceId}
-              connection={vanguardConnection}
-            />
+            <>
+              <ConnectionSettings
+                key={me.serviceId}
+                connection={vanguardConnection}
+                connectionState={vanguardConnectionState}
+              />
+              {vanguardGroups}
+            </>
           )
         }
         contentsRef={settingsPaneRef}

@@ -3,6 +3,7 @@
 
 import { strict as assert } from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { ConnectedGroups } from '../../vanguard/ConnectedGroups.dom.tsx';
 import { ConnectionSettingsView } from '../../vanguard/ConnectionSettings.dom.tsx';
 import { handleConnectionRequest } from '../../../app/vanguard/handler.std.ts';
 import type { ConnectionState } from '../../vanguard/types.std.ts';
@@ -110,5 +111,78 @@ describe('Vanguard IPC boundary', () => {
     );
     assert.equal(state.status, 'error');
     assert(!JSON.stringify(state).includes('secret-value'));
+  });
+});
+
+describe('Vanguard connected group settings', () => {
+  const connection: ConnectionState = {
+    status: 'connected',
+    context: {
+      user_id: 'user-1',
+      member_id: null,
+      capabilities: {
+        read_members: true,
+        read_signal_mappings: true,
+        write_signal_mappings: false,
+      },
+    },
+  };
+  const group = {
+    id: 'group-1',
+    type: 'group',
+    title: 'Organizers',
+    membersCount: 12,
+  };
+  function groupsHtml(
+    groupIds: ReadonlyArray<string>,
+    status = connection,
+    busy = false,
+    conversations = [group]
+  ) {
+    return renderToStaticMarkup(
+      <ConnectedGroups
+        state={{ connection: status, groupIds, busy }}
+        conversations={conversations}
+        onDisconnect={() => undefined}
+      />
+    );
+  }
+
+  it('shows the empty state only with an OAuth connection', () => {
+    assert.match(groupsHtml([]), /Groups connected to Vanguard/);
+    assert.match(groupsHtml([]), /No groups connected yet/);
+    assert.equal(groupsHtml(['group-1'], { status: 'disconnected' }), '');
+    assert.equal(groupsHtml(['group-1'], { status: 'error' }), '');
+  });
+
+  it('uses current Signal names/counts and offers disconnect without a drill-down link', () => {
+    const html = groupsHtml(['group-1']);
+    assert.match(html, /Organizers/);
+    assert.match(html, /12 members/);
+    assert.match(html, /Disconnect Organizers from Vanguard/);
+    assert.doesNotMatch(html, /<a\b|href=|tabindex=/);
+    const updated = groupsHtml(['group-1'], connection, false, [
+      { ...group, title: 'Renamed group', membersCount: 1 },
+    ]);
+    assert.match(updated, /Renamed group/);
+    assert.match(updated, /1 member</);
+    assert.doesNotMatch(updated, /Organizers/);
+  });
+
+  it('disables disconnect during persistence and retains cleanup for unavailable groups', () => {
+    assert.match(groupsHtml(['group-1'], connection, true), /disabled=""/);
+    const html = groupsHtml(['deleted-group']);
+    assert.match(html, /Unavailable group/);
+    assert.match(html, /Member count unavailable/);
+    assert.match(html, /Disconnect unavailable group from Vanguard/);
+  });
+
+  it('does not render unrelated groups and escapes group names', () => {
+    assert.doesNotMatch(groupsHtml([]), /Organizers/);
+    const html = groupsHtml(['group-1'], connection, false, [
+      { ...group, title: '<script>bad</script>' },
+    ]);
+    assert.doesNotMatch(html, /<script>/);
+    assert.match(html, /&lt;script&gt;/);
   });
 });
