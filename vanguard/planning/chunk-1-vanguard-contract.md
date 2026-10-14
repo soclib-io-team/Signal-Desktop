@@ -1,6 +1,7 @@
 # Chunk 1: Vanguard provider contract and identity model
 
-Status: proposed contract; product decisions marked below remain open.
+Status: revised contract. OAuth and the original context requirements have been
+implemented; the additive member/mapping work and remaining decisions are below.
 
 Parent plan: [Organization membership reconciliation](organization-membership-reconciliation.md).
 
@@ -20,8 +21,12 @@ storage and endpoints can live in Vanguard's existing Rails application.
 
 - Return members scoped to the requesting user's authorized visibility. A local
   leader may see fewer members than an administrator.
-- Each member includes first name, last name, phone number, current leadership
-  positions, chapter organization name, and current district/unit memberships.
+- Each member includes the explicit API Member projection, `full_name`, nullable
+  Signal ACI, `chapter_org_name`, and filtered `user_roles` described below.
+- Flat member visibility uses `member:show` over ChapterOrgs, including descendants
+  covered by a permission grant; a Unit/District grant does not expose its parent
+  chapter. Include former members through their last ChapterOrg in all member
+  listing endpoints, including the existing per-ChapterOrg endpoint.
 - Expose a dictionary relating Vanguard member IDs to Signal ACIs.
 - Each member has zero or one ACI. Setting a new ACI replaces the old mapping;
   dropping the mapping leaves the member unmapped.
@@ -32,8 +37,9 @@ storage and endpoints can live in Vanguard's existing Rails application.
 Inspected the local `../vanguard` checkout, whose origin is
 `git@github.com:soclib-io-team/vanguard.git`, at commit
 `95237c62fd5432f39066a3c6a32c5a382f526a83`. The GitHub page could not be fetched by
-the web tool. Findings below describe inspected source, not a verified production
-deployment. Existing unrelated working-tree changes were not modified.
+the web tool. The following table is historical baseline evidence, not the revised target or a
+verified production deployment. OAuth/context prerequisites are now implemented;
+chunk 2 describes the changes required on top of them. Existing unrelated working-tree changes were not modified.
 
 | Existing capability                                | Findings and implications                                                                                                                                                                                                                    |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -65,29 +71,32 @@ Primary source paths in Vanguard:
 
 ## Endpoint strategy: reuse logic, add a reconciliation API
 
-The existing member endpoint **could be enhanced** with chapter names, leadership,
-and expanded district/unit objects. It already supplies much of the required data.
-However, its recruiter-oriented access rules, chapter-only selection, omission of
-members on leave, and unpaginated response make changing its semantics risky for
-existing consumers.
+Preserve `GET /api/v1/chapter_orgs/:chapter_org_id/members` as the per-chapter
+option. Add `GET /api/v1/signal/members` as the flat-list option and the default
+for Signal Desktop. Separate collection endpoints make client choice explicit:
+use the chapter path for a chapter roster, the Signal path for the full authorized
+list. Do not implement the flat option by making one request per chapter.
 
-Recommendation: introduce `/api/v1/signal/` endpoints with their own explicit
-policies, while extracting/reusing member serialization, association loading, and
-current-membership queries where appropriate. Keep the existing member endpoint
-compatible. Share tested domain logic rather than copying the controller.
-
-If existing roster authorization and eligibility are ultimately chosen unchanged,
-an additive expansion of the existing endpoint is a valid smaller alternative.
-The new mapping endpoints are necessary under either approach.
+Keep the existing endpoint's route, response envelope, fields, and access rules.
+The intentional eligibility change is to include former members using their last
+ChapterOrg; current members on leave must also remain visible. Document this
+behavior change for existing clients and test it. Reuse query/serialization logic
+where appropriate without replacing the existing implementation. The new endpoint
+provides the richer mapping/role projection; legacy consumers need not migrate.
 
 ## Authorization and visibility contract
 
-Provisional default, pending the user's access-policy decision: leaders and admins
-can read reconciliation data and edit mappings only within their managed scope.
-Define separate organization-scoped permissions for reconciliation reads and
-mapping management; explicitly grant appropriate national/root access to admins.
-Do not infer authorization merely from a role label or the presence of an OAuth
-scope.
+The flat list includes Members of every ChapterOrg within the caller's current
+`member:show` jurisdiction, with no additional `member:index` requirement. Resolve
+permission grants through the organizational tree, not role names, admin status,
+or management-scope shortcuts. A grant covering a chapter includes its Members;
+a narrower Unit/District grant does not grant the whole chapter.
+
+Mapping reads additionally require `signal_mapping:read`; mapping writes require
+`signal_mapping:write` over the member as well as member visibility. Apply existing
+role-field authorization (`member:show_roles`) to expansions; expose restricted
+roles explicitly instead of pretending none exist. Configure intended operator
+grants accordingly. OAuth scope possession never grants these permissions.
 
 Every request must satisfy all applicable layers:
 
@@ -95,13 +104,12 @@ Every request must satisfy all applicable layers:
    `client_credentials` tokens for this workflow.
 2. Required OAuth scopes for the endpoint.
 3. Current Vanguard policy permission over each returned or modified member.
-4. Requested chapter/district/unit filters, which can narrow access but never
-   expand it.
+4. Endpoint selection: the flat list uses all authorized ChapterOrgs; the existing
+   per-chapter endpoint retains its established policy and requested chapter.
 
 Use one shared policy/query boundary for roster visibility and mapping visibility.
-Mapping writes additionally require the manage permission. Handle direct district
-membership and membership through a unit consistently; do not assume a generic
-existing policy scope covers both correctly without tests.
+Mapping writes additionally require `signal_mapping:write`. Test the chapter
+jurisdictions explicitly; do not reuse a broader management-based policy scope.
 
 Recheck authority on every request, including snapshot pages and retried writes.
 Do not encode permanent authorization in an OAuth token or a snapshot handle.
@@ -160,19 +168,21 @@ workflow. Store neither Signal credentials nor profile/group keys in Vanguard.
 
 ## Proposed API contract
 
-All endpoints below are **new proposals**, not existing deployed routes. Responses
-are JSON. Examples use illustrative, shortened Vanguard IDs.
+The context endpoint already exists. The flat member list and mapping endpoints
+are additions; retain any implemented mapping contract rather than duplicating
+it. Responses are JSON; examples use illustrative, shortened Vanguard IDs.
 
 ### Endpoint inventory
 
-| Method and path                                    | Purpose                                                                      |
-| -------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `GET /api/v1/signal/context`                       | Caller IDs, effective capabilities, and selectable authorized roster scopes. |
-| `GET /api/v1/signal/members`                       | Scoped member listing with required expanded data and a snapshot handle.     |
-| `GET /api/v1/signal/mappings`                      | Member-ID-to-ACI dictionary for the same scoped snapshot.                    |
-| `GET /api/v1/signal/members/:member_id/mapping`    | Current mapping, including an unmapped state, and its concurrency token.     |
-| `PUT /api/v1/signal/members/:member_id/mapping`    | Create or replace that member's ACI mapping.                                 |
-| `DELETE /api/v1/signal/members/:member_id/mapping` | Clear the mapping without deleting the member or revision history.           |
+| Method and path                                    | Purpose                                                                          |
+| -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `GET /api/v1/chapter_orgs/:chapter_org_id/members` | Retained chapter-specific roster, with expanded status eligibility.              |
+| `GET /api/v1/signal/context`                       | Caller IDs and effective capabilities; optional legacy roster descriptors.       |
+| `GET /api/v1/signal/members`                       | Default flat authorized Member list, inline mappings/roles, and snapshot handle. |
+| `GET /api/v1/signal/mappings`                      | Member-ID-to-ACI dictionary for the same scoped snapshot.                        |
+| `GET /api/v1/signal/members/:member_id/mapping`    | Current mapping, including an unmapped state, and its concurrency token.         |
+| `PUT /api/v1/signal/members/:member_id/mapping`    | Create or replace that member's ACI mapping.                                     |
+| `DELETE /api/v1/signal/members/:member_id/mapping` | Clear the mapping without deleting the member or revision history.               |
 
 No Signal group mutation endpoint belongs in Vanguard. No bulk-write, webhook,
 global reverse-ACI lookup, or shared group-association endpoint is required for the
@@ -186,89 +196,71 @@ Mapping writes require `api:write` plus `signal_mappings:write`; mapping reads
 require `api:read` plus `signal_mappings:read`. Context requires `api:read` and
 reports effective capabilities rather than granting them.
 
-Register new scopes in Doorkeeper's optional scopes, authorization-code grant
-allowlist, and the Desktop application's scope allowlist. Configure write
+Preserve the implemented scope registrations in Doorkeeper's optional scopes,
+authorization-code grant allowlist, and Desktop application allowlist. Configure write
 controllers intentionally: the existing base controller defaults to `api:read`
 and must not accidentally authorize writes on that basis alone.
 
-Request `openid profile` if using OIDC for caller identity; `email` and `phone`
-OIDC scopes are not needed just to obtain roster phone numbers. Chunk 2 must
-register a non-confidential Desktop client, validate the actual deployment's
-discovery/issuer and callback configuration, and test login/refresh/revocation.
+Caller identity comes from context; Desktop does not request ID tokens or need
+OIDC profile/email/phone scopes. Preserve chunk 2's implemented public-client
+registration, discovery/issuer validation, callbacks, and login/refresh/revocation.
 No new OAuth server gem is needed for this plan.
 
-### Context and roster selection
+### Connection context and endpoint selection
 
-`context` should return `user_id`, `member_id`, effective read/write capabilities,
-and stable roster descriptors, for example `{ type: "chapter_org", id, name }` or
-`{ type: "unit", id, name, chapter_org_id }`. Capabilities are UI hints; enforce
-them again server-side. Large descriptor lists may need pagination.
+Desktop requests `GET /api/v1/signal/context?include_rosters=false` at connection
+and capability refresh. Return caller IDs and current effective capabilities,
+without constructing roster descriptors or reading Member collections. Keep the
+existing no-parameter context response compatible for older clients. Capabilities
+are UI hints and must be enforced again on every read/write.
 
-For the initial version, select one chapter, district, unit, or all-visible scope
-per comparison. Store the selected filter locally with the Signal account/group
-and Vanguard issuer/user. Do not store the Signal group ID or roster in Vanguard
-unless shared group associations become an explicit requirement.
+Desktop stores only a connected flag for a Signal group, never a selected chapter,
+district, unit, or roster. Only entering a connected group's Settings drill-down
+triggers `GET /api/v1/signal/members`. Other API clients can explicitly choose the
+existing chapter endpoint. Desktop never fetches that endpoint in this workflow.
 
-### Member listing
-
-Example request:
+### Flat Member listing
 
 ```http
-GET /api/v1/signal/members?scope_type=chapter_org&scope_id=org_example&membership=current&limit=200
+GET /api/v1/signal/members?limit=200
 Authorization: Bearer <access-token>
 ```
-
-Example response:
 
 ```json
 {
   "members": [
     {
       "id": "mbr_example",
+      "user_id": "usr_example",
+      "email": "alex@example.org",
       "first_name": "Alex",
       "last_name": "Rivera",
+      "full_name": "Alex Rivera",
       "phone_number": "+12025550123",
-      "status": "full_member",
+      "status": "former_member",
       "on_leave": false,
-      "chapter_org": {
-        "id": "org_example",
-        "name": "Example Chapter",
-        "type": "branch",
-        "districts": [{ "id": "dist_example", "name": "North" }],
-        "units": [
-          {
-            "id": "unit_example",
-            "name": "Unit A",
-            "district_id": "dist_example"
-          }
-        ]
-      },
-      "leadership_positions": [
+      "chapter_org_id": "org_example",
+      "chapter_org_name": "Example Chapter",
+      "unit_ids": [],
+      "district_ids": [],
+      "signal_user_id": "70a81aac-7237-4bc1-9a72-33d055f455ab",
+      "mapping_version": 3,
+      "user_roles": [
         {
-          "assignment_id": "uld_example",
-          "role": "unit_lead",
-          "position_type": null,
-          "organization": {
-            "id": "unit_example",
-            "type": "unit",
-            "name": "Unit A"
-          },
-          "chapter_org_id": "org_example",
-          "leadership_body": null
+          "role_slug": "chapter_leader",
+          "role_name": "Chapter Leader",
+          "chapter_org_name": "Example Chapter",
+          "chapter_org_type": "Organization"
         }
       ],
+      "user_roles_restricted": false,
       "capabilities": { "manage_signal_mapping": true }
     }
   ],
   "meta": {
     "snapshot_id": "opaque-snapshot",
-    "as_of": "2026-09-25T12:00:00Z",
+    "as_of": "2026-10-14T12:00:00Z",
     "visibility": "authorized_subset",
-    "filter": {
-      "scope_type": "chapter_org",
-      "scope_id": "org_example",
-      "membership": "current"
-    },
     "total_count": 1,
     "next_cursor": null
   }
@@ -277,36 +269,45 @@ Example response:
 
 Data rules:
 
-- `phone_number` is validated E.164 or null. Serialize from the stored value using
-  server-side normalization; do not assume the model's display getter is E.164.
-  Missing/invalid phone data must not make a member disappear from the roster.
-- Arrays are present even when empty. `chapter_org` may be null for an authorized
-  record with no current chapter; never silently discard such a record.
-- Nested district/unit lists describe **this member's current memberships**, not
-  every district or unit in the chapter. Districts include direct and unit-derived
-  membership, with duplicates removed. Preserve parent IDs where needed.
-- Leadership includes current committee positions, unit/district leads, and
-  chapter/unit/district liaisons. Include machine-readable roles, relevant entity
-  IDs/names, and position type where applicable. Include only assignments valid
-  on the snapshot's effective date, including leadership-body term boundaries.
-- Administrative application roles are not organizational leadership positions.
-  Do not use the existing presenter's synthetic Administrator row as domain data.
-- Authorize expanded leadership/organizational fields too. If policy hides some
-  assignments, expose that the expansion is partial rather than implying there
-  are no other positions. Avoid leaking other scopes through nested objects.
-- Extra response fields are allowed; Desktop validates required fields and ignores
-  unknown additive fields. Do not return unnecessary sensitive profile data.
-
-Provisional eligibility: include current candidates and full members, **including
-those on leave**, with an `on_leave` flag. Leave alone must not recommend removal.
-Unlike the existing active-roster endpoint, this avoids making a temporary leave
-look like a departure. Leave reasons and dates are not required.
-
-Support `membership=former` or `all` only where explicit historical visibility
-exists. Former-member authorization needs historical organization associations;
-current chapter joins alone will not find them. Do not infer former status from
-absence in a current roster. If historical authorization is deferred, keep these
-filters unsupported and label missing accounts unresolved in Desktop.
+- “Member record” means an explicit allowlisted API projection, not unrestricted
+  Rails model serialization. Include the existing public member fields shown
+  above plus full name, chapter name, mapping, and roles. IDs, names, and status
+  are authoritative Vanguard values; optional profile/contact fields may be null.
+- `signal_user_id` is the canonical Signal ACI, identical to the mapping API's
+  `aci`, or null for an authorized unmapped Member. Include `mapping_version`.
+  Do not use phone numbers, PNI, usernames, or local conversation IDs as this key.
+  Require mapping-read OAuth scope and permission for this mapping-bearing list;
+  reject insufficient permission explicitly rather than substituting nulls.
+- `phone_number` is validated E.164 or null, normalized server-side. Invalid or
+  missing phone data must not remove a Member from the response.
+- Include candidates, full members, members on leave, and former members by
+  default in **all member-list endpoints**, including the retained chapter API.
+  Current Members use their current ChapterOrg; former Members use their last
+  ChapterOrg, resolved consistently with Vanguard's former-inclusive association.
+  Authorize against that chapter today. A former member's older chapters do not
+  grant access; a transferred current member is not returned in their old chapter.
+  Missing chapter associations cannot be authorized by this chapter-based query
+  and are excluded, not silently assigned to a chapter. Deduplicate member IDs.
+- Former members are a required supported case, not an optional later historical
+  filter. Remove the legacy active-only filter/current-association inner join
+  where it prevents former members or members on leave from being returned.
+  Unit/district arrays still describe current assignments, not expired ones.
+- `user_roles` comes from the Member's login User's `CombinedUserRole` records.
+  Include only roles whose associated record resolves to a ChapterOrg (including
+  STI through Organization) or whose organization is absent (national). Exclude
+  Unit, District, and other non-ChapterOrg organizations; do not promote their
+  roles to their parent chapter. Members without a login/roles return `[]`.
+- Each role contains `role_slug`; `role_name` formed by replacing `_` with spaces
+  and capitalizing each word; `chapter_org_name` from the associated ChapterOrg;
+  and `chapter_org_type` copied exactly from `CombinedUserRole.organization_type`,
+  without STI normalization. For national/no-org roles, both chapter fields are
+  null and the UI displays “National”. An explicit non-ChapterOrg organization is
+  not a no-org national role. These are user roles, not leadership-presenter rows.
+- Apply field authorization to roles, including roles outside the Member's chapter;
+  set `user_roles_restricted: true` when any eligible roles are withheld. Batch-load
+  login users, roles, chapters, and mappings to avoid per-member queries.
+- Arrays are always present. Unknown additive fields are allowed. No Signal group
+  roster, group ID, or unrelated contacts need to be sent to Vanguard for this read.
 
 ### Snapshot and pagination semantics
 
@@ -316,7 +317,7 @@ The client considers a list complete only after every page succeeds and the last
 page returns `next_cursor: null`.
 
 The initial members request creates a short-lived snapshot bound to user, OAuth
-application, scope/filter, and effective date. Subsequent member pages and the
+application, authorized chapter set, and effective date. Subsequent member pages and the
 mapping dictionary reference the same `snapshot_id`. A timestamp alone is not a
 consistency guarantee.
 
@@ -325,7 +326,7 @@ member projection and mapping versions from one consistent database view into an
 expiring server-side snapshot. Do not hold a database transaction open between
 HTTP requests. Establish a size cap/TTL from measured roster sizes; never silently
 truncate a response. A revision-based alternative is acceptable only if it
-detects relevant membership, leadership, mapping, and permission changes.
+detects relevant membership, user-role, mapping, and permission changes.
 
 Reauthorize snapshot access on every page; invalidate/reject the snapshot if the
 caller loses relevant visibility. Return a specific expired/invalid snapshot
@@ -360,7 +361,7 @@ This example illustrates the dictionary shape independently of the one-member
 roster example. Include null for authorized unmapped members so missing keys are
 not confused with unmapped state. A missing key before all pages are received is
 unknown. Dictionary pages must cover the same selected members as the snapshot's
-roster; arbitrary member-ID requests must not bypass that scope.
+member list; arbitrary member-ID requests must not bypass that scope.
 
 Mapping endpoints never expose mappings for members outside the caller's current
 authorized visibility. Existing mappings survive departure or transfer, but can
@@ -439,10 +440,12 @@ values from routine logs; detailed mapping audit access is separately controlled
 - Store tokens using the chunk 2 secure-storage design. Namespace any Desktop
   cache/journal by Vanguard issuer/user and Signal account to prevent cross-account
   reuse. Clear roster caches on logout, disconnect, or account switch.
-- Prefer an in-memory roster for the first version. If later persistence is needed,
-  define expiration and use protected local storage. Define minimal journal
-  retention for pending operations separately from roster caching.
-- Do not promise mappings or local roster/group associations will sync through
+- Keep Members and mappings in memory only for the current drill-down. Fetch a
+  new snapshot on every entry, discard data on exit, and reject late responses
+  after disconnect/account change. No persisted Member cache is needed in Signal.
+  Provider pagination snapshots are short-lived consistency aids, not reusable
+  client caches. Later operation journals must remain separate from roster storage.
+- Do not promise mappings or local group connection flags will sync through
   Signal. Shared mappings are reloaded from Vanguard.
 - Retention for mapping audit history, snapshot data, and idempotency receipts is
   a rollout decision; none should become an unbounded identity-history store.
@@ -450,7 +453,8 @@ values from routine logs; detailed mapping audit access is separately controlled
 ## Implementation work packages within Chunk 1
 
 1. **Finalize product/policy decisions.** Confirm reverse uniqueness, access-role
-   grants, member statuses, leave treatment, and historical visibility. Confirm
+   grants and reverse-ACI conflicts; the status, leave, and former-member inclusion
+   rules are settled above. Confirm
    deployment URL/issuer and authorized Desktop client registration owner.
 2. **Publish the API schema.** Add proposed endpoints, reusable member/mapping
    schemas, nullable fields, pagination, scope requirements, and error examples to
@@ -459,15 +463,16 @@ values from routine logs; detailed mapping audit access is separately controlled
    audited operations, concurrency tokens, and bounded idempotency receipt store.
    Follow Vanguard's operations pattern and Sorbet conventions when implementing.
 4. **Specify shared scope and serialization services.** Define policy tests and
-   eager-loaded queries for current memberships and leadership; settle snapshot
+   eager-loaded queries for current/last chapter membership and filtered CombinedUserRoles; settle snapshot
    implementation in chunk 3 before enabling paginated reconciliation.
-5. **Define the Desktop adapter boundary.** Expose typed context, roster-page,
+5. **Define the Desktop adapter boundary.** Expose typed context, flat-member-page,
    mapping-page, live-mapping, replace, and clear methods. Preserve unknown fields
    compatibly, normalize errors, and never treat incomplete data as an empty list.
 
 Chunk 1 is ready for implementation handoff once the contract is accepted and its
 policy decisions are settled. Actual authentication belongs in chunk 2; roster
-service/UI in chunk 3; mapping persistence/API/UI in chunk 5. Contract-first work
+service/UI in chunk 3; mapping persistence/API/UI in chunk 4; Proposed Matches
+and selected bulk linking in chunk 5. Contract-first work
 here should avoid implementing later chunks prematurely.
 
 ## Required contract tests
@@ -476,10 +481,10 @@ here should avoid implementing later chunks prematurely.
   visibility; explicitly assigned permissions and overlapping scopes.
 - Direct district members and unit-derived district membership; transfers,
   end-dated assignments, on-leave members, former members, and missing chapter.
-- Every required field, E.164/null phones, current leadership terms, and a constant
+- Every required field, E.164/null phones, ChapterOrg/national roles, Unit/District exclusion, and a constant
   number of database queries as the roster grows.
 - Rejection of app-only tokens, missing scopes, revoked roles, hidden nested
-  data, and cross-scope mapping IDs. Existing recruiter API behavior stays intact.
+  data, and cross-scope mapping IDs. Existing chapter API shape/access stay intact; verify its expanded status eligibility.
 - Zero/one mapping; replacement; clearing; invalid ACI/PNI; adopted reverse
   uniqueness rule; actor attribution; no phone-number mutation.
 - Concurrent first assignment, replacement, and clearing; stale ETags; repeated
@@ -489,16 +494,16 @@ here should avoid implementing later chunks prematurely.
 
 ## Open decisions and proposed defaults
 
-| Decision                                      | Proposed default; not yet confirmed                                                                                                                        |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| May an ACI map to multiple members?           | No; enforce uniqueness across the Vanguard deployment.                                                                                                     |
-| Who can use reconciliation and edit mappings? | Leaders/admins with explicit read/manage grants within their managed scope. Existing ordinary-member roster access remains unchanged for existing clients. |
-| Default membership statuses                   | Candidates and full members; former members only through separately authorized historical review.                                                          |
-| Members on leave                              | Include and flag them; do not recommend removal merely because of leave.                                                                                   |
-| Exact eligible leadership roles               | Resolve from permission grants, not a blanket assumption that every leadership position grants access.                                                     |
-| Historic visibility                           | Defer former-member filters if a suitable scoped policy cannot be established for the first release.                                                       |
-| Group/roster association sharing              | Local to this Desktop installation initially.                                                                                                              |
-| Deployment, retention, and scale              | Confirm runtime API/issuer URLs, roster sizes, and approved retention before implementation/rollout.                                                       |
+| Decision                            | Proposed default; not yet confirmed                                                                                     |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| May an ACI map to multiple members? | No; enforce uniqueness across the Vanguard deployment.                                                                  |
+| Member visibility (confirmed)       | Flat list uses ChapterOrg-scoped `member:show`; mapping reads/writes additionally require explicit mapping permissions. |
+| Membership statuses (confirmed)     | Include candidates, full members, on-leave members, and former members in all member-list endpoints.                    |
+| Former-member chapter (confirmed)   | Use the last ChapterOrg with current authorization; never infer departure from absence.                                 |
+| User roles (confirmed)              | ChapterOrg-associated and no-org national roles only; exclude Unit/District roles.                                      |
+| Group settings (confirmed)          | Local Signal group-settings persistence; clear flags on OAuth disconnect; no roster selection.                          |
+| Member data lifecycle (confirmed)   | In memory for the current drill-down, fresh fetch on every entry.                                                       |
+| Deployment, retention, and scale    | Confirm runtime API/issuer URLs, roster sizes, and approved retention before implementation/rollout.                    |
 
-These defaults allow subsequent design to proceed, but are not user approval of
-the unresolved decisions.
+Confirmed rows record product decisions. Reverse uniqueness and deployment/retention
+choices remain proposed defaults until settled.
