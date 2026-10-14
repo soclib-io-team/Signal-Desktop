@@ -1,6 +1,8 @@
 // Copyright 2020 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useVanguardGroups } from '../../vanguard/groups.preload.ts';
+import { GroupMenuItem } from '../../vanguard/GroupMenuItem.dom.tsx';
 import { memo, useCallback, useMemo, type JSX } from 'react';
 import { useSelector } from 'react-redux';
 import type { MuteExpiration } from '@signalapp/types';
@@ -115,6 +117,7 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
   if (!conversation) {
     throw new Error('Could not find conversation');
   }
+  const vanguard = useVanguardGroups();
   const isAdmin = Boolean(conversation.areWeAdmin);
   const hasStoriesSelector = useSelector(getHasStoriesSelector);
   const hasStories = hasStoriesSelector(id);
@@ -290,6 +293,15 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
 
   return (
     <ConversationHeader
+      vanguardMenu={
+        <GroupMenuItem
+          group={conversation}
+          state={vanguard.state}
+          onChange={(groupId, connected) => {
+            void vanguard.setConnected(groupId, connected);
+          }}
+        />
+      }
       addedByName={addedByName}
       badge={badge}
       cannotLeaveBecauseYouAreLastAdmin={cannotLeaveBecauseYouAreLastAdmin}

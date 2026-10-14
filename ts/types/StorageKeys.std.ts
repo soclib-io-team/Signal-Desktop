@@ -1,6 +1,7 @@
 // Copyright 2026 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import type { GroupConnections } from '../vanguard/groups.std.ts';
 import type { PhoneNumberDiscoverability } from '../util/phoneNumberDiscoverability.std.ts';
 import type { RetryItemType } from '../services/retryPlaceholders.std.ts';
 import type { ConfigMapType as RemoteConfigType } from '../RemoteConfig.std.ts';
@@ -71,6 +72,7 @@ export type BlockedNumber = {
 };
 
 export type StorageAccessType = {
+  vanguardGroups: GroupConnections;
   'always-relay-calls': boolean;
   'audio-notification': boolean;
   'auto-download-update': boolean;
@@ -488,6 +490,7 @@ export const STORAGE_KEYS_TO_PRESERVE_WHEN_PRIMARY = [
 ] as const satisfies ReadonlyArray<keyof StorageAccessType>;
 
 const STORAGE_KEYS_TO_REMOVE_AFTER_UNLINK = [
+  'vanguardGroups',
   'unreadRemindersEnabledAt',
   'lastCallQualitySurveyTime',
   'lastCallQualityFailureSurveyTime',

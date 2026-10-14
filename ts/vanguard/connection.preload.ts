@@ -11,13 +11,23 @@ export function requestConnection(
   return ipcRenderer.invoke('vanguard:connection', { action, account });
 }
 
+const accountChangeListeners = new Set<() => void>();
+
+export function onVanguardAccountChange(listener: () => void): () => void {
+  accountChangeListeners.add(listener);
+  return () => accountChangeListeners.delete(listener);
+}
+
 export function clearConnectionForAccountChange(
   previous: unknown,
   next: unknown
-): void {
+): boolean {
   if (previous !== next) {
     // Sent before the SQL mutation on the same IPC connection. No account data
     // is needed to cancel in-flight work and clear the old OAuth session.
+    accountChangeListeners.forEach(listener => listener());
     ipcRenderer.send('vanguard:account-change');
+    return true;
   }
+  return false;
 }

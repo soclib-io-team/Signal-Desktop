@@ -21,6 +21,7 @@ export type ConnectionState = Readonly<{
     | 'connected'
     | 'error';
   issuer?: string;
+  clientId?: string;
   context?: VanguardContext;
   message?: string;
 }>;

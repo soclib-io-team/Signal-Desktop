@@ -71,7 +71,9 @@ export class Storage implements StorageInterface {
     }
 
     if (key === 'uuid_id') {
-      clearConnectionForAccountChange(this.#items[key], value);
+      if (clearConnectionForAccountChange(this.#items[key], value)) {
+        await this.remove('vanguardGroups');
+      }
     }
     this.#items[key] = value;
     window.reduxActions?.items.putItemExternal(key, value);
@@ -84,7 +86,9 @@ export class Storage implements StorageInterface {
     }
 
     if (key === 'uuid_id') {
-      clearConnectionForAccountChange(this.#items[key], undefined);
+      if (clearConnectionForAccountChange(this.#items[key], undefined)) {
+        await this.remove('vanguardGroups');
+      }
     }
     delete this.#items[key];
     await DataWriter.removeItemById(key);
