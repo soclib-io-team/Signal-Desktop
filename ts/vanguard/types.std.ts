@@ -11,15 +11,6 @@ export const contextSchema = z.object({
     read_signal_mappings: z.boolean(),
     write_signal_mappings: z.boolean(),
   }),
-  rosters: z
-    .array(
-      z.object({
-        type: z.enum(['chapter_org', 'district', 'unit', 'all_visible']),
-        id: z.string().min(1),
-        name: z.string().min(1),
-      })
-    )
-    .max(10000),
 });
 export type VanguardContext = z.infer<typeof contextSchema>;
 export type ConnectionState = Readonly<{

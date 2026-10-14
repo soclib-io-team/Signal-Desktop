@@ -138,13 +138,6 @@ export function ConnectionSettingsView({
               : 'not permitted'}
             .
           </p>
-          <ul>
-            {state.context.rosters.map(roster => (
-              <li key={`${roster.type}:${roster.id}`}>
-                {roster.name} ({roster.type})
-              </li>
-            ))}
-          </ul>
         </>
       )}
       <button
