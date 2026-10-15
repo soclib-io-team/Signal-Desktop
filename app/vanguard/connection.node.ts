@@ -2,6 +2,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import * as oauth from 'oauth4webapi';
+import { VanguardMembers } from './members.node.ts';
+import { RosterError } from './rosterError.std.ts';
+import type { RosterAccess } from './members.node.ts';
+import type {
+  MembersRequest,
+  MembersState,
+} from '../../ts/vanguard/members.std.ts';
 import type { VanguardConfig } from './config.std.ts';
 import { listenForCallback } from './callback.node.ts';
 import type { Session, SessionStore } from './storage.node.ts';
@@ -12,6 +19,8 @@ import type {
 } from '../../ts/vanguard/types.std.ts';
 
 export class VanguardConnection {
+  readonly members = new VanguardMembers();
+  #rosterUser?: string;
   #state: ConnectionState = { status: 'disconnected' };
   #session?: Session;
   #account?: string;
@@ -45,6 +54,7 @@ export class VanguardConnection {
     account: string
   ): Promise<ConnectionState> {
     if (this.#account !== account) {
+      this.members.clear();
       this.#generation += 1;
       this.#controller?.abort();
       this.#busy = undefined;
@@ -71,7 +81,9 @@ export class VanguardConnection {
         };
       }
     }
+    if (action === 'connect') this.members.cancel();
     if (action === 'cancel' || action === 'disconnect') {
+      this.members.clear();
       const old = this.#session;
       this.#generation += 1;
       const generation = this.#generation;
@@ -155,6 +167,8 @@ export class VanguardConnection {
   }
 
   forget(): void {
+    this.members.clear();
+    this.#rosterUser = undefined;
     this.#generation += 1;
     this.#controller?.abort();
     this.#busy = undefined;
@@ -162,6 +176,61 @@ export class VanguardConnection {
     this.#account = undefined;
     this.store.clear();
     this.#state = { status: 'disconnected' };
+  }
+
+  requestMembers(request: MembersRequest): MembersState {
+    if (request.action === 'cancel') {
+      if (request.account === this.#account)
+        this.members.cancel(request.requestId);
+      return { status: 'cancelled', loaded: 0 };
+    }
+    if (request.action === 'read')
+      return this.members.read(request.requestId, request.account);
+    // The account is established through the connection boundary, never by a
+    // roster request. An obsolete renderer cannot switch the active account.
+    if (request.account !== this.#account)
+      return { status: 'cancelled', loaded: 0 };
+    return this.members.start(request.requestId, request.account, () =>
+      this.#rosterAccess(request.account)
+    );
+  }
+
+  async #rosterAccess(account: string): Promise<RosterAccess> {
+    const state = await this.act('status', account);
+    const session = this.#session;
+    const context = state.context;
+    if (
+      state.status !== 'connected' ||
+      !session ||
+      !context?.capabilities.read_members ||
+      !context.capabilities.read_signal_mappings
+    ) {
+      throw new RosterError(
+        'Vanguard member and mapping read access is required. Refresh the connection or reconnect, then retry.'
+      );
+    }
+    const generation = this.#generation;
+    return {
+      scope: JSON.stringify([
+        account,
+        this.config.issuer,
+        this.config.clientId,
+        context.user_id,
+      ]),
+      fetch: async (query, etag, signal) => {
+        if (generation !== this.#generation || this.#session !== session)
+          throw new Error('Session changed');
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${session.accessToken}`,
+          Accept: 'application/json',
+        };
+        if (etag) headers['If-None-Match'] = etag;
+        return this.#options(signal)[oauth.customFetch](
+          `${this.config.issuer}/api/v1/signal/members?${query.toString()}`,
+          { headers, cache: 'no-store' }
+        );
+      },
+    };
   }
 
   #options(signal: AbortSignal) {
@@ -390,6 +459,9 @@ export class VanguardConnection {
       scopes.has('api:read') && scopes.has('signal_mappings:read');
     context.capabilities.write_signal_mappings &&=
       scopes.has('api:write') && scopes.has('signal_mappings:write');
+    if (this.#rosterUser && this.#rosterUser !== context.user_id)
+      this.members.clear();
+    this.#rosterUser = context.user_id;
     this.#state = { status: 'connected', context };
   }
 

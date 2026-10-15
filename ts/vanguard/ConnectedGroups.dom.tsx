@@ -12,10 +12,12 @@ export function ConnectedGroups({
   state,
   conversations,
   onDisconnect,
+  onOpen,
 }: Readonly<{
   state: GroupConnectionState;
   conversations: ReadonlyArray<VanguardGroup>;
   onDisconnect: (id: string) => void;
+  onOpen?: (id: string) => void;
 }>): JSX.Element | null {
   if (state.connection.status !== 'connected') {
     return null;
@@ -58,16 +60,24 @@ export function ConnectedGroups({
                       ? 'Member count unavailable'
                       : `${group.membersCount} ${group.membersCount === 1 ? 'member' : 'members'}`}
                   </AxoItem.Description>
+                  {group && onOpen && (
+                    <AxoItem.HiddenTrigger
+                      label={`Open ${group.title} Vanguard members`}
+                      onClick={() => onOpen(id)}
+                    />
+                  )}
                   <AxoItem.Accessory>
-                    <AxoButton.Root
-                      variant="subtle-secondary"
-                      size="md"
-                      aria-label={`Disconnect ${group?.title ?? 'unavailable group'} from Vanguard`}
-                      disabled={state.busy}
-                      onClick={() => onDisconnect(id)}
-                    >
-                      Disconnect
-                    </AxoButton.Root>
+                    <div className={tw('relative z-20')}>
+                      <AxoButton.Root
+                        variant="subtle-secondary"
+                        size="md"
+                        aria-label={`Disconnect ${group?.title ?? 'unavailable group'} from Vanguard`}
+                        disabled={state.busy}
+                        onClick={() => onDisconnect(id)}
+                      >
+                        Disconnect
+                      </AxoButton.Root>
+                    </div>
                   </AxoItem.Accessory>
                 </AxoItem.Content>
               </AxoItem.Root>

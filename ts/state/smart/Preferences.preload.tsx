@@ -1,7 +1,7 @@
 // Copyright 2024 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { ConnectedGroups } from '../../vanguard/ConnectedGroups.dom.tsx';
+import { GroupSettings } from '../../vanguard/GroupSettings.preload.tsx';
 import { useVanguardGroups } from '../../vanguard/groups.preload.ts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -1049,7 +1049,7 @@ export function SmartPreferences(): JSX.Element | null {
         vanguardConnection={vanguard.connection}
         vanguardConnectionState={vanguard.state.connection}
         vanguardGroups={
-          <ConnectedGroups
+          <GroupSettings
             state={vanguard.state}
             conversations={vanguard.conversations}
             onDisconnect={id => {

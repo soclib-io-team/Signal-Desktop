@@ -2,6 +2,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { strict as assert } from 'node:assert';
+import {
+  GroupDrilldownView,
+  getGroupUsers,
+} from '../../vanguard/GroupDrilldown.dom.tsx';
+import type { MembersState } from '../../vanguard/members.std.ts';
+import type { ConversationType } from '../../state/ducks/conversations.preload.ts';
 import type { ReactNode } from 'react';
 import { AppProvider } from '../../windows/AppProvider.dom.tsx';
 import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
@@ -192,7 +198,7 @@ describe('Vanguard connected group settings', () => {
     assert.equal(groupsHtml(['group-1'], { status: 'error' }), '');
   });
 
-  it('uses current Signal names/counts and offers disconnect without a drill-down link', () => {
+  it('uses current Signal names/counts and offers a separate disconnect action', () => {
     const html = groupsHtml(['group-1']);
     assert.match(html, /Organizers/);
     assert.match(html, /12 members/);
@@ -224,5 +230,111 @@ describe('Vanguard connected group settings', () => {
     ]);
     assert.doesNotMatch(html, /<script>/);
     assert.match(html, /&lt;script&gt;/);
+  });
+});
+
+describe('Vanguard group drilldown', () => {
+  const first = '70a81aac-7237-4bc1-9a72-33d055f455ab';
+  const former = '80a81aac-7237-4bc1-9a72-33d055f455ab';
+  const base = {
+    full_name: 'Vanguard name',
+    chapter_org_name: 'Chapter',
+    user_roles: [],
+    user_roles_restricted: false,
+    capabilities: { manage_signal_mapping: false },
+  };
+  const users = [
+    { id: first, aci: first, name: 'Nickname', pending: false },
+    { id: former, aci: former, name: 'Former', pending: false },
+    { id: 'PNI:pending', name: 'Invitee', pending: true },
+  ];
+  function view(state: MembersState) {
+    return renderToStaticMarkup(
+      <GroupDrilldownView
+        title="Organizers"
+        count={2}
+        users={users}
+        state={state}
+        onBack={() => undefined}
+        onRetry={() => undefined}
+      />
+    );
+  }
+  it('labels all three statuses, current count, pending invitations and actions accessibly', () => {
+    const html = view({
+      status: 'ready',
+      loaded: 2,
+      members: [
+        { ...base, id: 'a', status: 'candidate', signal_user_id: first },
+        { ...base, id: 'b', status: 'former_member', signal_user_id: former },
+      ],
+    });
+    assert.match(html, /aria-label="Mapped Vanguard member"/);
+    assert.match(html, /aria-label="Former Vanguard member"/);
+    assert.match(html, /aria-label="Unresolved within authorized visibility"/);
+    assert.match(html, /Pending invitation/);
+    assert.match(html, /Actions for Nickname/);
+    assert.match(html, /2 members/);
+    assert.match(html, /Back to connected groups/);
+  });
+  it('never presents failed or partial reads as definitive unresolved mappings', () => {
+    for (const status of ['loading', 'error'] as const) {
+      const html = view({
+        status,
+        loaded: 1000,
+        total: 8000,
+        message: 'Please retry',
+      });
+      assert.match(html, /Mapping not validated/);
+      assert.doesNotMatch(
+        html,
+        /aria-label="Unresolved within authorized visibility"/
+      );
+      assert.match(
+        html,
+        status === 'loading'
+          ? /Loading members: 1,000 of 8,000/
+          : /Incomplete member list/
+      );
+    }
+    assert.match(view({ status: 'error', loaded: 0 }), /Retry/);
+  });
+  it('prefers nicknames, falls back to profile names and never treats PNI as ACI', () => {
+    const group = {
+      memberships: [{ aci: first }],
+      pendingMemberships: [{ serviceId: 'PNI:pending' }],
+    } as unknown as ConversationType;
+    const contacts = [
+      {
+        serviceId: first,
+        nicknameGivenName: 'Nick',
+        nicknameFamilyName: 'Name',
+        profileName: 'Profile',
+      },
+      { serviceId: former, pni: 'PNI:pending', profileName: 'Pending Profile' },
+    ] as unknown as ReadonlyArray<ConversationType>;
+    const actual = getGroupUsers(group, contacts);
+    assert.equal(actual[0]?.name, 'Nick Name');
+    assert.equal(actual[0]?.aci, first);
+    assert.equal(actual[1]?.name, 'Pending Profile');
+    assert.equal(actual[1]?.aci, undefined);
+  });
+  it('makes available group rows navigable separately from disconnect', () => {
+    const html = renderToStaticMarkup(
+      <ConnectedGroups
+        state={{
+          connection: { status: 'connected' },
+          groupIds: ['group'],
+          busy: false,
+        }}
+        conversations={[
+          { id: 'group', type: 'group', title: 'Organizers', membersCount: 2 },
+        ]}
+        onOpen={() => undefined}
+        onDisconnect={() => undefined}
+      />
+    );
+    assert.match(html, /Open Organizers Vanguard members/);
+    assert.match(html, /Disconnect Organizers from Vanguard/);
   });
 });
