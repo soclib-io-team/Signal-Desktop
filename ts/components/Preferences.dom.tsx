@@ -786,14 +786,14 @@ export function Preferences({
       <PreferencesContent
         contents={
           vanguardConnection && (
-            <>
+            <AxoList.Group>
               <ConnectionSettings
                 key={me.serviceId}
                 connection={vanguardConnection}
                 connectionState={vanguardConnectionState}
               />
               {vanguardGroups}
-            </>
+            </AxoList.Group>
           )
         }
         contentsRef={settingsPaneRef}

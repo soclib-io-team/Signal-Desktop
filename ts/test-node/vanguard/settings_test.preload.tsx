@@ -2,11 +2,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { strict as assert } from 'node:assert';
-import { renderToStaticMarkup } from 'react-dom/server';
+import type { ReactNode } from 'react';
+import { AppProvider } from '../../windows/AppProvider.dom.tsx';
+import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
 import { ConnectedGroups } from '../../vanguard/ConnectedGroups.dom.tsx';
 import { ConnectionSettingsView } from '../../vanguard/ConnectionSettings.dom.tsx';
 import { handleConnectionRequest } from '../../../app/vanguard/handler.std.ts';
 import type { ConnectionState } from '../../vanguard/types.std.ts';
+
+function renderToStaticMarkup(children: ReactNode): string {
+  return renderMarkup(<AppProvider>{children}</AppProvider>);
+}
 
 const account = '70a81aac-7237-4bc1-9a72-33d055f455ab';
 function render(state: ConnectionState, busy = false) {
@@ -33,8 +39,8 @@ describe('Vanguard connection settings', () => {
   it('offers cancellation while browser sign-in is pending', () => {
     const html = render({ status: 'connecting' }, true);
     assert.match(html, /Complete sign-in in your browser/);
-    assert.match(html, /<button[^>]*type="button">Cancel sign-in<\/button>/);
-    assert.match(html, /disabled=""/);
+    assert.match(html, /Cancel sign-in/);
+    assert.match(html, /aria-disabled="true"/);
     assert.match(html, /aria-live="polite"/);
   });
   it('shows identity, organization access and a clear read-only restriction', () => {
@@ -57,6 +63,37 @@ describe('Vanguard connection settings', () => {
     assert.match(html, /Mapping reads: not permitted/);
     assert.match(html, /Reconnect Vanguard/);
     assert.match(html, /Disconnect/);
+  });
+  it('keeps technical details collapsed and puts identity before the account actions', () => {
+    const state: ConnectionState = {
+      status: 'connected',
+      context: {
+        user_id: 'user-1',
+        member_id: 'member-1',
+        email: 'john@example.com',
+        full_name: 'John Doe',
+        capabilities: {
+          read_members: true,
+          read_signal_mappings: true,
+          write_signal_mappings: true,
+        },
+      },
+    };
+    assert(state.context);
+    const html = render(state);
+    assert.match(html, /Connected as John Doe &lt;john@example.com&gt;/);
+    assert.match(html, /<details[^>]*>/);
+    assert.doesNotMatch(html, /<details[^>]*\bopen(?:=|[ >])/);
+    assert(html.indexOf('Connected as') < html.indexOf('Reconnect Vanguard'));
+    assert(html.indexOf('Connection details') < html.indexOf('Vanguard user:'));
+    assert.match(
+      render({ ...state, context: { ...state.context, full_name: null } }),
+      /Connected as john@example.com/
+    );
+    assert.match(
+      render({ status: 'disconnected' }),
+      /Not connected to Vanguard/
+    );
   });
   it('shows provider failures without suggesting successful empty organization access', () => {
     const html = render({ status: 'error', message: 'Provider unavailable' });
@@ -160,7 +197,7 @@ describe('Vanguard connected group settings', () => {
     assert.match(html, /Organizers/);
     assert.match(html, /12 members/);
     assert.match(html, /Disconnect Organizers from Vanguard/);
-    assert.doesNotMatch(html, /<a\b|href=|tabindex=/);
+    assert.doesNotMatch(html, /<a\b|href=/);
     const updated = groupsHtml(['group-1'], connection, false, [
       { ...group, title: 'Renamed group', membersCount: 1 },
     ]);
@@ -170,7 +207,10 @@ describe('Vanguard connected group settings', () => {
   });
 
   it('disables disconnect during persistence and retains cleanup for unavailable groups', () => {
-    assert.match(groupsHtml(['group-1'], connection, true), /disabled=""/);
+    assert.match(
+      groupsHtml(['group-1'], connection, true),
+      /aria-disabled="true"/
+    );
     const html = groupsHtml(['deleted-group']);
     assert.match(html, /Unavailable group/);
     assert.match(html, /Member count unavailable/);

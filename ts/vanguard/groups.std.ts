@@ -228,16 +228,16 @@ export class GroupConnectionsController {
     groupId: string,
     connected: boolean,
     allowed: () => boolean
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (this.#state.busy || this.#state.connection.status !== 'connected') {
-      return;
+      return false;
     }
     const revision = this.#revision;
     this.#publish({ ...this.#state, busy: true, error: undefined });
     try {
-      await this.#write(async () => {
+      return await this.#write(async () => {
         if (revision !== this.#revision) {
-          return;
+          return false;
         }
         if (!allowed()) {
           throw new Error('Group access changed');
@@ -260,7 +260,9 @@ export class GroupConnectionsController {
         await this.storage.save({ ...saved, groupIds });
         if (revision === this.#revision) {
           this.#publish({ ...this.#state, groupIds, busy: false });
+          return true;
         }
+        return false;
       });
     } catch {
       if (revision === this.#revision) {
@@ -271,6 +273,7 @@ export class GroupConnectionsController {
             'Unable to save the group setting. Check group access and try again.',
         });
       }
+      return false;
     }
   }
 }

@@ -77,6 +77,16 @@ function renderToast({
 
   const { toastType } = toast;
 
+  if (toastType === ToastType.VanguardGroupConnection) {
+    return (
+      <Toast onClose={hideToast} timeout={SHORT_TIMEOUT}>
+        {toast.parameters.connected
+          ? 'Group connected to Vanguard'
+          : 'Group disconnected from Vanguard'}
+      </Toast>
+    );
+  }
+
   if (toastType === ToastType.AddingUserToGroup) {
     return (
       <Toast onClose={hideToast} timeout={SHORT_TIMEOUT}>

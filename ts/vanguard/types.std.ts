@@ -6,6 +6,8 @@ import { z } from 'zod';
 export const contextSchema = z.object({
   user_id: z.string().min(1),
   member_id: z.string().min(1).nullable(),
+  email: z.string().min(1).optional(),
+  full_name: z.string().nullable().optional(),
   capabilities: z.object({
     read_members: z.boolean(),
     read_signal_mappings: z.boolean(),
