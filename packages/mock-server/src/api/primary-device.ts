@@ -62,6 +62,7 @@ import {
   deriveMasterKey,
   deriveStorageKey,
   encryptProfileName,
+  encryptPhoneNumberSharing,
 } from '../crypto';
 import {
   EnvelopeType,
@@ -105,6 +106,7 @@ export type Config = Readonly<{
     profileKey: ProfileKey;
     groupParams: GroupSecretParams;
   }) => Promise<ProfileKeyCredentialPresentation>;
+  getProfile: (aci: AciString, version: string) => VersionedProfile | undefined;
   setProfile: (aci: AciString, profile: VersionedProfile) => void;
 
   getGroup: (
@@ -195,6 +197,7 @@ export type CreateGroupOptions = Readonly<{
   members: ReadonlyArray<PrimaryDevice>;
   addFromInviteLink?: Proto.AccessControl.AccessRequired;
   inviteLinkPassword?: Uint8Array<ArrayBuffer>;
+  administrators?: ReadonlyArray<PrimaryDevice>;
 }>;
 
 export type SendUpdateToList = ReadonlyArray<
@@ -967,6 +970,7 @@ export class PrimaryDevice {
     members: memberDevices,
     addFromInviteLink,
     inviteLinkPassword,
+    administrators = memberDevices,
   }: CreateGroupOptions): Promise<Group> {
     const groupParams = GroupSecretParams.generate();
 
@@ -985,6 +989,9 @@ export class PrimaryDevice {
           profileKey,
           presentation,
           joinedAtVersion: 0n,
+          role: administrators.includes(member)
+            ? Proto.Member.Role.ADMINISTRATOR
+            : Proto.Member.Role.DEFAULT,
         };
       }),
     );
@@ -1001,6 +1008,23 @@ export class PrimaryDevice {
     await this.config.createGroup(clientGroup.state);
 
     return clientGroup;
+  }
+
+  public setPhoneNumberSharing(everybody: boolean): void {
+    const { aci } = this.device;
+    const profileVersion = this.profileKey
+      .getProfileKeyVersion(Aci.parseFromServiceIdString(aci))
+      .toString();
+    const profile = this.config.getProfile(aci, profileVersion);
+    assert(profile, 'Expected an initialized profile');
+
+    this.config.setProfile(aci, {
+      ...profile,
+      phoneNumberSharing: encryptPhoneNumberSharing(
+        this.profileKey.serialize(),
+        everybody,
+      ),
+    });
   }
 
   public async waitForGroupUpdate(group: Group): Promise<Group> {

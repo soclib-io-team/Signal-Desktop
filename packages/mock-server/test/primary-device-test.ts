@@ -92,6 +92,9 @@ async function createPrimaryDevice(name: string): Promise<PrimaryDevice> {
     async getProfileKeyPresentation() {
       throw new Error('Not implemented');
     },
+    getProfile() {
+      return undefined;
+    },
     setProfile() {
       // Profiles aren't stored in these tests
     },
