@@ -8,7 +8,10 @@ import { userConfig } from '../user_config.main.ts';
 import { createConfigSchema } from './config.std.ts';
 import { Environment, getEnvironment } from '../../ts/environment.std.ts';
 import { createSessionStore } from './storage.node.ts';
-import { handleConnectionRequest } from './handler.std.ts';
+import {
+  handleConnectionRequest,
+  handleMembersRequest,
+} from './handler.std.ts';
 import { VanguardConnection } from './connection.node.ts';
 import type { ConnectionState } from '../../ts/vanguard/types.std.ts';
 
@@ -59,6 +62,23 @@ export function installVanguard(
     ) {
       clearVanguard();
     }
+  });
+  ipcMain.handle('vanguard:members', (event, request) => {
+    const window = getWindow();
+    return handleMembersRequest(
+      Boolean(
+        window &&
+        event.sender === window.webContents &&
+        event.senderFrame === window.webContents.mainFrame
+      ),
+      request,
+      value =>
+        connection?.requestMembers(value) ?? {
+          status: 'error',
+          loaded: 0,
+          message: 'Connect Vanguard to load members.',
+        }
+    );
   });
   ipcMain.handle(
     'vanguard:connection',

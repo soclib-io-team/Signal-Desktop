@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { strict as assert } from 'node:assert';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { VanguardConnection } from '../../../app/vanguard/connection.node.ts';
 import {
@@ -55,6 +55,17 @@ function fixture(saved?: Session) {
     });
   let contextResponse = () => json(context);
   let metadataResponse = () => json(metadata);
+  let membersResponse = () =>
+    json({
+      members: [],
+      meta: {
+        snapshot_id: 'snapshot',
+        as_of: '2026-10-14T12:00:00Z',
+        visibility: 'authorized_subset',
+        total_count: 0,
+        next_cursor: null,
+      },
+    });
   let browser: (url: string) => Promise<void> = async value => {
     const url = new URL(value);
     const callback = new URL(required(url.searchParams.get('redirect_uri')));
@@ -90,6 +101,7 @@ function fixture(saved?: Session) {
     if (url.endsWith('/oauth/token')) {
       return tokenResponse();
     }
+    if (url.includes('/signal/members?')) return membersResponse();
     if (url.endsWith('/context')) {
       return contextResponse();
     }
@@ -120,6 +132,9 @@ function fixture(saved?: Session) {
     set contextResponse(value: typeof contextResponse) {
       contextResponse = value;
     },
+    set membersResponse(value: typeof membersResponse) {
+      membersResponse = value;
+    },
     set metadataResponse(value: typeof metadataResponse) {
       metadataResponse = value;
     },
@@ -139,6 +154,77 @@ function session(overrides: Partial<Session> = {}): Session {
 }
 
 describe('Vanguard OAuth connection', () => {
+  it('loads members only on entry, uses authenticated no-store requests, and clears them on disconnect', async () => {
+    const f = fixture(session());
+    await f.service.act('status', account);
+    assert(!f.calls.some(call => call.url.includes('/signal/members')));
+    const requestId = randomUUID();
+    f.service.requestMembers({ action: 'start', account, requestId });
+    for (let i = 0; i < 100; i += 1) {
+      if (
+        f.service.requestMembers({ action: 'read', account, requestId })
+          .status !== 'loading'
+      )
+        break;
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
+    assert.equal(
+      f.service.requestMembers({ action: 'read', account, requestId }).status,
+      'ready'
+    );
+    const call = required(
+      f.calls.find(value => value.url.includes('/signal/members'))
+    );
+    assert.equal(call.url, `${issuer}/api/v1/signal/members?limit=1000`);
+    assert.equal(
+      new Headers(call.options?.headers).get('Authorization'),
+      'Bearer old-access'
+    );
+    assert.equal(call.options?.cache, 'no-store');
+    assert.equal(call.options?.redirect, 'error');
+    await f.service.act('disconnect', account);
+    assert.equal(
+      f.service.requestMembers({ action: 'read', account, requestId }).status,
+      'cancelled'
+    );
+  });
+
+  it('does not fetch roster bodies with missing capabilities or a stale Signal account', async () => {
+    const f = fixture(session());
+    f.contextResponse = () =>
+      json({
+        ...context,
+        capabilities: { ...context.capabilities, read_signal_mappings: false },
+      });
+    await f.service.act('status', account);
+    const requestId = randomUUID();
+    assert.equal(
+      f.service.requestMembers({
+        action: 'start',
+        account: randomUUID(),
+        requestId,
+      }).status,
+      'cancelled'
+    );
+    f.service.requestMembers({ action: 'start', account, requestId });
+    for (let i = 0; i < 100; i += 1) {
+      if (
+        f.service.requestMembers({ action: 'read', account, requestId })
+          .status !== 'loading'
+      )
+        break;
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
+    const result = f.service.requestMembers({
+      action: 'read',
+      account,
+      requestId,
+    });
+    assert.equal(result.status, 'error');
+    assert.match(result.message ?? '', /read access is required/);
+    assert(!f.calls.some(call => call.url.includes('/signal/members')));
+  });
+
   it('accepts identity-only context and never requests a roster', async () => {
     const f = fixture(session());
     const state = await f.service.act('status', account);
