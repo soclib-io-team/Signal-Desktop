@@ -21,7 +21,10 @@ import { BackupLevel } from './services/backups/types.std.ts';
 import { fromHex } from './Bytes.std.ts';
 
 import type { IPCResponse as ChallengeResponseType } from './challenge.dom.ts';
-import type { MessageAttributesType } from './model-types.d.ts';
+import type {
+  ConversationAttributesType,
+  MessageAttributesType,
+} from './model-types.d.ts';
 import type { SocketStatuses } from './textsecure/SocketManager.preload.ts';
 import type { RestoreResponseType } from './textsecure/WebAPI.preload.ts';
 import { runStorageServiceSyncJob } from './services/storage.preload.ts';
@@ -33,6 +36,10 @@ type ResolveType = (data: unknown) => void;
 export type CIType = {
   deviceName: string;
   getConversationId: (address: string | null) => string | null;
+  getConversationAttributes: (
+    address: string,
+    refreshProfile?: boolean
+  ) => Promise<ConversationAttributesType | undefined>;
   createNotificationToken: (address: string) => string | undefined;
   getMessagesBySentAt: (
     sentAt: number
@@ -184,6 +191,17 @@ export function getCI({
     return window.ConversationController.getConversationId(address);
   }
 
+  async function getConversationAttributes(
+    address: string,
+    refreshProfile = false
+  ) {
+    const conversation = window.ConversationController.get(address);
+    if (refreshProfile) {
+      await conversation?.getProfiles();
+    }
+    return conversation?.attributes;
+  }
+
   function createNotificationToken(address: string): string | undefined {
     const id = window.ConversationController.getConversationId(address);
     if (!id) {
@@ -308,6 +326,7 @@ export function getCI({
   return {
     deviceName,
     getConversationId,
+    getConversationAttributes,
     createNotificationToken,
     getMessagesBySentAt,
     getSocketStatus,

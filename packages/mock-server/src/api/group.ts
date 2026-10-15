@@ -23,6 +23,7 @@ export type GroupOptions = Readonly<{
 }>;
 
 export type GroupMember = Readonly<{
+  role?: Proto.Member.Role;
   presentation: ProfileKeyCredentialPresentation;
   profileKey: ProfileKey;
   aci: AciString;
@@ -102,9 +103,9 @@ export class Group extends GroupData {
         memberLabel: AccessRequired.MEMBER,
       },
 
-      members: members.map(({ presentation }) => {
+      members: members.map(({ presentation, role }) => {
         return {
-          role: Proto.Member.Role.ADMINISTRATOR,
+          role: role ?? Proto.Member.Role.ADMINISTRATOR,
           presentation: presentation.serialize(),
           userId: null,
           profileKey: null,

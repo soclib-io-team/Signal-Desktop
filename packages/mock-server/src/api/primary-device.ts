@@ -64,6 +64,7 @@ import {
   deriveMasterKey,
   deriveStorageKey,
   encryptProfileName,
+  encryptPhoneNumberSharing,
 } from '../crypto';
 import {
   EnvelopeType,
@@ -192,6 +193,7 @@ export type EncryptTextOptions = EncryptOptions &
 export type CreateGroupOptions = Readonly<{
   title: string;
   members: ReadonlyArray<PrimaryDevice>;
+  administrators?: ReadonlyArray<PrimaryDevice>;
 }>;
 
 export type SendUpdateToList = ReadonlyArray<
@@ -962,6 +964,7 @@ export class PrimaryDevice {
   public async createGroup({
     title,
     members: memberDevices,
+    administrators = memberDevices,
   }: CreateGroupOptions): Promise<Group> {
     const groupParams = GroupSecretParams.generate();
 
@@ -975,6 +978,9 @@ export class PrimaryDevice {
           profileKey: member.profileKey,
           presentation,
           joinedAtVersion: 0n,
+          role: administrators.includes(member)
+            ? Proto.Member.Role.ADMINISTRATOR
+            : Proto.Member.Role.DEFAULT,
         };
       }),
     );
@@ -989,6 +995,13 @@ export class PrimaryDevice {
     await this.config.createGroup(clientGroup.state);
 
     return clientGroup;
+  }
+
+  public setPhoneNumberSharing(everybody: boolean): void {
+    this.device.phoneNumberSharing = encryptPhoneNumberSharing(
+      this.profileKey.serialize(),
+      everybody,
+    );
   }
 
   public async waitForGroupUpdate(group: Group): Promise<Group> {

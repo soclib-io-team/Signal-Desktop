@@ -394,6 +394,13 @@ export function encryptProfileName(
   return encrypted;
 }
 
+export function encryptPhoneNumberSharing(
+  profileKey: Uint8Array<ArrayBuffer>,
+  everybody: boolean,
+): Buffer<ArrayBuffer> {
+  return encryptAESGCM(Buffer.from([everybody ? 1 : 0]), profileKey);
+}
+
 export function generateAccessKeyVerifier(
   accessKey: Buffer<ArrayBuffer>,
 ): Buffer<ArrayBuffer> {

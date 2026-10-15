@@ -48,6 +48,7 @@
     "test-release": "node scripts/test-release.mjs",
     "test-node": "cross-env NODE_ENV=test NODE_OPTIONS='--import=tsx' LANG=en-us electron-mocha --timeout 10000  --extension ts,tsx,js,mjs --file ts/test-node/setup.preload.ts --recursive ts/test-node scripts/**/*_test.mjs",
     "test-mock": "node scripts/mocha-separator.mjs --require ts/test-mock/setup-ci.node.ts -- ts/test-mock/**/*_test.node.ts",
+    "seed:mock": "tsc -p packages/mock-server/tsconfig.json --types node,mocha && rolldown -c && node --import=tsx ts/test-mock/seed.node.ts",
     "test-mock-docker": "mocha --require ts/test-mock/setup-ci.node.ts ts/test-mock/**/*_test.docker.node.ts",
     "test-oxlint": "mocha --require .oxlint/test-setup.mjs .oxlint/rules/**/*.test.mjs",
     "test-lint-intl": "tsx ./build/intl-linter/linter.node.ts --test",

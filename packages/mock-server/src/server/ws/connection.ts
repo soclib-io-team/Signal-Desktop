@@ -125,6 +125,7 @@ export class Connection extends Service {
         200,
         {
           name: target.profileName?.toString('base64'),
+          phoneNumberSharing: target.phoneNumberSharing?.toString('base64'),
           identityKey: Buffer.from(identityKey.serialize()).toString('base64'),
           unrestrictedUnidentifiedAccess: false,
           unidentifiedAccess: target.accessKey
@@ -175,6 +176,9 @@ export class Connection extends Service {
 
         primaryDevice.profileName = name
           ? Buffer.from(name, 'base64')
+          : undefined;
+        primaryDevice.phoneNumberSharing = data.phoneNumberSharing
+          ? Buffer.from(data.phoneNumberSharing, 'base64')
           : undefined;
         // Note: The other fields on UpdateProfileSchema are currently not saved on device
 
