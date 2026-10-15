@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { JSX } from 'react';
+import { AxoList } from '../axo/items/AxoList.dom.tsx';
+import { AxoItem } from '../axo/items/AxoItem.dom.tsx';
+import { AxoButton } from '../axo/AxoButton.dom.tsx';
 import { tw } from '../axo/tw.dom.tsx';
 import type { GroupConnectionState, VanguardGroup } from './groups.std.ts';
 
@@ -27,51 +30,51 @@ export function ConnectedGroups({
     (a.group?.title ?? '').localeCompare(b.group?.title ?? '')
   );
   return (
-    <section
-      aria-label="Groups connected to Vanguard"
-      className={tw('flex flex-col gap-3 p-4')}
-    >
-      <h3 className={tw('font-semibold')}>Groups connected to Vanguard</h3>
-      {state.error && <p role="alert">{state.error}</p>}
-      {groups.length === 0 ? (
-        <p>
-          No groups connected yet. Choose “Connect to Vanguard” from a group’s
-          menu to add it here.
-        </p>
-      ) : (
-        <ul className={tw('flex flex-col gap-3')}>
-          {groups.map(({ id, group }) => (
-            <li
-              key={id}
-              className={tw(
-                'flex flex-wrap items-center justify-between gap-3 rounded-sm border p-3'
-              )}
-            >
-              <div className={tw('min-w-0 flex-1 wrap-break-word')}>
-                <p className={tw('font-semibold')}>
-                  {group?.title ?? 'Unavailable group'}
-                </p>
-                <p>
-                  {group?.membersCount === undefined
-                    ? 'Member count unavailable'
-                    : `${group.membersCount} ${group.membersCount === 1 ? 'member' : 'members'}`}
-                </p>
-              </div>
-              <button
-                type="button"
-                aria-label={`Disconnect ${group?.title ?? 'unavailable group'} from Vanguard`}
-                className={tw(
-                  'rounded-sm border px-3 py-2 disabled:opacity-50'
-                )}
-                disabled={state.busy}
-                onClick={() => onDisconnect(id)}
-              >
-                Disconnect
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <AxoList.Root accessibilityLabel="Groups connected to Vanguard">
+      <AxoList.Header>
+        <AxoList.Label>Groups connected to Vanguard</AxoList.Label>
+      </AxoList.Header>
+      <AxoList.Body>
+        {state.error && (
+          <p role="alert" className={tw('p-3 type-body-small text-secondary')}>
+            {state.error}
+          </p>
+        )}
+        {groups.length === 0 ? (
+          <p className={tw('p-3 type-body-medium text-secondary')}>
+            No groups connected yet. Choose “Connect to Vanguard” from a group’s
+            menu to add it here.
+          </p>
+        ) : (
+          <AxoItem.Group>
+            {groups.map(({ id, group }) => (
+              <AxoItem.Root key={id} disabled={state.busy}>
+                <AxoItem.Content>
+                  <AxoItem.Label>
+                    {group?.title ?? 'Unavailable group'}
+                  </AxoItem.Label>
+                  <AxoItem.Description>
+                    {group?.membersCount === undefined
+                      ? 'Member count unavailable'
+                      : `${group.membersCount} ${group.membersCount === 1 ? 'member' : 'members'}`}
+                  </AxoItem.Description>
+                  <AxoItem.Accessory>
+                    <AxoButton.Root
+                      variant="subtle-secondary"
+                      size="md"
+                      aria-label={`Disconnect ${group?.title ?? 'unavailable group'} from Vanguard`}
+                      disabled={state.busy}
+                      onClick={() => onDisconnect(id)}
+                    >
+                      Disconnect
+                    </AxoButton.Root>
+                  </AxoItem.Accessory>
+                </AxoItem.Content>
+              </AxoItem.Root>
+            ))}
+          </AxoItem.Group>
+        )}
+      </AxoList.Body>
+    </AxoList.Root>
   );
 }

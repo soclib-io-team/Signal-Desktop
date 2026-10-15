@@ -27,6 +27,8 @@ const scopes = 'api:read members:read signal_mappings:read';
 const context = {
   user_id: 'user-1',
   member_id: 'member-1',
+  email: 'john@example.com',
+  full_name: 'John Doe',
   capabilities: {
     read_members: true,
     read_signal_mappings: true,

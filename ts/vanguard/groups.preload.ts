@@ -81,13 +81,18 @@ export function useVanguardGroups(): Readonly<{
 
   const setConnected = useCallback(
     async (id: string, connected: boolean) => {
-      await controller.setConnected(id, connected, () => {
+      const saved = await controller.setConnected(id, connected, () => {
         const group = window.ConversationController.get(id)?.format();
         // Disconnect is local cleanup and remains available after losing admin
         // status or leaving/deleting a group. Connecting requires current admin.
         return !connected || Boolean(group && canConnectGroup(group));
       });
-      if (controller.getSnapshot().error) {
+      if (saved) {
+        showToast({
+          toastType: ToastType.VanguardGroupConnection,
+          parameters: { connected },
+        });
+      } else if (controller.getSnapshot().error) {
         showToast({ toastType: ToastType.Error });
       }
     },

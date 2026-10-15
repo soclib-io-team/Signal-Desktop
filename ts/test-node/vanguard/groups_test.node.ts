@@ -73,6 +73,28 @@ function fixture(initial?: GroupConnections) {
 }
 
 describe('Vanguard connected groups', () => {
+  it('reports success only after saving, and not for skipped or failed changes', async () => {
+    const f = fixture();
+    assert.equal(
+      await f.controller.setConnected('group-a', true, () => true),
+      false
+    );
+    await f.controller.request('status', account);
+    assert.equal(
+      await f.controller.setConnected('group-a', true, () => true),
+      true
+    );
+    assert.equal(
+      await f.controller.setConnected('group-a', false, () => true),
+      true
+    );
+    f.failSave = true;
+    assert.equal(
+      await f.controller.setConnected('group-a', true, () => true),
+      false
+    );
+  });
+
   it('persists selections and restores them after restart without provider roster calls', async () => {
     const f = fixture();
     await f.controller.request('status', account);

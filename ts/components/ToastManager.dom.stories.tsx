@@ -290,6 +290,8 @@ function getToast(toastType: ToastType): AnyToast {
           group: 'Hike Group 🏔',
         },
       };
+    case ToastType.VanguardGroupConnection:
+      return { toastType, parameters: { connected: true } };
     case ToastType.VideoFileSize:
       return {
         toastType: ToastType.VideoFileSize,

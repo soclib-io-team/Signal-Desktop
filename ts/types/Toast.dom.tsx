@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 export enum ToastType {
+  VanguardGroupConnection = 'VanguardGroupConnection',
   AddingUserToGroup = 'AddingUserToGroup',
   AddedUsersToCall = 'AddedUsersToCall',
   AlreadyGroupMember = 'AlreadyGroupMember',
@@ -108,6 +109,10 @@ export enum ToastType {
 }
 
 export type AnyToast =
+  | {
+      toastType: ToastType.VanguardGroupConnection;
+      parameters: { connected: boolean };
+    }
   | { toastType: ToastType.AddingUserToGroup; parameters: { contact: string } }
   | {
       toastType: ToastType.AddedUsersToCall;
