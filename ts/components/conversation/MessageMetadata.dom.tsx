@@ -14,13 +14,13 @@ import { ExpireTimer } from './ExpireTimer.dom.tsx';
 import { MessageTimestamp } from './MessageTimestamp.dom.tsx';
 import { PanelType } from '../../types/Panels.std.ts';
 import { Spinner } from '../Spinner.dom.tsx';
-import { AxoAlertDialog } from '../../axo/AxoAlertDialog.dom.tsx';
+import { AxoAlertDialog } from '../../axo/dialogs/AxoAlertDialog.dom.tsx';
 import { refMerger } from '../../util/refMerger.std.ts';
 import type { Size } from '../../hooks/useSizeObserver.dom.tsx';
 import { SizeObserver } from '../../hooks/useSizeObserver.dom.tsx';
 import { AxoSymbol } from '../../axo/AxoSymbol.dom.tsx';
 import { tw } from '../../axo/tw.dom.tsx';
-import { AxoConfirmDialog } from '../../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 type PropsType = {
   canRetryDeleteForEveryone: boolean;
@@ -52,6 +52,26 @@ type PropsType = {
 enum ConfirmationType {
   EditError = 'EditError',
   DeleteError = 'DeleteError',
+}
+
+const MessageMetaDataStatusIconClassNames: Record<
+  MessageStatusType,
+  string | null
+> = {
+  delivered: 'module-message__metadata__status-icon--delivered',
+  error: null,
+  paused: 'module-message__metadata__status-icon--paused',
+  'partial-sent': null,
+  read: 'module-message__metadata__status-icon--read',
+  sending: 'module-message__metadata__status-icon--sending',
+  sent: 'module-message__metadata__status-icon--sent',
+  viewed: 'module-message__metadata__status-icon--viewed',
+};
+
+export function getMessageMetadataStatusIconClassName(
+  status: MessageStatusType
+): string | null {
+  return MessageMetaDataStatusIconClassNames[status];
 }
 
 export const MessageMetadata = forwardRef<HTMLDivElement, Readonly<PropsType>>(
@@ -88,7 +108,6 @@ export const MessageMetadata = forwardRef<HTMLDivElement, Readonly<PropsType>>(
       ConfirmationType | undefined
     >();
     const withImageNoCaption = !isSticker && !hasText && isShowingImage;
-    const metadataDirection = isSticker ? undefined : direction;
 
     let timestampNode: ReactNode;
     {
@@ -167,12 +186,9 @@ export const MessageMetadata = forwardRef<HTMLDivElement, Readonly<PropsType>>(
       } else {
         timestampNode = (
           <MessageTimestamp
-            direction={metadataDirection}
             i18n={i18n}
-            isOutlineOnlyBubble={isOutlineOnlyBubble}
-            module="module-message__metadata__date"
+            className="module-message__metadata__date"
             timestamp={timestamp}
-            withImageNoCaption={withImageNoCaption}
             withSticker={isSticker}
           />
         );
@@ -289,7 +305,7 @@ export const MessageMetadata = forwardRef<HTMLDivElement, Readonly<PropsType>>(
           <div
             className={classNames(
               'module-message__metadata__status-icon',
-              `module-message__metadata__status-icon--${status}`
+              status != null && MessageMetaDataStatusIconClassNames[status]
             )}
           />
         ) : null}

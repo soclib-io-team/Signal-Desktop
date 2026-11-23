@@ -4,12 +4,12 @@
 import type {
   ConversationAttributesType,
   ConversationRenderInfoType,
-} from '../model-types.d.ts';
+} from '../model-types.std.ts';
 import { combineNames } from './combineNames.std.ts';
 import { getRegionCodeForNumber } from './libphonenumberUtil.std.ts';
 import { instance, PhoneNumberFormat } from './libphonenumberInstance.std.ts';
 import { isDirectConversation } from './whatTypeOfConversation.dom.ts';
-import { isConversationEverUnregistered } from './isConversationUnregistered.dom.ts';
+import { isConversationEverUnregistered } from './isConversationEverUnregistered.std.ts';
 import { getE164 } from './getE164.std.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
 
@@ -62,7 +62,9 @@ export function getTitleNoDefault(
     (isShort ? attributes.profileName : undefined) ||
     getProfileName(attributes) ||
     getNumber(attributes) ||
-    username
+    username ||
+    (isShort ? (attributes.sharedGivenName ?? undefined) : undefined) ||
+    getSharedName(attributes)
   );
 }
 
@@ -145,6 +147,22 @@ function getSystemName(
   return undefined;
 }
 
+// Low-trust name from a shared contact message, only used as a last resort
+function getSharedName(
+  attributes: Pick<
+    ConversationAttributesType,
+    'sharedGivenName' | 'sharedFamilyName' | 'type'
+  >
+): string | undefined {
+  if (isDirectConversation(attributes)) {
+    return combineNames(
+      attributes.sharedGivenName ?? undefined,
+      attributes.sharedFamilyName ?? undefined
+    );
+  }
+  return undefined;
+}
+
 export function getNumber(
   attributes: Pick<
     ConversationAttributesType,
@@ -203,4 +221,35 @@ export function hasUsernameTitle(
     !getNumber(attributes) &&
     Boolean(attributes.username)
   );
+}
+
+// Shared names are low-trust, so we only keep them while we know nothing else
+export function canHaveSharedName(
+  attributes: Pick<
+    ConversationAttributesType,
+    | 'type'
+    | 'name'
+    | 'profileName'
+    | 'profileFamilyName'
+    | 'e164'
+    | 'systemGivenName'
+    | 'systemFamilyName'
+    | 'systemNickname'
+    | 'nicknameGivenName'
+    | 'nicknameFamilyName'
+    | 'username'
+  >
+): boolean {
+  return (
+    !getNicknameName(attributes) &&
+    !getSystemName(attributes) &&
+    !getProfileName(attributes) &&
+    !attributes.username
+  );
+}
+
+export function hasSharedNameTitle(
+  attributes: ConversationAttributesType
+): boolean {
+  return canHaveSharedName(attributes) && Boolean(getSharedName(attributes));
 }

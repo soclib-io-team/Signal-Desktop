@@ -3,7 +3,7 @@
 
 import type { JSX } from 'react';
 import type { LocalizerType } from '../types/Util.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 export function AddGroupMemberMaximumGroupSizeErrorDialog(props: {
   i18n: LocalizerType;
@@ -20,7 +20,7 @@ export function AddGroupMemberMaximumGroupSizeErrorDialog(props: {
         max: props.maximumNumberOfContacts,
       })}
     >
-      <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+      <AxoConfirmDialog.Ok />
     </AxoConfirmDialog.Root>
   );
 }
@@ -43,7 +43,7 @@ export function AddGroupMemberRecommendedMaximumGroupSizeErrorDialog(props: {
         { max: props.recommendedMaximumNumberOfContacts }
       )}
     >
-      <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+      <AxoConfirmDialog.Ok />
     </AxoConfirmDialog.Root>
   );
 }

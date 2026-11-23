@@ -9,7 +9,7 @@ import type { PropsType as TimelineItemProps } from './TimelineItem.dom.tsx';
 import { TimelineItem } from './TimelineItem.dom.tsx';
 import { UniversalTimerNotification } from './UniversalTimerNotification.dom.tsx';
 import { CallMode } from '../../types/CallDisposition.std.ts';
-import { AvatarColors } from '../../types/Colors.std.ts';
+import { AvatarColors } from '../../types/Avatar.std.ts';
 import { getDefaultConversation } from '../../test-helpers/getDefaultConversation.std.ts';
 import { WidthBreakpoint } from '../_util.std.ts';
 import { ThemeType } from '../../types/Util.std.ts';
@@ -50,6 +50,7 @@ const getDefaultProps = () => ({
   isTargeted: false,
   isBlocked: false,
   isGroup: false,
+  isFavoriteSticker: false,
   interactivity: MessageInteractivity.Normal,
   interactionMode: 'keyboard' as const,
   targetedMessage: null,
@@ -61,10 +62,10 @@ const getDefaultProps = () => ({
   toggleSelectMessage: action('toggleSelectMessage'),
   endPoll: action('endPoll'),
   reactToMessage: action('reactToMessage'),
-  checkForAccount: action('checkForAccount'),
   clearTargetedMessage: action('clearTargetedMessage'),
   setMessageToEdit: action('setMessageToEdit'),
   setQuoteByMessageId: action('setQuoteByMessageId'),
+  replyPrivately: action('replyPrivately'),
   copyMessageText: action('copyMessageText'),
   retryDeleteForEveryone: action('retryDeleteForEveryone'),
   retryMessageSend: action('retryMessageSend'),
@@ -73,6 +74,7 @@ const getDefaultProps = () => ({
   cancelAttachmentDownload: action('cancelAttachmentDownload'),
   kickOffAttachmentDownload: action('kickOffAttachmentDownload'),
   markAttachmentAsCorrupted: action('markAttachmentAsCorrupted'),
+  markStickerAsFavorite: action('markStickerAsFavorite'),
   messageExpanded: action('messageExpanded'),
   showConversation: action('showConversation'),
   openGiftBadge: action('openGiftBadge'),
@@ -109,7 +111,9 @@ const getDefaultProps = () => ({
   scrollToPollMessage: action('scrollToPollMessage'),
   scrollToQuotedMessage: action('scrollToQuotedMessage'),
   showSpoiler: action('showSpoiler'),
-  startConversation: action('startConversation'),
+  startConversationWithSharedContact: action(
+    'startConversationWithSharedContact'
+  ),
   renderItem: () => {
     throw new Error('not implemented');
   },

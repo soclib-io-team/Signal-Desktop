@@ -112,12 +112,16 @@ import type {
   ViewSyncEventData,
 } from './messageReceiverEvents.std.ts';
 import {
+  AttachmentBackfillRequestSyncEvent,
   AttachmentBackfillResponseSyncEvent,
+  BlockSyncRequestEvent,
   CallEventSyncEvent,
   CallLinkUpdateSyncEvent,
   CallLogEventSyncEvent,
   ConfigurationEvent,
+  ConfigurationRequestEvent,
   ContactSyncEvent,
+  ContactSyncRequestEvent,
   DecryptionErrorEvent,
   DeleteForMeSyncEvent,
   DeliveryEvent,
@@ -129,6 +133,7 @@ import {
   FetchLatestEvent,
   InvalidPlaintextEvent,
   KeysEvent,
+  KeysRequestEvent,
   MessageEvent,
   MessageRequestResponseEvent,
   ProfileKeyUpdateEvent,
@@ -182,7 +187,7 @@ import {
   SentTimestampMs,
   ServerTimestampMs,
 } from '@signalapp/types';
-import type { ConversationAttributesTypeType } from '../model-types.d.ts';
+import type { ConversationAttributesTypeType } from '../model-types.std.ts';
 
 const { isBoolean, isNumber, isString, noop } = lodash;
 
@@ -260,6 +265,8 @@ const MUST_BE_URGENT_TYPES: Array<SendTypesType> = [
   'readSync',
 ];
 const CAN_BE_URGENT_TYPES: Array<SendTypesType> = [
+  'attachmentBackfillRequestSync',
+  'attachmentBackfillResponseSync',
   'callingMessage',
   'senderKeyDistributionMessage',
 
@@ -627,6 +634,16 @@ export default class MessageReceiver
   ): void;
 
   public override addEventListener(
+    name: 'configurationRequest',
+    handler: (ev: ConfigurationRequestEvent) => void
+  ): void;
+
+  public override addEventListener(
+    name: 'blockSyncRequest',
+    handler: (ev: BlockSyncRequestEvent) => void
+  ): void;
+
+  public override addEventListener(
     name: 'viewOnceOpenSync',
     handler: (ev: ViewOnceOpenSyncEvent) => void
   ): void;
@@ -647,6 +664,11 @@ export default class MessageReceiver
   ): void;
 
   public override addEventListener(
+    name: 'keysRequest',
+    handler: (ev: KeysRequestEvent) => void
+  ): void;
+
+  public override addEventListener(
     name: 'sticker-pack',
     handler: (ev: StickerPackEvent) => void
   ): void;
@@ -664,6 +686,11 @@ export default class MessageReceiver
   public override addEventListener(
     name: 'contactSync',
     handler: (ev: ContactSyncEvent) => void
+  ): void;
+
+  public override addEventListener(
+    name: 'contactSyncRequest',
+    handler: (ev: ContactSyncRequestEvent) => void
   ): void;
 
   public override addEventListener(
@@ -699,6 +726,11 @@ export default class MessageReceiver
   public override addEventListener(
     name: 'deleteForMeSync',
     handler: (ev: DeleteForMeSyncEvent) => void
+  ): void;
+
+  public override addEventListener(
+    name: 'attachmentBackfillRequestSync',
+    handler: (ev: AttachmentBackfillRequestSyncEvent) => void
   ): void;
 
   public override addEventListener(
@@ -3062,6 +3094,10 @@ export default class MessageReceiver
 
       return this.#handleSentMessage(envelope, sentMessage);
     }
+
+    if (syncMessage.content?.request) {
+      return this.#handleSyncRequest(envelope, syncMessage.content.request);
+    }
     if (syncMessage.content?.contacts) {
       // Note: this method will download attachment and thus might block
       // message processing, but we would like to fully process contact sync
@@ -3070,11 +3106,6 @@ export default class MessageReceiver
     }
     if (syncMessage.content?.blocked) {
       return this._handleBlocked(envelope, syncMessage.content.blocked);
-    }
-    if (syncMessage.content?.request) {
-      log.info('Got SyncMessage Request');
-      this.#removeFromCache(envelope);
-      return;
     }
     if (syncMessage.read && syncMessage.read.length) {
       return this.#handleRead(envelope, syncMessage.read);
@@ -3145,6 +3176,12 @@ export default class MessageReceiver
       return this.#handleDeviceNameChangeSync(
         envelope,
         syncMessage.content.deviceNameChange
+      );
+    }
+    if (syncMessage.content?.attachmentBackfillRequest) {
+      return this.#handleAttachmentBackfillRequest(
+        envelope,
+        syncMessage.content.attachmentBackfillRequest
       );
     }
     if (syncMessage.content?.attachmentBackfillResponse) {
@@ -3807,6 +3844,44 @@ export default class MessageReceiver
     log.info('handleDeleteForMeSync: finished');
   }
 
+  async #handleAttachmentBackfillRequest(
+    envelope: ProcessedEnvelope,
+    request: Proto.SyncMessage.AttachmentBackfillRequest
+  ): Promise<void> {
+    const logId = getEnvelopeId(envelope);
+    log.info('handleAttachmentBackfillRequest', logId);
+
+    logUnexpectedUrgentValue(envelope, 'attachmentBackfillRequestSync');
+
+    const targetMessage =
+      request.targetMessage == null
+        ? undefined
+        : processAddressableMessage(request.targetMessage, logId);
+    const targetConversation =
+      request.targetConversation == null
+        ? undefined
+        : processConversationIdentifier(request.targetConversation, logId);
+
+    if (targetMessage == null || targetConversation == null) {
+      log.warn(
+        `handleAttachmentBackfillRequest(${logId}): ` +
+          'missing or invalid target, dropping'
+      );
+      this.#removeFromCache(envelope);
+      return;
+    }
+
+    const attachmentBackfillRequestSync =
+      new AttachmentBackfillRequestSyncEvent(
+        { targetMessage, targetConversation },
+        envelope.timestamp,
+        envelope.id,
+        this.#removeFromCache.bind(this, envelope)
+      );
+
+    await this.#dispatchAndWait(logId, attachmentBackfillRequestSync);
+  }
+
   async #handleAttachmentBackfillResponse(
     envelope: ProcessedEnvelope,
     response: Proto.SyncMessage.AttachmentBackfillResponse
@@ -3933,6 +4008,42 @@ export default class MessageReceiver
       this.#removeFromCache.bind(this, envelope)
     );
     await this.#dispatchAndWait(logId, usernameChangeEvent);
+  }
+
+  async #handleSyncRequest(
+    envelope: ProcessedEnvelope,
+    syncRequestProto: Proto.SyncMessage.Request
+  ) {
+    if (!window.ConversationController.areWePrimaryDevice()) {
+      log.info('Got SyncMessage Request');
+      this.#removeFromCache(envelope);
+      return;
+    }
+
+    const TYPE = Proto.SyncMessage.Request.Type;
+    const logId = `handleSyncRequest/${getEnvelopeId(envelope)}`;
+    log.info(logId);
+
+    let event;
+    const confirm = this.#removeFromCache.bind(this, envelope);
+    const { timestamp } = envelope;
+    const { type } = syncRequestProto;
+
+    if (type === TYPE.BLOCKED) {
+      event = new BlockSyncRequestEvent(timestamp, confirm);
+    } else if (type === TYPE.CONFIGURATION) {
+      event = new ConfigurationRequestEvent(timestamp, confirm);
+    } else if (type === TYPE.CONTACTS) {
+      event = new ContactSyncRequestEvent(timestamp, confirm);
+    } else if (type === TYPE.KEYS) {
+      event = new KeysRequestEvent(timestamp, confirm);
+    } else {
+      log.info(`${logId}: Unexpected type ${type}`);
+      this.#removeFromCache(envelope);
+      return;
+    }
+
+    await this.#dispatchAndWait(logId, event);
   }
 
   async #handleContacts(

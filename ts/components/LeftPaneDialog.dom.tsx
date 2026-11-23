@@ -3,11 +3,9 @@
 
 import type { ReactNode, JSX, MouseEvent, KeyboardEvent } from 'react';
 import classNames from 'classnames';
-import { Tooltip, TooltipPlacement } from './Tooltip.dom.tsx';
+import { Tooltip } from 'radix-ui';
 import { WidthBreakpoint } from './_util.std.ts';
 
-const BASE_CLASS_NAME = 'LeftPaneDialog';
-const TOOLTIP_CLASS_NAME = `${BASE_CLASS_NAME}__tooltip`;
 export type DismissOptions =
   | {
       onClose?: undefined;
@@ -19,6 +17,20 @@ export type DismissOptions =
       closeLabel: string;
       hasXButton: true;
     };
+
+type DialogType = 'warning' | 'error' | 'info';
+
+const DialogTypes: Record<DialogType, string> = {
+  warning: 'LeftPaneDialog--warning',
+  error: 'LeftPaneDialog--error',
+  info: 'LeftPaneDialog--info',
+};
+
+const DialogTypeTooltips: Record<DialogType, string> = {
+  error: 'LeftPaneDialog__tooltip--error',
+  warning: 'LeftPaneDialog__tooltip--warning',
+  info: 'LeftPaneDialog__tooltip--info',
+};
 
 export type PropsType = {
   type?: 'warning' | 'error' | 'info';
@@ -89,7 +101,7 @@ export function LeftPaneDialog({
       <button
         title={clickLabel}
         aria-label={clickLabel}
-        className={`${BASE_CLASS_NAME}__action-text`}
+        className="LeftPaneDialog__action-text"
         onClick={onClickWrap}
         tabIndex={0}
         type="button"
@@ -102,11 +114,11 @@ export function LeftPaneDialog({
   let xButton: ReactNode;
   if (hasXButton && containerWidthBreakpoint !== WidthBreakpoint.Narrow) {
     xButton = (
-      <div className={`${BASE_CLASS_NAME}__container-close`}>
+      <div className="LeftPaneDialog__container-close">
         <button
           title={closeLabel}
           aria-label={closeLabel}
-          className={`${BASE_CLASS_NAME}__close-button`}
+          className="LeftPaneDialog__close-button"
           onClick={onCloseWrap}
           tabIndex={0}
           type="button"
@@ -115,12 +127,15 @@ export function LeftPaneDialog({
     );
   }
 
-  const className = classNames(BASE_CLASS_NAME, {
-    [`${BASE_CLASS_NAME}--width-narrow`]:
-      containerWidthBreakpoint === WidthBreakpoint.Narrow,
-    [`${BASE_CLASS_NAME}--${type}`]: type != null,
-    [`${BASE_CLASS_NAME}--clickable`]: onClick != null,
-  });
+  const className = classNames(
+    'LeftPaneDialog',
+    type != null && DialogTypes[type],
+    {
+      'LeftPaneDialog--width-narrow':
+        containerWidthBreakpoint === WidthBreakpoint.Narrow,
+      'LeftPaneDialog--clickable': onClick != null,
+    }
+  );
 
   const message = (
     <>
@@ -132,9 +147,9 @@ export function LeftPaneDialog({
   );
   const content = (
     <>
-      <div className={`${BASE_CLASS_NAME}__container`}>
+      <div className="LeftPaneDialog__container">
         {icon ? (
-          <div className={`${BASE_CLASS_NAME}__icon-container`}>
+          <div className="LeftPaneDialog__icon-container">
             {typeof icon === 'string' ? (
               <LeftPaneDialogIcon type={icon} />
             ) : (
@@ -143,7 +158,7 @@ export function LeftPaneDialog({
           </div>
         ) : null}
         {containerWidthBreakpoint !== WidthBreakpoint.Narrow && (
-          <div className={`${BASE_CLASS_NAME}__message`}>{message}</div>
+          <div className="LeftPaneDialog__message">{message}</div>
         )}
       </div>
       {xButton}
@@ -175,44 +190,73 @@ export function LeftPaneDialog({
 
   if (containerWidthBreakpoint === WidthBreakpoint.Narrow) {
     return (
-      <Tooltip
-        content={message}
-        direction={TooltipPlacement.Right}
-        className={classNames(
-          TOOLTIP_CLASS_NAME,
-          type && `${TOOLTIP_CLASS_NAME}--${type}`
-        )}
-      >
-        {dialogNode}
-      </Tooltip>
+      <Tooltip.Root delayDuration={0}>
+        <Tooltip.Trigger asChild>{dialogNode}</Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            side="right"
+            sideOffset={8}
+            collisionPadding={12}
+            className={classNames(
+              'LeftPaneDialog__tooltip',
+              type != null && DialogTypeTooltips[type]
+            )}
+          >
+            {message}
+            <Tooltip.Arrow className="LeftPaneDialog__tooltip-arrow" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
     );
   }
 
   return dialogNode;
 }
 
+type DialogIconType = 'update' | 'relink' | 'network' | 'warning' | 'error';
+
+const DialogIconTypes: Record<DialogIconType, string> = {
+  update: 'LeftPaneDialog__icon--update',
+  relink: 'LeftPaneDialog__icon--relink',
+  network: 'LeftPaneDialog__icon--network',
+  warning: 'LeftPaneDialog__icon--warning',
+  error: 'LeftPaneDialog__icon--error',
+};
+
 export function LeftPaneDialogIcon({
   type,
 }: {
-  type?: 'update' | 'relink' | 'network' | 'warning' | 'error';
+  type?: DialogIconType;
 }): JSX.Element {
-  const iconClassName = classNames([
-    `${BASE_CLASS_NAME}__icon`,
-    `${BASE_CLASS_NAME}__icon--${type}`,
-  ]);
-  return <div className={iconClassName} />;
+  return (
+    <div
+      className={classNames(
+        'LeftPaneDialog__icon',
+        type != null && DialogIconTypes[type]
+      )}
+    />
+  );
 }
+
+type IconBackgroundType = 'warning';
+
+const IconBackgroundTypes: Record<IconBackgroundType, string> = {
+  warning: 'LeftPaneDialog__icon-background--warning',
+};
 
 export function LeftPaneDialogIconBackground({
   type,
   children,
 }: {
-  type?: 'warning';
+  type?: IconBackgroundType;
   children: ReactNode;
 }): JSX.Element {
   return (
     <div
-      className={`${BASE_CLASS_NAME}__icon-background ${BASE_CLASS_NAME}__icon-background--${type}`}
+      className={classNames(
+        'LeftPaneDialog__icon-background',
+        type != null && IconBackgroundTypes[type]
+      )}
     >
       {children}
     </div>

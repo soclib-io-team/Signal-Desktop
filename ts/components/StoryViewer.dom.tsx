@@ -1,7 +1,7 @@
 // Copyright 2022 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { FocusScope } from 'react-aria';
+import { FocusScope } from 'radix-ui/internal';
 import type { UIEvent, JSX, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import {
   useCallback,
@@ -14,7 +14,6 @@ import { tinykeys } from 'tinykeys';
 import classNames from 'classnames';
 import type { DraftBodyRanges } from '../types/BodyRange.std.ts';
 import type { LocalizerType } from '../types/Util.std.ts';
-import type { ContextMenuOptionType } from './ContextMenu.dom.tsx';
 import type {
   ConversationType,
   SaveAttachmentActionCreatorType,
@@ -22,12 +21,11 @@ import type {
 import type { PreferredBadgeSelectorType } from '../state/selectors/badges.preload.ts';
 import type { ReplyStateType, StoryViewType } from '../types/Stories.std.ts';
 import type { StoryDistributionIdString } from '../types/StoryDistributionId.std.ts';
-import type { ShowToastAction } from '../state/ducks/toast.preload.ts';
+import type { ShowToastAction } from '../state/ducks/toast.dom.ts';
 import type { ViewStoryActionCreatorType } from '../state/ducks/stories.preload.ts';
 import { createLogger } from '../logging/log.std.ts';
 import { AnimatedEmojiGalore } from './AnimatedEmojiGalore.dom.tsx';
 import { Avatar, AvatarSize } from './Avatar.dom.tsx';
-import { ContextMenu } from './ContextMenu.dom.tsx';
 import { I18n } from './I18n.dom.tsx';
 import { MessageTimestamp } from './conversation/MessageTimestamp.dom.tsx';
 import { SendStatus } from '../messages/MessageSendState.std.ts';
@@ -42,9 +40,8 @@ import {
   StoryViewTargetType,
 } from '../types/Stories.std.ts';
 import { StoryViewsNRepliesModal } from './StoryViewsNRepliesModal.dom.tsx';
-import { Theme } from '../util/theme.std.ts';
-import { ToastType } from '../types/Toast.dom.tsx';
-import { getAvatarColor } from '../types/Colors.std.ts';
+import { ToastType } from '../types/Toast.std.ts';
+import { getAvatarColor } from '../types/Avatar.std.ts';
 import { getStoryBackground } from '../util/getStoryBackground.std.ts';
 import { getStoryDuration } from '../util/getStoryDuration.dom.ts';
 import { isVideoAttachment } from '../util/Attachment.std.ts';
@@ -60,7 +57,10 @@ import { StoryProgressSegment } from './StoryProgressSegment.dom.tsx';
 import type { FunEmojiSelection } from './fun/panels/FunPanelEmojis.dom.tsx';
 import type { ContactModalStateType } from '../types/globalModals.std.ts';
 import type { Emoji } from '../axo/emoji.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
+import { AxoDropdownMenu } from '../axo/menus/AxoDropdownMenu.dom.tsx';
+import { AxoIconButton } from '../axo/AxoIconButton.dom.tsx';
+import { AxoTheme } from '../axo/AxoTheme.dom.tsx';
 
 const log = createLogger('StoryViewer');
 
@@ -130,7 +130,6 @@ export type PropsType = {
 
 const CAPTION_BUFFER = 20;
 const CAPTION_INITIAL_LENGTH = 200;
-const CAPTION_MAX_LENGTH = 700;
 const MOUSE_IDLE_TIME = 3000;
 
 enum Arrow {
@@ -249,9 +248,13 @@ export function StoryViewer({
       return;
     }
 
+    if (hasExpandedCaption) {
+      return { text: value, hasReadMore: false };
+    }
+
     return graphemeAndLinkAwareSlice(
       value,
-      hasExpandedCaption ? CAPTION_MAX_LENGTH : CAPTION_INITIAL_LENGTH,
+      CAPTION_INITIAL_LENGTH,
       CAPTION_BUFFER
     );
   }, [attachment?.caption, hasExpandedCaption]);
@@ -507,54 +510,58 @@ export function StoryViewer({
 
   const isSent = Boolean(sendState);
 
-  let contextMenuOptions:
-    | ReadonlyArray<ContextMenuOptionType<unknown>>
-    | undefined;
+  let contextMenuItems: JSX.Element | undefined;
 
   if (isSent) {
     // TODO: DESKTOP-9943
-    contextMenuOptions = [
-      {
-        icon: 'StoryListItem__icon--info',
-        label: i18n('icu:StoryListItem__info'),
-        onClick: () => setCurrentViewTarget(StoryViewTargetType.Details),
-      },
-      {
-        icon: 'StoryListItem__icon--delete',
-        label: i18n('icu:StoryListItem__delete'),
-        onClick: () => setConfirmDeleteStory(story),
-      },
-    ];
+    contextMenuItems = (
+      <>
+        <AxoDropdownMenu.Item
+          symbol="info"
+          onSelect={() => setCurrentViewTarget(StoryViewTargetType.Details)}
+        >
+          {i18n('icu:StoryListItem__info')}
+        </AxoDropdownMenu.Item>
+        <AxoDropdownMenu.Item
+          symbol="trash"
+          onSelect={() => setConfirmDeleteStory(story)}
+        >
+          {i18n('icu:StoryListItem__delete')}
+        </AxoDropdownMenu.Item>
+      </>
+    );
   } else if (!isSignalConversation) {
-    contextMenuOptions = [
-      {
-        icon: 'StoryListItem__icon--info',
-        label: i18n('icu:StoryListItem__info'),
-        onClick: () => setCurrentViewTarget(StoryViewTargetType.Details),
-      },
-      {
-        icon: isHidden
-          ? 'StoryListItem__icon--unhide'
-          : 'StoryListItem__icon--hide',
-        label: isHidden
-          ? i18n('icu:StoryListItem__unhide')
-          : i18n('icu:StoryListItem__hide'),
-        onClick: () => {
-          if (isHidden) {
-            onHideStory(conversationId);
-          } else {
-            setHasConfirmHideStory(true);
-          }
-        },
-      },
-      {
-        icon: 'StoryListItem__icon--chat',
-        label: i18n('icu:StoryListItem__go-to-chat'),
-        onClick: () => {
-          onGoToConversation(conversationId);
-        },
-      },
-    ];
+    contextMenuItems = (
+      <>
+        <AxoDropdownMenu.Item
+          symbol="info"
+          onSelect={() => setCurrentViewTarget(StoryViewTargetType.Details)}
+        >
+          {i18n('icu:StoryListItem__info')}
+        </AxoDropdownMenu.Item>
+        {isHidden ? (
+          <AxoDropdownMenu.Item
+            symbol="check-circle"
+            onSelect={() => onHideStory(conversationId)}
+          >
+            {i18n('icu:StoryListItem__unhide')}
+          </AxoDropdownMenu.Item>
+        ) : (
+          <AxoDropdownMenu.Item
+            symbol="x-circle"
+            onSelect={() => setHasConfirmHideStory(true)}
+          >
+            {i18n('icu:StoryListItem__hide')}
+          </AxoDropdownMenu.Item>
+        )}
+        <AxoDropdownMenu.Item
+          symbol="open"
+          onSelect={() => onGoToConversation(conversationId)}
+        >
+          {i18n('icu:StoryListItem__go-to-chat')}
+        </AxoDropdownMenu.Item>
+      </>
+    );
   }
 
   function doRetryMessageSend() {
@@ -586,10 +593,10 @@ export function StoryViewer({
   };
 
   return (
-    <FocusScope contain={currentViewTarget == null} autoFocus>
+    // Untrapped while the legacy replies modal (not a Radix layer) is open
+    <FocusScope.Root asChild trapped={currentViewTarget == null} loop>
       {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
-        className="StoryViewer"
         tabIndex={0}
         onMouseDown={event => {
           if (isDescendentEvent(event)) {
@@ -650,7 +657,7 @@ export function StoryViewer({
               isPaused={shouldPauseViewing}
               isMuted={isStoryMuted}
               label={i18n('icu:lightboxImageAlt')}
-              moduleClassName="StoryViewer__story"
+              className="StoryViewer__story"
               queueStoryDownload={queueStoryDownload}
               storyId={messageId}
               onMediaPlaybackStart={onMediaPlaybackStart}
@@ -669,7 +676,6 @@ export function StoryViewer({
             {hasExpandedCaption && (
               <button
                 aria-label={i18n('icu:close-popup')}
-                className="StoryViewer__CAPTION__overlay"
                 onClick={() => setHasExpandedCaption(false)}
                 type="button"
               />
@@ -713,7 +719,11 @@ export function StoryViewer({
 
           <div className="StoryViewer__meta">
             {caption && (
-              <div className="StoryViewer__caption">
+              <div
+                className={classNames('StoryViewer__caption', {
+                  'StoryViewer__caption--expanded': hasExpandedCaption,
+                })}
+              >
                 <MessageBody
                   bodyRanges={bodyRanges}
                   i18n={i18n}
@@ -779,7 +789,7 @@ export function StoryViewer({
                   <MessageTimestamp
                     i18n={i18n}
                     isRelativeTime
-                    module="StoryViewer__meta--timestamp"
+                    className="StoryViewer__meta--timestamp"
                     timestamp={timestamp}
                   />
                   {distributionList && (
@@ -821,15 +831,25 @@ export function StoryViewer({
                   }
                   type="button"
                 />
-                {contextMenuOptions && (
-                  <ContextMenu
-                    aria-label={i18n('icu:MyStories__more')}
-                    i18n={i18n}
-                    menuOptions={contextMenuOptions}
-                    moduleClassName="StoryViewer__more"
-                    onMenuShowingChanged={setIsShowingContextMenu}
-                    theme={Theme.Dark}
-                  />
+                {contextMenuItems && (
+                  <AxoTheme.Override theme="force-dark">
+                    <AxoDropdownMenu.Root
+                      open={isShowingContextMenu}
+                      onOpenChange={setIsShowingContextMenu}
+                    >
+                      <AxoDropdownMenu.Trigger>
+                        <AxoIconButton.Root
+                          variant="implied-secondary"
+                          size="sm"
+                          symbol="more"
+                          label={i18n('icu:MyStories__more')}
+                        />
+                      </AxoDropdownMenu.Trigger>
+                      <AxoDropdownMenu.Content>
+                        {contextMenuItems}
+                      </AxoDropdownMenu.Content>
+                    </AxoDropdownMenu.Root>
+                  </AxoTheme.Override>
                 )}
               </div>
             </div>
@@ -874,10 +894,7 @@ export function StoryViewer({
                 )}
               {sendStatus === ResolvedSendStatus.Sending && (
                 <div className="StoryViewer__sending">
-                  <Spinner
-                    moduleClassName="StoryViewer__sending__spinner"
-                    svgSize="small"
-                  />
+                  <Spinner svgSize="small" />
                   {i18n('icu:StoryViewer__sending')}
                 </div>
               )}
@@ -1042,6 +1059,6 @@ export function StoryViewer({
           </AxoConfirmDialog.Action>
         </AxoConfirmDialog.Root>
       </div>
-    </FocusScope>
+    </FocusScope.Root>
   );
 }

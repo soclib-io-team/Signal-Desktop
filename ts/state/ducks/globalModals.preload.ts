@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { CallSummary } from '@signalapp/ringrtc';
-import type { ThunkAction } from 'redux-thunk';
 import type { ReadonlyDeep } from 'type-fest';
 import { v7 as generateUuid } from 'uuid';
 import OS from '../../util/os/osMain.node.ts';
@@ -10,7 +9,7 @@ import type { ExplodePromiseResultType } from '../../util/explodePromise.std.ts'
 import type {
   GroupV2PendingMemberType,
   ReadonlyMessageAttributesType,
-} from '../../model-types.d.ts';
+} from '../../model-types.std.ts';
 import type {
   MessageChangedActionType,
   MessageDeletedActionType,
@@ -18,7 +17,6 @@ import type {
 import type { MessagePropsType } from '../selectors/message.preload.ts';
 import type { RecipientsByConversation } from './stories.preload.ts';
 import type { SafetyNumberChangeSource } from '../../types/SafetyNumberChangeSource.std.ts';
-import type { StateType as RootStateType } from '../reducer.preload.ts';
 import * as SingleServePromise from '../../services/singleServePromise.std.ts';
 import { isKeyTransparencyAvailable } from '../../services/keyTransparency.preload.ts';
 import * as Stickers from '../../types/Stickers.preload.ts';
@@ -66,7 +64,11 @@ import type { BackfillFailureModalKind } from '../../components/BackfillFailureM
 import type { SmartDraftGifMessageSendModalProps } from '../smart/DraftGifMessageSendModal.preload.tsx';
 import { onCriticalIdlePrimaryDeviceModalDismissed } from '../../util/handleServerAlerts.preload.ts';
 import type { PinMessageDialogData } from '../smart/PinMessageDialog.preload.tsx';
-import type { ActionCreator, StateThunk } from '../types.std.ts';
+import type {
+  ActionCreator,
+  AsyncStateThunk,
+  SyncStateThunk,
+} from '../types.std.ts';
 import { itemStorage } from '../../textsecure/Storage.preload.ts';
 import type { ErrorModalDataProps } from '../../components/ErrorModal.dom.tsx';
 import { isDownloadableOrBackfillable } from '../../util/downloadAttachment.preload.ts';
@@ -76,8 +78,8 @@ import { registrationJobQueue } from '../../jobs/registrationJobQueue.preload.ts
 import { toLogFormat } from '../../types/errors.std.ts';
 import { pinReminderService } from '../../services/pinReminder.preload.ts';
 import { drop } from '../../util/drop.std.ts';
-import { showToast, type ToastActionType } from './toast.preload.ts';
-import { ToastType } from '../../types/Toast.dom.tsx';
+import { showToast, type ToastActionType } from './toast.dom.ts';
+import { ToastType } from '../../types/Toast.std.ts';
 
 const log = createLogger('globalModals');
 
@@ -156,6 +158,7 @@ export type GlobalModalsStateType = ReadonlyDeep<{
   forwardMessagesProps?: ForwardMessagesPropsType;
   gv2MigrationProps?: MigrateToGV2PropsType;
   groupMemberLabelInfoModalState?: GroupMemberLabelInfoPropsType;
+  groupV2JoinDialogOpen: boolean;
   hasConfirmationModal: boolean;
   isPinChangeModalVisible: boolean;
   isProfileNameWarningModalVisible: boolean;
@@ -282,6 +285,7 @@ export const SHOW_TERMINATE_GROUP_FAILED_MODAL =
   'globalModals/SHOW_TERMINATE_GROUP_FAILED_MODAL';
 const HIDE_TERMINATE_GROUP_FAILED_MODAL =
   'globalModals/HIDE_TERMINATE_GROUP_FAILED_MODAL';
+const TOGGLE_GROUP_V2_JOIN_DIALOG = 'globalModals/TOGGLE_GROUP_V2_JOIN_DIALOG';
 
 export type UserNotFoundModalStateType = ReadonlyDeep<
   | {
@@ -597,6 +601,11 @@ type HideTerminateGroupFailedModalActionType = ReadonlyDeep<{
   type: typeof HIDE_TERMINATE_GROUP_FAILED_MODAL;
 }>;
 
+type ToggleGroupV2JoinDialogActionType = ReadonlyDeep<{
+  type: typeof TOGGLE_GROUP_V2_JOIN_DIALOG;
+  payload: boolean;
+}>;
+
 export type GlobalModalsActionType = ReadonlyDeep<
   | CloseEditHistoryModalActionType
   | CloseDebugLogErrorModalActionType
@@ -655,6 +664,7 @@ export type GlobalModalsActionType = ReadonlyDeep<
   | ToggleEditNicknameAndNoteModalActionType
   | ToggleForwardMessagesModalActionType
   | ToggleGroupMemberLabelInfoModalActionType
+  | ToggleGroupV2JoinDialogActionType
   | ToggleMessageRequestActionsConfirmationActionType
   | ToggleNotePreviewModalActionType
   | TogglePinReminderActionType
@@ -727,6 +737,7 @@ export const actions = {
   toggleEditNicknameAndNoteModal,
   toggleForwardMessagesModal,
   toggleGroupMemberLabelInfoModal,
+  toggleGroupV2JoinDialog,
   toggleMessageRequestActionsConfirmation,
   toggleNotePreviewModal,
   togglePinReminder,
@@ -781,12 +792,7 @@ function showCallQualitySurvey(
   };
 }
 
-export function hideCallQualitySurvey(): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  HideCallQualitySurveyActionType
-> {
+export function hideCallQualitySurvey(): SyncStateThunk<HideCallQualitySurveyActionType> {
   return dispatch => {
     window.IPC.closeDebugLog();
     window.IPC.closeCallDiagnostic();
@@ -880,7 +886,7 @@ function showStoriesSettings(): ShowStoriesSettingsActionType {
 
 function showGV2MigrationDialog(
   conversationId: string
-): ThunkAction<void, RootStateType, unknown, StartMigrationToGV2ActionType> {
+): AsyncStateThunk<StartMigrationToGV2ActionType> {
   return async dispatch => {
     const conversation = window.ConversationController.get(conversationId);
     if (!conversation) {
@@ -987,12 +993,7 @@ export type ForwardMessagesPayload = ReadonlyDeep<
 function toggleForwardMessagesModal(
   payload: ForwardMessagesPayload | null,
   onForward?: () => void
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  ToggleForwardMessagesModalActionType
-> {
+): AsyncStateThunk<ToggleForwardMessagesModalActionType> {
   return async (dispatch, getState) => {
     if (payload == null) {
       dispatch({
@@ -1028,7 +1029,7 @@ function toggleForwardMessagesModal(
                 })
             )
           ) {
-            dispatch(
+            void dispatch(
               conversationsActions.kickOffAttachmentDownload({ messageId })
             );
           }
@@ -1075,19 +1076,14 @@ function toggleForwardMessagesModal(
 function showShareCallLinkViaSignal(
   callLink: CallLinkType,
   i18n: LocalizerType
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  ToggleForwardMessagesModalActionType
-> {
+): SyncStateThunk<ToggleForwardMessagesModalActionType> {
   return dispatch => {
     const url = linkCallRoute
       .toWebUrl({
         key: callLink.rootKey,
       })
       .toString();
-    dispatch(
+    void dispatch(
       toggleForwardMessagesModal({
         type: ForwardMessagesModalType.ShareCallLink,
         draft: {
@@ -1141,10 +1137,7 @@ function toggleProfileNameWarningModal(
 
 function toggleSafetyNumberModal(
   safetyNumberModalContactId?: string
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
+): SyncStateThunk<
   | ShowKeyTransparencyOnboardingDialogActionType
   | ToggleSafetyNumberModalActionType
 > {
@@ -1237,12 +1230,7 @@ function showPinChangeModal(): ShowPinChangeModalActionType {
 
 function submitPinChangeModal(
   pin: string
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  HidePinChangeModalActionType | ToastActionType
-> {
+): AsyncStateThunk<HidePinChangeModalActionType | ToastActionType> {
   return async dispatch => {
     try {
       await itemStorage.put('svrPin', pin);
@@ -1264,12 +1252,7 @@ function submitPinChangeModal(
   };
 }
 
-function maybeShowPinReminder(): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  TogglePinReminderActionType
-> {
+function maybeShowPinReminder(): AsyncStateThunk<TogglePinReminderActionType> {
   return async (dispatch, getState) => {
     // Ignore if pin reminder megaphone or dialog is visible
     const existingState = getState().globalModals.pinReminderState;
@@ -1301,7 +1284,7 @@ function showBlockingSafetyNumberChangeDialog(
   untrustedByConversation: RecipientsByConversation,
   explodedPromise: ExplodePromiseResultType<boolean>,
   source?: SafetyNumberChangeSource
-): ThunkAction<void, RootStateType, unknown, ShowSendAnywayDialogActionType> {
+): SyncStateThunk<ShowSendAnywayDialogActionType> {
   const promiseUuid = SingleServePromise.set<boolean>(explodedPromise);
 
   return dispatch => {
@@ -1322,12 +1305,7 @@ function hideBlockingSafetyNumberChangeDialog(): HideSendAnywayDialogActiontype 
   };
 }
 
-function closeStickerPackPreview(): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  CloseStickerPackPreviewActionType
-> {
+function closeStickerPackPreview(): AsyncStateThunk<CloseStickerPackPreviewActionType> {
   return async (dispatch, getState) => {
     const packId = getState().globalModals.stickerPackPreviewId;
 
@@ -1400,10 +1378,7 @@ const MEDIA_PERMISSIONS_POLL_INTERVAL = SECOND;
 function ensureSystemMediaPermissions(
   mediaType: 'camera' | 'microphone',
   requestor: 'call' | 'voiceNote'
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
+): AsyncStateThunk<
   ShowMediaPermissionsModalActionType | CloseMediaPermissionsModalActionType
 > {
   return async dispatch => {
@@ -1451,12 +1426,7 @@ function ensureSystemMediaPermissions(
   };
 }
 
-function finishKeyTransparencyOnboarding(): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  HideKeyTransparencyOnboardingDialogActionType
-> {
+function finishKeyTransparencyOnboarding(): AsyncStateThunk<HideKeyTransparencyOnboardingDialogActionType> {
   return async dispatch => {
     await itemStorage.put('hasSeenKeyTransparencyOnboarding', true);
     dispatch(hideKeyTransparencyOnboardingDialog());
@@ -1469,12 +1439,7 @@ function showCriticalIdlePrimaryDeviceModal(): ShowCriticalIdlePrimaryDeviceModa
   };
 }
 
-function hideCriticalIdlePrimaryDeviceModal(): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  HideCriticalIdlePrimaryDeviceModalActionType
-> {
+function hideCriticalIdlePrimaryDeviceModal(): AsyncStateThunk<HideCriticalIdlePrimaryDeviceModalActionType> {
   return async dispatch => {
     await onCriticalIdlePrimaryDeviceModalDismissed();
     dispatch({
@@ -1514,6 +1479,15 @@ function showTerminateGroupFailedModal(
 function hideTerminateGroupFailedModal(): HideTerminateGroupFailedModalActionType {
   return {
     type: HIDE_TERMINATE_GROUP_FAILED_MODAL,
+  };
+}
+
+function toggleGroupV2JoinDialog(
+  open: boolean
+): ToggleGroupV2JoinDialogActionType {
+  return {
+    type: TOGGLE_GROUP_V2_JOIN_DIALOG,
+    payload: open,
   };
 }
 
@@ -1584,7 +1558,7 @@ function copyOverMessageAttributesIntoEditHistory(
 
 function showEditHistoryModal(
   messageId: string
-): ThunkAction<void, RootStateType, unknown, ShowEditHistoryModalActionType> {
+): AsyncStateThunk<ShowEditHistoryModalActionType> {
   return async dispatch => {
     const message = await getMessageById(messageId);
     if (!message) {
@@ -1638,7 +1612,7 @@ function copyOverMessageAttributesIntoForwardMessages(
 function showPinMessageDialog(
   messageId: string,
   isPinningDisappearingMessage: boolean
-): StateThunk<TogglePinMessageDialogActionType> {
+): AsyncStateThunk<TogglePinMessageDialogActionType> {
   return async (dispatch, getState) => {
     const hasMaxPinnedMessages = getHasMaxPinnedMessages(getState());
     dispatch({
@@ -1693,6 +1667,7 @@ export function getEmptyState(): GlobalModalsStateType {
     notePreviewModalProps: null,
     pinMessageDialogData: null,
     terminateGroupFailedModal: null,
+    groupV2JoinDialogOpen: false,
   };
 }
 
@@ -2208,6 +2183,13 @@ export function reducer(
     return {
       ...state,
       terminateGroupFailedModal: null,
+    };
+  }
+
+  if (action.type === TOGGLE_GROUP_V2_JOIN_DIALOG) {
+    return {
+      ...state,
+      groupV2JoinDialogOpen: action.payload,
     };
   }
 

@@ -67,7 +67,7 @@
   }
 
   &__spinner {
-    &__arc {
+    .module-spinner__arc {
       background-color: variables.$color-black;
 
       // Needed for specificity
@@ -76,7 +76,7 @@
       }
     }
 
-    &__circle {
+    .module-spinner__circle {
       background-color: variables.$color-accent-yellow;
     }
   }
@@ -230,21 +230,28 @@
   }
 
   &__tooltip {
-    --tooltip-background-color: #{$default-background-color};
-    --tooltip-text-color: #{$default-text-color};
+    --LeftPaneDialog__tooltip-background: #{$default-background-color};
+    background-color: var(--LeftPaneDialog__tooltip-background);
+    color: $default-text-color;
     min-width: 280px;
-    text-align: inherit;
+    padding-block: 8px;
+    padding-inline: 16px;
+    border-radius: 8px;
+    z-index: variables.$z-index-tooltip;
   }
 
-  &,
-  &__tooltip {
-    &--error {
+  &__tooltip-arrow {
+    fill: var(--LeftPaneDialog__tooltip-background);
+  }
+
+  & {
+    &--error,
+    &__tooltip--error {
       background-color: $error-background-color;
       color: $error-text-color;
 
       @include mixins.any-theme {
-        --tooltip-background-color: #{$error-background-color};
-        --tooltip-text-color: #{$error-text-color};
+        --LeftPaneDialog__tooltip-background: #{$error-background-color};
       }
 
       a {
@@ -256,7 +263,8 @@
       }
     }
 
-    &--info {
+    &--info,
+    &__tooltip--info {
       width: unset;
       margin-inline: 10px;
       margin-block-end: 6px;
@@ -266,11 +274,12 @@
 
       @include mixins.light-theme {
         background-color: variables.$color-white;
-        --tooltip-background-color: #{variables.$color-white};
+        --LeftPaneDialog__tooltip-background: #{variables.$color-white};
         border: 1px solid variables.$color-gray-20;
       }
       @include mixins.dark-theme {
         background: variables.$color-gray-75;
+        --LeftPaneDialog__tooltip-background: #{variables.$color-gray-75};
         border: 1px solid variables.$color-gray-60;
       }
       .LeftPaneDialog__close-button::before {
@@ -296,13 +305,13 @@
       }
     }
 
-    &--warning {
+    &--warning,
+    &__tooltip--warning {
       background-color: $warning-background-color;
       color: $warning-text-color;
 
       @include mixins.any-theme {
-        --tooltip-background-color: #{$warning-background-color};
-        --tooltip-text-color: #{$warning-text-color};
+        --LeftPaneDialog__tooltip-background: #{$warning-background-color};
       }
 
       a {

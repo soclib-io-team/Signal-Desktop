@@ -6,7 +6,7 @@ import { useSelector } from 'react-redux';
 import { CompositionRecording } from '../../components/CompositionRecording.dom.tsx';
 import { useAudioRecorderActions } from '../ducks/audioRecorder.preload.ts';
 import { useComposerActions } from '../ducks/composer.preload.ts';
-import { useToastActions } from '../ducks/toast.preload.ts';
+import { useToastActions } from '../ducks/toast.dom.ts';
 import { getSelectedConversationId } from '../selectors/nav.std.ts';
 import { getIntl } from '../selectors/user.std.ts';
 import { getRecordingPeaks } from '../selectors/audioRecorder.std.ts';
@@ -24,13 +24,13 @@ export const SmartCompositionRecording = memo(
     const { hideToast, showToast } = useToastActions();
 
     const handleCancel = useCallback(() => {
-      cancelRecording();
+      void cancelRecording();
     }, [cancelRecording]);
 
     const handleSend = useCallback(() => {
       if (selectedConversationId) {
-        completeRecording(selectedConversationId, voiceNoteAttachment => {
-          sendMultiMediaMessage(selectedConversationId, {
+        void completeRecording(selectedConversationId, voiceNoteAttachment => {
+          void sendMultiMediaMessage(selectedConversationId, {
             voiceNoteAttachment,
           });
         });

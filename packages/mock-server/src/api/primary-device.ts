@@ -37,13 +37,10 @@ import * as SignalClient from '@signalapp/libsignal-client';
 import { AccountEntropyPool } from '@signalapp/libsignal-client/dist/AccountKeys';
 import createDebug from 'debug';
 import {
-  ClientZkProfileOperations,
-  ExpiringProfileKeyCredentialResponse,
   GroupMasterKey,
   GroupSecretParams,
   ProfileKey,
   ProfileKeyCredentialPresentation,
-  ProfileKeyCredentialRequest,
   ServerPublicParams,
 } from '@signalapp/libsignal-client/zkgroup';
 
@@ -59,6 +56,7 @@ import {
 } from '../types';
 import { Contact } from '../data/contacts';
 import { Group as GroupData } from '../data/group';
+import { VersionedProfile } from '../data/profile';
 import {
   deriveAccessKey,
   deriveMasterKey,
@@ -102,10 +100,12 @@ export type Config = Readonly<{
     serviceId: ServiceIdString,
     deviceId?: DeviceId,
   ) => Promise<Device | undefined>;
-  issueExpiringProfileKeyCredential: (
-    device: Device,
-    request: ProfileKeyCredentialRequest,
-  ) => Promise<Buffer<ArrayBuffer> | undefined>;
+  getProfileKeyPresentation: (options: {
+    aci: AciString;
+    profileKey: ProfileKey;
+    groupParams: GroupSecretParams;
+  }) => Promise<ProfileKeyCredentialPresentation>;
+  setProfile: (aci: AciString, profile: VersionedProfile) => void;
 
   getGroup: (
     publicParams: Uint8Array<ArrayBuffer>,
@@ -124,9 +124,10 @@ export type Config = Readonly<{
     aci: AciString;
     after?: StorageState;
     // Note: predicate runs on the current state, not on previous intermediate states
-    predicate?: (state: StorageState) => boolean;
+    predicate: (state: StorageState) => boolean;
     storageKey: Buffer<ArrayBuffer>;
     recordIkm?: Buffer<ArrayBuffer>;
+    timeout?: number;
   }) => Promise<StorageState>;
   getStorageState: ({
     aci,
@@ -192,6 +193,8 @@ export type EncryptTextOptions = EncryptOptions &
 export type CreateGroupOptions = Readonly<{
   title: string;
   members: ReadonlyArray<PrimaryDevice>;
+  addFromInviteLink?: Proto.AccessControl.AccessRequired;
+  inviteLinkPassword?: Uint8Array<ArrayBuffer>;
 }>;
 
 export type SendUpdateToList = ReadonlyArray<
@@ -675,11 +678,6 @@ export class PrimaryDevice {
 
     this.profileKey = new ProfileKey(crypto.randomBytes(32));
     this.storageKey = deriveStorageKey(this.masterKey);
-
-    this.device.profileName = encryptProfileName(
-      this.profileKey.serialize(),
-      this.profileName,
-    );
   }
 
   public async init(): Promise<void> {
@@ -705,9 +703,16 @@ export class PrimaryDevice {
 
     this.privSenderCertificate = await this.config.getSenderCertificate();
 
-    this.device.profileKeyCommitment = this.profileKey.getCommitment(
-      Aci.parseFromServiceIdString(this.device.aci),
-    );
+    const aci = Aci.parseFromServiceIdString(this.device.aci);
+    this.config.setProfile(this.device.aci, {
+      version: this.profileKey.getProfileKeyVersion(aci).toString(),
+      commitment: this.profileKey.getCommitment(aci),
+      name: encryptProfileName(this.profileKey.serialize(), this.profileName),
+      about: undefined,
+      aboutEmoji: undefined,
+      paymentAddress: undefined,
+      phoneNumberSharing: undefined,
+    });
     this.device.accessKey = deriveAccessKey(this.profileKey.serialize());
 
     this.isInitialized = true;
@@ -724,8 +729,6 @@ export class PrimaryDevice {
   public addSecondaryDevice(device: Device): void {
     this.secondaryDevices.push(device);
 
-    device.profileName = this.device.profileName;
-    device.profileKeyCommitment = this.device.profileKeyCommitment;
     device.accessKey = this.device.accessKey;
   }
 
@@ -962,17 +965,24 @@ export class PrimaryDevice {
   public async createGroup({
     title,
     members: memberDevices,
+    addFromInviteLink,
+    inviteLinkPassword,
   }: CreateGroupOptions): Promise<Group> {
     const groupParams = GroupSecretParams.generate();
 
     const members = await Promise.all(
       memberDevices.map(async (member) => {
-        const presentation =
-          await member.getProfileKeyPresentation(groupParams);
+        const { profileKey } = member;
+        const { aci } = member.device;
+        const presentation = await this.config.getProfileKeyPresentation({
+          aci,
+          profileKey,
+          groupParams,
+        });
 
         return {
-          aci: member.device.aci,
-          profileKey: member.profileKey,
+          aci,
+          profileKey,
           presentation,
           joinedAtVersion: 0n,
         };
@@ -984,6 +994,8 @@ export class PrimaryDevice {
 
       title,
       members,
+      addFromInviteLink,
+      inviteLinkPassword,
     });
 
     await this.config.createGroup(clientGroup.state);
@@ -1026,6 +1038,7 @@ export class PrimaryDevice {
       },
       aciCiphertext: group.encryptServiceId(this.device.aci),
       pniCiphertext: pni ? group.encryptServiceId(pni) : undefined,
+      inviteLinkPassword: null,
     });
 
     assert(!modifyResult.conflict, 'Group update conflict!');
@@ -1144,9 +1157,11 @@ export class PrimaryDevice {
     group: Group,
     { timestamp = Date.now(), sendUpdateTo = [] }: AcceptPniInviteOptions = {},
   ): Promise<Group> {
-    const presentation = await this.getProfileKeyPresentation(
-      group.secretParams,
-    );
+    const presentation = await this.config.getProfileKeyPresentation({
+      aci: this.device.aci,
+      profileKey: this.profileKey,
+      groupParams: group.secretParams,
+    });
 
     return this.#modifyGroup({
       group,
@@ -1193,15 +1208,18 @@ export class PrimaryDevice {
   public async waitForStorageState({
     after,
     predicate,
+    timeout,
   }: {
     after?: StorageState;
     // Note: predicate runs on the current state, not on previous intermediate states
-    predicate?: (state: StorageState) => boolean;
-  } = {}): Promise<StorageState> {
+    predicate: (state: StorageState) => boolean;
+    timeout?: number;
+  }): Promise<StorageState> {
     return this.config.waitForStorageState({
       aci: this.device.aci,
       after,
       predicate,
+      timeout,
       storageKey: this.storageKey,
       recordIkm: this.storageRecordIkm,
     });
@@ -1846,32 +1864,6 @@ export class PrimaryDevice {
   //
   // Private
   //
-
-  private async getProfileKeyPresentation(
-    groupParams: GroupSecretParams,
-  ): Promise<ProfileKeyCredentialPresentation> {
-    const ops = new ClientZkProfileOperations(this.config.serverPublicParams);
-
-    const ctx = ops.createProfileKeyCredentialRequestContext(
-      Aci.parseFromServiceIdString(this.device.aci),
-      this.profileKey,
-    );
-    const response = await this.config.issueExpiringProfileKeyCredential(
-      this.device,
-      ctx.getRequest(),
-    );
-    assert.ok(response, `Member device ${this.device.aci} not initialized`);
-
-    const credential = ops.receiveExpiringProfileKeyCredential(
-      ctx,
-      new ExpiringProfileKeyCredentialResponse(response),
-    );
-
-    return ops.createExpiringProfileKeyCredentialPresentation(
-      groupParams,
-      credential,
-    );
-  }
 
   private getPrivateKey(serviceIdKind: ServiceIdKind): PrivateKey {
     switch (serviceIdKind) {

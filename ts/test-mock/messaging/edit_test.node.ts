@@ -21,7 +21,7 @@ import { strictAssert } from '../../util/assert.std.ts';
 import { toNumber } from '../../util/toNumber.std.ts';
 import { IMAGE_GIF } from '../../types/MIME.std.ts';
 import { typeIntoInput, waitForEnabledComposer } from '../helpers.node.ts';
-import type { MessageAttributesType } from '../../model-types.d.ts';
+import type { MessageAttributesType } from '../../model-types.std.ts';
 import { sleep } from '../../util/sleep.std.ts';
 import { generateAci } from '../../test-helpers/serviceIdUtils.std.ts';
 import { expect } from 'playwright/test';
@@ -655,7 +655,8 @@ describe('editing', function (this: Mocha.Suite) {
       }
 
       debug("testing message's send state (original)");
-      {
+
+      await expect(async () => {
         debug('getting message from app (original)');
         const message = await getMessageFromApp(originalMessageTimestamp);
 
@@ -669,7 +670,7 @@ describe('editing', function (this: Mocha.Suite) {
           'send state is delivered for main message'
         );
         assert.isUndefined(message.editHistory, 'no edit history, yet');
-      }
+      }).toPass();
 
       // Sending a v2 edited message targetting the original
       const editMessageV2Text = '12';

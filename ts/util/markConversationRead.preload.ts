@@ -3,7 +3,7 @@
 
 import lodash from 'lodash';
 
-import type { ConversationAttributesType } from '../model-types.d.ts';
+import type { ConversationAttributesType } from '../model-types.std.ts';
 import { DataReader, DataWriter } from '../sql/Client.preload.ts';
 import { hasErrors } from '../state/selectors/message.preload.ts';
 import { readSyncJobQueue } from '../jobs/readSyncJobQueue.preload.ts';
@@ -25,6 +25,7 @@ import {
 import { ReceiptType } from '../types/Receipt.std.ts';
 import type { AciString } from '../types/ServiceId.std.ts';
 import { isAciString } from './isAciString.std.ts';
+import { isSignalConversation } from './isSignalConversation.dom.ts';
 import type { MessageModel } from '../models/messages.preload.ts';
 import { postSaveUpdates } from './cleanup.preload.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
@@ -253,6 +254,8 @@ export async function markConversationRead(
     //   to a contact, we need accessKeys for both.
     if (!window.ConversationController.doWeHaveOtherDevices()) {
       log.info(logId, 'We have no other devices; not sending read syncs');
+    } else if (isSignalConversation(conversationAttrs)) {
+      log.info(logId, 'Signal conversation; not sending read syncs');
     } else {
       drop(readSyncJobQueue.add({ readSyncs }));
     }

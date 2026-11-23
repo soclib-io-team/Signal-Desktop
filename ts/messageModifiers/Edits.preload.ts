@@ -1,7 +1,7 @@
 // Copyright 2023 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { MessageAttributesType } from '../model-types.d.ts';
+import type { MessageAttributesType } from '../model-types.std.ts';
 import * as Errors from '../types/errors.std.ts';
 import { createLogger } from '../logging/log.std.ts';
 import { DataReader } from '../sql/Client.preload.ts';
@@ -37,6 +37,7 @@ function remove(edit: EditAttributesType): void {
 export function forMessage(
   messageAttributes: Pick<
     MessageAttributesType,
+    | 'conversationId'
     | 'editMessageTimestamp'
     | 'sent_at'
     | 'source'
@@ -59,6 +60,7 @@ export function forMessage(
   const matchingEdits = editValues.filter(item => {
     return (
       item.targetSentTimestamp === sentAt &&
+      item.conversationId === messageAttributes.conversationId &&
       item.fromId === getAuthorId(messageAttributes)
     );
   });

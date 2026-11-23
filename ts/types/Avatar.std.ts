@@ -1,9 +1,27 @@
 // Copyright 2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { AvatarColorType } from './Colors.std.ts';
 import type { AddressableAttachmentType } from './Attachment.std.ts';
 import { strictAssert } from '../util/assert.std.ts';
+import { areEqual } from '../Bytes.std.ts';
+import { AxoTokens } from '../axo/AxoTokens.std.ts';
+
+export type AvatarColorType = AxoTokens.Avatar.ColorName;
+
+export const AvatarColorMap = new Map(
+  AxoTokens.Avatar.getAllColorNames().map(colorName => {
+    return [colorName, AxoTokens.Avatar.getColorValues(colorName)];
+  })
+);
+
+export const AvatarColors = AxoTokens.Avatar.getAllColorNames();
+
+export const AVATAR_COLOR_COUNT = AvatarColors.length;
+
+export function getAvatarColor(color?: AvatarColorType): AvatarColorType {
+  // oxlint-disable-next-line typescript/no-non-null-assertion
+  return color || AvatarColors[0]!;
+}
 
 export const PersonalAvatarIcons = [
   'abstract_01',
@@ -88,6 +106,7 @@ export type SaveAvatarToDiskActionType = (
 export type AvatarUpdateType = Readonly<{
   oldAvatar: Uint8Array<ArrayBuffer> | undefined;
   newAvatar: Uint8Array<ArrayBuffer> | undefined;
+  reupload: boolean;
 }>;
 
 export type AvatarUpdateOptionsType = Readonly<
@@ -97,8 +116,32 @@ export type AvatarUpdateOptionsType = Readonly<
     }
   | {
       keepAvatar: true;
+      reupload: boolean;
     }
 >;
+
+// The server deletes the stored avatar for any change other than
+// 'unchanged', so keeping the avatar must never be sent as 'clear'.
+export type ProfileAvatarChange = Readonly<
+  | { type: 'unchanged' }
+  | { type: 'clear' }
+  | { type: 'update'; avatar: Uint8Array<ArrayBuffer> }
+>;
+
+export namespace ProfileAvatarChange {
+  export function fromAvatarUpdate(
+    avatarUpdate: AvatarUpdateType
+  ): ProfileAvatarChange {
+    const { oldAvatar, newAvatar, reupload } = avatarUpdate;
+    if (newAvatar == null) {
+      return { type: 'clear' };
+    }
+    if (!reupload && areEqual(oldAvatar, newAvatar)) {
+      return { type: 'unchanged' };
+    }
+    return { type: 'update', avatar: newAvatar };
+  }
+}
 
 const groupIconColors = [
   'A180',

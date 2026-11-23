@@ -9,15 +9,14 @@ import {
   type JSX,
 } from 'react';
 import classNames from 'classnames';
-import lodash from 'lodash';
-import { usePopper } from 'react-popper';
-import { FocusScope } from 'react-aria';
+import { Popover } from 'radix-ui';
+import { FocusScope } from 'radix-ui/internal';
 import { tinykeys } from 'tinykeys';
 import type { LinkPreviewForUIType } from '../types/message/LinkPreviews.std.ts';
 import { ThemeType, type LocalizerType } from '../types/Util.std.ts';
 import type { TextAttachmentType } from '../types/Attachment.std.ts';
 import { Button, ButtonVariant } from './Button.dom.tsx';
-import { ContextMenu } from './ContextMenu.dom.tsx';
+import { AxoDropdownMenu } from '../axo/menus/AxoDropdownMenu.dom.tsx';
 import { LinkPreviewSourceType, findLinks } from '../types/LinkPreview.std.ts';
 import type { MaybeGrabLinkPreviewOptionsType } from '../types/LinkPreview.std.ts';
 import { Input } from './Input.dom.tsx';
@@ -32,17 +31,17 @@ import {
   getBackgroundColor,
 } from '../util/getStoryBackground.std.ts';
 import { objectMap } from '../util/objectMap.std.ts';
-import { handleOutsideClick } from '../util/handleOutsideClick.dom.ts';
 import { Spinner } from './Spinner.dom.tsx';
 import { FunEmojiPicker } from './fun/FunEmojiPicker.dom.tsx';
 import type { FunEmojiSelection } from './fun/panels/FunPanelEmojis.dom.tsx';
 import { FunEmojiPickerButton } from './fun/FunButton.dom.tsx';
 import { useConfirmDiscard } from '../hooks/useConfirmDiscard.dom.tsx';
 import { AxoTheme } from '../axo/AxoTheme.dom.tsx';
-
-const { noop } = lodash;
+import { missingCaseError } from '../util/missingCaseError.std.ts';
 
 export type PropsType = {
+  /** A legacy modal is open on top, so focus must be able to leave */
+  isCoveredByModal: boolean;
   debouncedMaybeGrabLinkPreview: (
     message: string,
     source: LinkPreviewSourceType,
@@ -138,9 +137,28 @@ function getBgButtonAriaLabel(
   return i18n('icu:StoryCreator__text-bg--none');
 }
 
+function getTextStyleLabel(i18n: LocalizerType, textStyle: TextStyle): string {
+  switch (textStyle) {
+    case TextStyle.Bold:
+      return i18n('icu:StoryCreator__text--bold');
+    case TextStyle.Serif:
+      return i18n('icu:StoryCreator__text--serif');
+    case TextStyle.Script:
+      return i18n('icu:StoryCreator__text--script');
+    case TextStyle.Condensed:
+      return i18n('icu:StoryCreator__text--condensed');
+    case TextStyle.Default:
+    case TextStyle.Regular:
+      return i18n('icu:StoryCreator__text--regular');
+    default:
+      throw missingCaseError(textStyle);
+  }
+}
+
 export function TextStoryCreator({
   debouncedMaybeGrabLinkPreview,
   i18n,
+  isCoveredByModal,
   isSending,
   linkPreview,
   onClose,
@@ -174,24 +192,6 @@ export function TextStoryCreator({
   const [text, setText] = useState<string>('');
 
   const [isColorPickerShowing, setIsColorPickerShowing] = useState(false);
-  const [colorPickerPopperButtonRef, setColorPickerPopperButtonRef] =
-    useState<HTMLButtonElement | null>(null);
-  const [colorPickerPopperRef, setColorPickerPopperRef] =
-    useState<HTMLDivElement | null>(null);
-
-  const colorPickerPopper = usePopper(
-    colorPickerPopperButtonRef,
-    colorPickerPopperRef,
-    {
-      modifiers: [
-        {
-          name: 'arrow',
-        },
-      ],
-      placement: 'top',
-      strategy: 'fixed',
-    }
-  );
 
   const [linkPreviewApplied, setLinkPreviewApplied] = useState(
     LinkPreviewApplied.None
@@ -251,26 +251,15 @@ export function TextStoryCreator({
 
   const [isLinkPreviewInputShowing, setIsLinkPreviewInputShowing] =
     useState(false);
-  const [linkPreviewInputPopperButtonRef, setLinkPreviewInputPopperButtonRef] =
-    useState<HTMLButtonElement | null>(null);
-  const [linkPreviewInputPopperRef, setLinkPreviewInputPopperRef] =
-    useState<HTMLDivElement | null>(null);
-
-  const linkPreviewInputPopper = usePopper(
-    linkPreviewInputPopperButtonRef,
-    linkPreviewInputPopperRef,
-    {
-      modifiers: [
-        {
-          name: 'arrow',
-        },
-      ],
-      placement: 'top',
-      strategy: 'fixed',
-    }
-  );
 
   const onEscapeShortcut = useEffectEvent((event: KeyboardEvent) => {
+    // Runs before Radix's Escape handling, so let open layers close first
+    if (
+      event.target instanceof Element &&
+      event.target.closest('[data-radix-popper-content-wrapper]') != null
+    ) {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     if (isColorPickerShowing || isEditingText || isLinkPreviewInputShowing) {
@@ -295,22 +284,6 @@ export function TextStoryCreator({
       }
     );
   }, []);
-
-  useEffect(() => {
-    if (!isColorPickerShowing) {
-      return noop;
-    }
-    return handleOutsideClick(
-      () => {
-        setIsColorPickerShowing(false);
-        return true;
-      },
-      {
-        containerElements: [colorPickerPopperRef, colorPickerPopperButtonRef],
-        name: 'TextStoryCreator.colorPicker',
-      }
-    );
-  }, [isColorPickerShowing, colorPickerPopperRef, colorPickerPopperButtonRef]);
 
   const sliderColorNumber = getRGBANumber(sliderValue);
 
@@ -367,7 +340,7 @@ export function TextStoryCreator({
 
   return (
     <AxoTheme.Override theme="force-dark">
-      <FocusScope contain restoreFocus>
+      <FocusScope.Root asChild trapped={!isCoveredByModal} loop>
         <div className="StoryCreator dark-theme">
           <div className="StoryCreator__container">
             <TextAttachment
@@ -393,69 +366,65 @@ export function TextStoryCreator({
                 <Slider
                   handleStyle={{ backgroundColor: getRGBA(sliderValue) }}
                   label={getRGBA(sliderValue)}
-                  moduleClassName="HueSlider StoryCreator__tools__tool"
+                  className="HueSlider StoryCreator__tools__tool"
                   onChange={setSliderValue}
                   value={sliderValue}
                 />
-                <ContextMenu
-                  i18n={i18n}
-                  menuOptions={[
-                    {
-                      icon: 'StoryCreator__icon--font-regular',
-                      label: i18n('icu:StoryCreator__text--regular'),
-                      onClick: () => setTextStyle(TextStyle.Regular),
-                      value: TextStyle.Regular,
-                    },
-                    {
-                      icon: 'StoryCreator__icon--font-bold',
-                      label: i18n('icu:StoryCreator__text--bold'),
-                      onClick: () => setTextStyle(TextStyle.Bold),
-                      value: TextStyle.Bold,
-                    },
-                    {
-                      icon: 'StoryCreator__icon--font-serif',
-                      label: i18n('icu:StoryCreator__text--serif'),
-                      onClick: () => setTextStyle(TextStyle.Serif),
-                      value: TextStyle.Serif,
-                    },
-                    {
-                      icon: 'StoryCreator__icon--font-script',
-                      label: i18n('icu:StoryCreator__text--script'),
-                      onClick: () => setTextStyle(TextStyle.Script),
-                      value: TextStyle.Script,
-                    },
-                    {
-                      icon: 'StoryCreator__icon--font-condensed',
-                      label: i18n('icu:StoryCreator__text--condensed'),
-                      onClick: () => setTextStyle(TextStyle.Condensed),
-                      value: TextStyle.Condensed,
-                    },
-                  ]}
-                  moduleClassName={classNames('StoryCreator__tools__tool', {
-                    'StoryCreator__tools__button--font-regular':
-                      textStyle === TextStyle.Regular,
-                    'StoryCreator__tools__button--font-bold':
-                      textStyle === TextStyle.Bold,
-                    'StoryCreator__tools__button--font-serif':
-                      textStyle === TextStyle.Serif,
-                    'StoryCreator__tools__button--font-script':
-                      textStyle === TextStyle.Script,
-                    'StoryCreator__tools__button--font-condensed':
-                      textStyle === TextStyle.Condensed,
-                  })}
-                  theme={Theme.Dark}
-                  value={textStyle}
-                />
+                <AxoDropdownMenu.Root>
+                  <AxoDropdownMenu.Trigger>
+                    <button
+                      type="button"
+                      aria-label={getTextStyleLabel(i18n, textStyle)}
+                      className="StoryCreator__tools__icon-button"
+                    >
+                      <span
+                        aria-hidden
+                        className={classNames(
+                          'StoryCreator__tools__icon-button-icon',
+                          {
+                            'StoryCreator__tools__button--font-regular':
+                              textStyle === TextStyle.Regular,
+                            'StoryCreator__tools__button--font-bold':
+                              textStyle === TextStyle.Bold,
+                            'StoryCreator__tools__button--font-serif':
+                              textStyle === TextStyle.Serif,
+                            'StoryCreator__tools__button--font-script':
+                              textStyle === TextStyle.Script,
+                            'StoryCreator__tools__button--font-condensed':
+                              textStyle === TextStyle.Condensed,
+                          }
+                        )}
+                      />
+                    </button>
+                  </AxoDropdownMenu.Trigger>
+                  <AxoDropdownMenu.Content>
+                    <AxoDropdownMenu.RadioGroup
+                      value={`${textStyle}`}
+                      onValueChange={value => setTextStyle(parseInt(value, 10))}
+                    >
+                      <AxoDropdownMenu.RadioItem value={`${TextStyle.Regular}`}>
+                        {i18n('icu:StoryCreator__text--regular')}
+                      </AxoDropdownMenu.RadioItem>
+                      <AxoDropdownMenu.RadioItem value={`${TextStyle.Bold}`}>
+                        {i18n('icu:StoryCreator__text--bold')}
+                      </AxoDropdownMenu.RadioItem>
+                      <AxoDropdownMenu.RadioItem value={`${TextStyle.Serif}`}>
+                        {i18n('icu:StoryCreator__text--serif')}
+                      </AxoDropdownMenu.RadioItem>
+                      <AxoDropdownMenu.RadioItem value={`${TextStyle.Script}`}>
+                        {i18n('icu:StoryCreator__text--script')}
+                      </AxoDropdownMenu.RadioItem>
+                      <AxoDropdownMenu.RadioItem
+                        value={`${TextStyle.Condensed}`}
+                      >
+                        {i18n('icu:StoryCreator__text--condensed')}
+                      </AxoDropdownMenu.RadioItem>
+                    </AxoDropdownMenu.RadioGroup>
+                  </AxoDropdownMenu.Content>
+                </AxoDropdownMenu.Root>
                 <button
                   aria-label={getBgButtonAriaLabel(i18n, textBackground)}
-                  className={classNames('StoryCreator__tools__tool', {
-                    'StoryCreator__tools__button--bg-none':
-                      textBackground === TextBackground.None,
-                    'StoryCreator__tools__button--bg':
-                      textBackground === TextBackground.Background,
-                    'StoryCreator__tools__button--bg-inverse':
-                      textBackground === TextBackground.Inverse,
-                  })}
+                  className="StoryCreator__tools__icon-button"
                   onClick={() => {
                     if (textBackground === TextBackground.None) {
                       setTextBackground(TextBackground.Background);
@@ -466,7 +435,22 @@ export function TextStoryCreator({
                     }
                   }}
                   type="button"
-                />
+                >
+                  <span
+                    aria-hidden
+                    className={classNames(
+                      'StoryCreator__tools__icon-button-icon',
+                      {
+                        'StoryCreator__tools__button--bg-none':
+                          textBackground === TextBackground.None,
+                        'StoryCreator__tools__button--bg':
+                          textBackground === TextBackground.Background,
+                        'StoryCreator__tools__button--bg-inverse':
+                          textBackground === TextBackground.Inverse,
+                      }
+                    )}
+                  />
+                </button>
                 <FunEmojiPicker
                   open={emojiPickerOpen}
                   onOpenChange={handleEmojiPickerOpenChange}
@@ -490,32 +474,39 @@ export function TextStoryCreator({
                 {i18n('icu:discard')}
               </Button>
               <div className="StoryCreator__controls">
-                <button
-                  aria-label={i18n('icu:StoryCreator__story-bg')}
-                  className={classNames({
-                    StoryCreator__control: true,
-                    'StoryCreator__control--bg': true,
-                    'StoryCreator__control--bg--selected': isColorPickerShowing,
-                  })}
-                  onClick={() => setIsColorPickerShowing(!isColorPickerShowing)}
-                  ref={setColorPickerPopperButtonRef}
-                  style={{
-                    background: getBackgroundColor(
-                      getBackground(selectedBackground)
-                    ),
-                  }}
-                  type="button"
-                />
-                {isColorPickerShowing && (
-                  <div
+                <Popover.Root
+                  open={isColorPickerShowing}
+                  onOpenChange={setIsColorPickerShowing}
+                  modal={false}
+                >
+                  <Popover.Trigger asChild>
+                    <button
+                      aria-label={i18n('icu:StoryCreator__story-bg')}
+                      className={classNames({
+                        StoryCreator__control: true,
+                        'StoryCreator__control--bg': true,
+                        'StoryCreator__control--bg--selected':
+                          isColorPickerShowing,
+                      })}
+                      style={{
+                        background: getBackgroundColor(
+                          getBackground(selectedBackground)
+                        ),
+                      }}
+                      type="button"
+                    />
+                  </Popover.Trigger>
+                  {/* No portal: stays inside this component's focus scope */}
+                  <Popover.Content
                     className="StoryCreator__popper"
-                    ref={setColorPickerPopperRef}
-                    style={colorPickerPopper.styles.popper}
-                    {...colorPickerPopper.attributes.popper}
+                    side="top"
+                    sideOffset={4}
+                    aria-label={i18n('icu:StoryCreator__story-bg')}
                   >
-                    <div
-                      data-popper-arrow
+                    <Popover.Arrow
                       className="StoryCreator__popper__arrow"
+                      width={28}
+                      height={14}
                     />
                     {objectMap(BackgroundStyle, (bg, backgroundValue) => (
                       <button
@@ -538,8 +529,8 @@ export function TextStoryCreator({
                         }}
                       />
                     ))}
-                  </div>
-                )}
+                  </Popover.Content>
+                </Popover.Root>
                 <button
                   aria-label={i18n('icu:StoryCreator__control--text')}
                   className={classNames({
@@ -552,33 +543,39 @@ export function TextStoryCreator({
                   }}
                   type="button"
                 />
-                <button
-                  aria-label={i18n('icu:StoryCreator__control--link')}
-                  className="StoryCreator__control StoryCreator__control--link"
-                  onClick={() =>
-                    setIsLinkPreviewInputShowing(!isLinkPreviewInputShowing)
-                  }
-                  ref={setLinkPreviewInputPopperButtonRef}
-                  type="button"
-                />
-                {isLinkPreviewInputShowing && (
-                  <div
+                <Popover.Root
+                  open={isLinkPreviewInputShowing}
+                  onOpenChange={setIsLinkPreviewInputShowing}
+                  modal={false}
+                >
+                  <Popover.Trigger asChild>
+                    <button
+                      aria-label={i18n('icu:StoryCreator__control--link')}
+                      className="StoryCreator__control StoryCreator__control--link"
+                      type="button"
+                    />
+                  </Popover.Trigger>
+                  {/* No portal: stays inside this component's focus scope */}
+                  <Popover.Content
                     className={classNames(
                       'StoryCreator__popper StoryCreator__link-preview-input-popper',
                       themeClassName(Theme.Dark)
                     )}
-                    ref={setLinkPreviewInputPopperRef}
-                    style={linkPreviewInputPopper.styles.popper}
-                    {...linkPreviewInputPopper.attributes.popper}
+                    side="top"
+                    sideOffset={4}
+                    aria-label={i18n('icu:StoryCreator__control--link')}
+                    // Only Escape or the Add link button close the link input
+                    onInteractOutside={event => event.preventDefault()}
                   >
-                    <div
-                      data-popper-arrow
+                    <Popover.Arrow
                       className="StoryCreator__popper__arrow"
+                      width={28}
+                      height={14}
                     />
                     <Input
                       disableSpellcheck
                       i18n={i18n}
-                      moduleClassName="StoryCreator__link-preview-input"
+                      className="StoryCreator__link-preview-input"
                       onChange={setLinkPreviewInputValue}
                       placeholder={i18n(
                         'icu:StoryCreator__link-preview-placeholder'
@@ -615,8 +612,8 @@ export function TextStoryCreator({
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
+                  </Popover.Content>
+                </Popover.Root>
               </div>
               <Button
                 disabled={!hasChanges || isSending}
@@ -634,7 +631,7 @@ export function TextStoryCreator({
           </div>
           {confirmDiscardModal}
         </div>
-      </FocusScope>
+      </FocusScope.Root>
     </AxoTheme.Override>
   );
 }

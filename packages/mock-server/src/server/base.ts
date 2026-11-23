@@ -15,10 +15,19 @@ import {
   BackupCredentialType,
   BackupLevel,
   CallLinkAuthCredentialResponse,
+  ClientZkProfileOperations,
   CreateCallLinkCredentialRequest,
   CreateCallLinkCredentialResponse,
+  DonationPermitDerivedKeyPair,
+  DonationPermitRequest,
+  DonationPermitResponse,
+  ExpiringProfileKeyCredentialResponse,
   GenericServerSecretParams,
   GroupPublicParams,
+  GroupSecretParams,
+  ProfileKey,
+  ProfileKeyCommitment,
+  ProfileKeyCredentialPresentation,
   ProfileKeyCredentialRequest,
   ServerSecretParams,
   ServerZkAuthOperations,
@@ -40,7 +49,13 @@ import {
   PROFILE_KEY_CREDENTIAL_EXPIRATION,
 } from '../constants';
 import { ServerCertificate, generateSenderCertificate } from '../crypto';
+import {
+  DEFAULT_DEVICE_CAPABILITIES,
+  DeviceCapability,
+  hasAccountCapability,
+} from '../data/capabilities';
 import { ChangeNumberOptions, Device, DeviceKeys } from '../data/device';
+import { VersionedProfile } from '../data/profile';
 import {
   BackupMediaBatch,
   BackupSignedPresentation,
@@ -90,6 +105,7 @@ import {
 import { Port, ServerMediaAddress } from '../sfu/config';
 import { CallingPublicKey } from '../sfu/crypto';
 import type { JsonValue, PartialDeep } from 'type-fest';
+import type { GroupInviteLinkPassword } from '@signalapp/types';
 
 export enum EnvelopeType {
   CipherText = 'CipherText',
@@ -123,10 +139,9 @@ export type BackupCredentials = Readonly<{
   media: Credentials;
 }>;
 
-export type ChallengeResponse = Readonly<{
-  code: number;
-  data: unknown;
-}>;
+export type ChallengeResponse =
+  | Readonly<{ type: 'rejected' }>
+  | Readonly<{ type: 'rateLimited'; retryAfterSeconds: number }>;
 
 export type PreparedMultiDeviceMessage = Readonly<{
   timestamp: bigint;
@@ -143,6 +158,7 @@ export type ProvisionDeviceOptions = Readonly<{
   provisioningCode: ProvisioningCode;
   registrationId: RegistrationId;
   pniRegistrationId: RegistrationId | undefined;
+  capabilities: ReadonlySet<DeviceCapability>;
 }>;
 
 export type RegisterDeviceOptions = Readonly<
@@ -164,7 +180,9 @@ export type RegisterDeviceOptions = Readonly<
   ) & {
     registrationId: RegistrationId;
     pniRegistrationId: RegistrationId | undefined;
-    registrationLockToken?: string;
+    registrationLockToken?: string | null;
+    unidentifiedAccessKey: Buffer<ArrayBuffer> | undefined;
+    capabilities?: ReadonlySet<DeviceCapability>;
   }
 >;
 
@@ -220,6 +238,7 @@ export type ModifyGroupOptions = Readonly<{
   actions: Proto.GroupChange.Actions.Params;
   aciCiphertext: Uint8Array<ArrayBuffer>;
   pniCiphertext: Uint8Array<ArrayBuffer> | undefined;
+  inviteLinkPassword: GroupInviteLinkPassword.Encoded | null;
 }>;
 
 export type EncryptedStickerPack = Readonly<{
@@ -391,6 +410,11 @@ export abstract class Server {
     Map<string, Buffer<ArrayBuffer>>
   >();
   private readonly registrationLockTokensByACI = new Map<AciString, string>();
+  private readonly profilesByAci = new Map<
+    AciString,
+    Map<string, VersionedProfile>
+  >();
+  private readonly currentProfileVersionByAci = new Map<AciString, string>();
   private readonly provisioningCodes = new Map<
     string,
     Map<ProvisioningCode, ProvisionIdString>
@@ -525,6 +549,34 @@ export abstract class Server {
     return this.registrationLockTokensByACI.get(aci);
   }
 
+  public setProfile(aci: AciString, profile: VersionedProfile): void {
+    let profiles = this.profilesByAci.get(aci);
+    if (!profiles) {
+      profiles = new Map();
+      this.profilesByAci.set(aci, profiles);
+    }
+    profiles.set(profile.version, profile);
+    this.currentProfileVersionByAci.set(aci, profile.version);
+  }
+
+  public getProfile(
+    aci: AciString,
+    version: string,
+  ): VersionedProfile | undefined {
+    return this.profilesByAci.get(aci)?.get(version);
+  }
+
+  public getCurrentProfileVersion(aci: AciString): string | undefined {
+    return this.currentProfileVersionByAci.get(aci);
+  }
+
+  public hasAccountCapability(
+    aci: AciString,
+    capability: DeviceCapability,
+  ): boolean {
+    return hasAccountCapability(this.devices.get(aci) ?? [], capability);
+  }
+
   public setRegisterResponseData(data: Partial<RegisterAccountResponse>): void {
     this.registerResponseData = data;
   }
@@ -552,6 +604,8 @@ export abstract class Server {
     password,
     authCredentialSalt: maybeAuthCredentialSalt,
     registrationLockToken,
+    unidentifiedAccessKey,
+    capabilities = DEFAULT_DEVICE_CAPABILITIES,
   }: RegisterDeviceOptions): Promise<Device> {
     if (provisionId && !this.usedProvisionIds.has(provisionId)) {
       throw new Error('Use generateProvisionId() to create new provision id');
@@ -600,7 +654,11 @@ export abstract class Server {
       pniRegistrationId,
       isProvisioned: !!password,
       authCredentialSalt,
+      capabilities,
     });
+    if (unidentifiedAccessKey?.length && !device.accessKey?.length) {
+      device.accessKey = unidentifiedAccessKey;
+    }
 
     if (isPrimary) {
       assert(!this.primaryByServiceId.has(aci), 'Duplicate primary device');
@@ -627,6 +685,8 @@ export abstract class Server {
 
     this.devices.delete(aci);
     this.primaryByServiceId.delete(aci);
+    this.profilesByAci.delete(aci);
+    this.currentProfileVersionByAci.delete(aci);
     if (pni) {
       this.primaryByServiceId.delete(pni);
     }
@@ -694,6 +754,7 @@ export abstract class Server {
     provisioningCode,
     registrationId,
     pniRegistrationId,
+    capabilities,
   }: ProvisionDeviceOptions): Promise<Device> {
     const entry = this.provisioningCodes.get(aci);
     if (!entry) {
@@ -714,6 +775,8 @@ export abstract class Server {
       registrationId,
       pniRegistrationId,
       password,
+      unidentifiedAccessKey: undefined,
+      capabilities,
     });
 
     debug('provisioned device id=%j aci=%j', device.deviceId, device.aci);
@@ -1071,6 +1134,7 @@ export abstract class Server {
     actions,
     aciCiphertext,
     pniCiphertext,
+    inviteLinkPassword,
   }: ModifyGroupOptions): Promise<ModifyGroupResult> {
     return group.modify(
       new UuidCiphertext(Buffer.from(aciCiphertext)),
@@ -1078,6 +1142,7 @@ export abstract class Server {
         ? new UuidCiphertext(Buffer.from(pniCiphertext))
         : undefined,
       actions,
+      inviteLinkPassword,
     );
   }
 
@@ -1605,16 +1670,21 @@ export abstract class Server {
     serviceId: ServiceIdString,
     deviceId = PRIMARY_DEVICE_ID,
   ): Promise<Device | undefined> {
+    const byServiceId = this.devices.get(serviceId as AciString);
+    if (byServiceId) {
+      return byServiceId.find((device) => device.deviceId === deviceId);
+    }
+
     const primary = this.primaryByServiceId.get(serviceId);
     if (primary == null) {
       return undefined;
     }
 
-    const list = this.devices.get(primary.aci);
-    if (list === undefined) {
+    const byAci = this.devices.get(primary.aci);
+    if (byAci === undefined) {
       return undefined;
     }
-    return list.find((device) => device.deviceId === deviceId);
+    return byAci.find((device) => device.deviceId === deviceId);
   }
 
   public async removeDeviceByServiceId(
@@ -1716,10 +1786,25 @@ export abstract class Server {
     });
   }
 
-  public async issueExpiringProfileKeyCredential(
-    { aci, profileKeyCommitment }: Device,
-    request: ProfileKeyCredentialRequest,
-  ): Promise<Buffer<ArrayBuffer> | undefined> {
+  public async issueDonationPermits(
+    request: Uint8Array<ArrayBuffer>,
+  ): Promise<Uint8Array<ArrayBuffer>> {
+    const keyPair = DonationPermitDerivedKeyPair.forExpiration(
+      DonationPermitResponse.defaultExpiration(),
+      this.zkSecret,
+    );
+    return new DonationPermitRequest(request).issue(keyPair).serialize();
+  }
+
+  public async issueExpiringProfileKeyCredential({
+    aci,
+    profileKeyCommitment,
+    request,
+  }: {
+    aci: AciString;
+    profileKeyCommitment: ProfileKeyCommitment | undefined;
+    request: ProfileKeyCredentialRequest;
+  }): Promise<Buffer<ArrayBuffer> | undefined> {
     if (!profileKeyCommitment) {
       return undefined;
     }
@@ -1736,6 +1821,42 @@ export abstract class Server {
           today + PROFILE_KEY_CREDENTIAL_EXPIRATION,
         )
         .serialize(),
+    );
+  }
+
+  async getProfileKeyPresentation({
+    aci,
+    profileKey,
+    groupParams,
+  }: {
+    aci: AciString;
+    profileKey: ProfileKey;
+    groupParams: GroupSecretParams;
+  }): Promise<ProfileKeyCredentialPresentation> {
+    const ops = new ClientZkProfileOperations(this.zkSecret.getPublicParams());
+
+    const ctx = ops.createProfileKeyCredentialRequestContext(
+      Aci.parseFromServiceIdString(aci),
+      profileKey,
+    );
+    const profileKeyCommitment = profileKey.getCommitment(
+      Aci.parseFromServiceIdString(aci),
+    );
+    const response = await this.issueExpiringProfileKeyCredential({
+      aci,
+      profileKeyCommitment,
+      request: ctx.getRequest(),
+    });
+    assert.ok(response, `Member device ${aci} not initialized`);
+
+    const credential = ops.receiveExpiringProfileKeyCredential(
+      ctx,
+      new ExpiringProfileKeyCredentialResponse(response),
+    );
+
+    return ops.createExpiringProfileKeyCredentialPresentation(
+      groupParams,
+      credential,
     );
   }
 

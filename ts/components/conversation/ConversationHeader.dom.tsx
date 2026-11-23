@@ -1,14 +1,13 @@
 // Copyright 2018 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { RefObject, JSX, ReactNode } from 'react';
+import type { JSX, ReactNode } from 'react';
 import {
   memo,
   useCallback,
   useEffect,
   useEffectEvent,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import type { ReadonlyDeep } from 'type-fest';
@@ -27,7 +26,7 @@ import { isInSystemContacts } from '../../util/isInSystemContacts.std.ts';
 import { missingCaseError } from '../../util/missingCaseError.std.ts';
 import { Avatar, AvatarSize } from '../Avatar.dom.tsx';
 import { DisappearingTimeDialog } from '../DisappearingTimeDialog.dom.tsx';
-import { InContactsIcon } from '../InContactsIcon.dom.tsx';
+import { AxoContactName } from '../../axo/AxoContactName.dom.tsx';
 import { UserText } from '../UserText.dom.tsx';
 import type { ContactNameData } from './ContactName.dom.tsx';
 import {
@@ -41,7 +40,7 @@ import {
 } from './InAnotherCallTooltip.dom.tsx';
 import { DeleteMessagesConfirmationDialog } from '../DeleteMessagesConfirmationDialog.dom.tsx';
 import { MuteNotificationsSubMenu } from '../MuteNotificationsMenu.dom.tsx';
-import { AxoDropdownMenu } from '../../axo/AxoDropdownMenu.dom.tsx';
+import { AxoDropdownMenu } from '../../axo/menus/AxoDropdownMenu.dom.tsx';
 import { strictAssert } from '../../util/assert.std.ts';
 import {
   TimelineWarning,
@@ -63,7 +62,7 @@ import { AxoDragRegion } from '../../axo/AxoDragRegion.dom.tsx';
 import { OfficialChatInlineBadge } from './OfficialChatInlineBadge.dom.tsx';
 import { AxoIconButton } from '../../axo/AxoIconButton.dom.tsx';
 import { AxoButton } from '../../axo/AxoButton.dom.tsx';
-import { AxoConfirmDialog } from '../../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../../axo/dialogs/AxoConfirmDialog.dom.tsx';
 import { getControlOrAltKey } from '../../hooks/useKeyboardShortcuts.dom.tsx';
 
 function HeaderInfoTitle({
@@ -73,7 +72,6 @@ function HeaderInfoTitle({
   i18n,
   isMe,
   isSignalConversation,
-  headerRef,
 }: {
   name: string | null;
   title: string;
@@ -81,7 +79,6 @@ function HeaderInfoTitle({
   i18n: LocalizerType;
   isMe: boolean;
   isSignalConversation: boolean;
-  headerRef: RefObject<HTMLDivElement | null>;
 }) {
   if (isSignalConversation) {
     return (
@@ -107,11 +104,10 @@ function HeaderInfoTitle({
     <div className="module-ConversationHeader__header__info__title">
       <UserText text={title} />
       {isInSystemContacts({ name: name ?? undefined, type }) ? (
-        <InContactsIcon
-          className="module-ConversationHeader__header__info__title__in-contacts-icon"
-          i18n={i18n}
-          tooltipContainerRef={headerRef}
-        />
+        <>
+          &nbsp;
+          <AxoContactName.SystemContactEmblemStatic />
+        </>
       ) : null}
     </div>
   );
@@ -252,9 +248,6 @@ export const ConversationHeader = memo(function ConversationHeader({
 
   renderPinnedMessagesBar,
 }: PropsType): JSX.Element | null {
-  // Comes from a third-party dependency
-  const headerRef = useRef<HTMLDivElement>(null);
-
   const [
     hasCustomDisappearingTimeoutModal,
     setHasCustomDisappearingTimeoutModal,
@@ -364,7 +357,6 @@ export const ConversationHeader = memo(function ConversationHeader({
               conversation={conversation}
               badge={badge ?? null}
               hasStories={hasStories ?? null}
-              headerRef={headerRef}
               i18n={i18n}
               theme={theme}
               onViewUserStories={onViewUserStories}
@@ -478,6 +470,7 @@ export const ConversationHeader = memo(function ConversationHeader({
           addedByName={addedByName}
           conversationName={conversationName}
           isBlocked={conversation.isBlocked ?? false}
+          isSignalConversation={isSignalConversation ?? false}
           isReported={conversation.isReported ?? false}
           state={messageRequestState}
           acceptConversation={onConversationAccept}
@@ -510,7 +503,6 @@ function HeaderContent({
   conversation,
   badge,
   hasStories,
-  headerRef,
   i18n,
   theme,
   isSignalConversation,
@@ -520,7 +512,6 @@ function HeaderContent({
   conversation: MinimalConversation;
   badge: BadgeType | null;
   hasStories: HasStories | null;
-  headerRef: RefObject<HTMLDivElement | null>;
   i18n: LocalizerType;
   theme: ThemeType;
   isSignalConversation: boolean;
@@ -580,7 +571,6 @@ function HeaderContent({
         i18n={i18n}
         isMe={conversation.isMe}
         isSignalConversation={isSignalConversation}
-        headerRef={headerRef}
       />
       {(isOfficialChat ||
         conversation.expireTimer != null ||
@@ -627,7 +617,7 @@ function HeaderContent({
   }
 
   return (
-    <div className="module-ConversationHeader__header" ref={headerRef}>
+    <div className="module-ConversationHeader__header">
       {avatar}
       {contents}
     </div>
@@ -1163,7 +1153,7 @@ export function CannotLeaveGroupBecauseYouAreLastAdminAlert(props: {
         'icu:ConversationHeader__CannotLeaveGroupBecauseYouAreLastAdminAlert__description'
       )}
     >
-      <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+      <AxoConfirmDialog.Ok />
     </AxoConfirmDialog.Root>
   );
 }

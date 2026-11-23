@@ -5,9 +5,27 @@ import { memo, StrictMode } from 'react';
 import { AxoProvider } from '../axo/AxoProvider.dom.tsx';
 import type { AxoProviderProps } from '../axo/AxoProvider.dom.tsx';
 import type { AxoIntl } from '../axo/_internal/AxoIntl.dom.tsx';
+import type { AxoEnv } from '../axo/_internal/AxoEnv.dom.tsx';
 import type { LanguageTag } from '@signalapp/types';
+import {
+  Environment,
+  getEnvironment,
+  isTestOrMockEnvironment,
+} from '../environment.std.ts';
+
+function getAxoEnv(): AxoEnv.Env {
+  if (isTestOrMockEnvironment()) {
+    return 'test';
+  }
+  if (getEnvironment() === Environment.Development) {
+    return 'dev';
+  }
+  return 'prod';
+}
 
 export type AppProviderProps = Readonly<{
+  /** Overrides the app's environment for Axo components. */
+  env?: AxoEnv.Env;
   children: ReactNode;
 }>;
 
@@ -28,11 +46,29 @@ export const AppProvider: FC<AppProviderProps> = memo(
 
     const messages: AxoProviderProps['messages'] = {
       'AxoAlertDialog.Cancel': i18n('icu:AxoAlertDialog.Cancel'),
+      'AxoAlertDialog.Ok': i18n('icu:AxoAlertDialog.Ok'),
       'AxoBadge.MaxOverflow': max => i18n('icu:AxoBadge.MaxOverflow', { max }),
       'AxoButton.Pending': i18n('icu:AxoButton.Pending'),
+      'AxoColorSlider.Hue': i18n('icu:AxoColorSlider.Hue'),
+      'AxoColorSlider.Saturation': i18n('icu:AxoColorSlider.Saturation'),
+      'AxoColorSlider.Lightness': i18n('icu:AxoColorSlider.Lightness'),
       'AxoDialog.Back': i18n('icu:AxoDialog.Back'),
       'AxoDialog.Close': i18n('icu:AxoDialog.Close'),
+      'AxoLoadingIndicator.Loading': i18n('icu:AxoLoadingIndicator.Loading'),
+      'AxoMediaButton.Play': i18n('icu:AxoMediaButton.Play'),
+      'AxoMediaButton.Pause': i18n('icu:AxoMediaButton.Pause'),
+      'AxoMediaButton.Download': i18n('icu:AxoMediaButton.Download'),
+      'AxoMediaButton.CancelDownload': i18n(
+        'icu:AxoMediaButton.CancelDownload'
+      ),
+      'AxoOutgoingStatus.Sending': i18n('icu:AxoOutgoingStatus.Sending'),
+      'AxoOutgoingStatus.Sent': i18n('icu:AxoOutgoingStatus.Sent'),
+      'AxoOutgoingStatus.Delivered': i18n('icu:AxoOutgoingStatus.Delivered'),
+      'AxoOutgoingStatus.Read': i18n('icu:AxoOutgoingStatus.Read'),
+      'AxoOutgoingStatus.Paused': i18n('icu:AxoOutgoingStatus.Paused'),
+      'AxoOutgoingStatus.Error': i18n('icu:AxoOutgoingStatus.Error'),
       'AxoPasswordField.Reveal': i18n('icu:AxoPasswordField.Reveal'),
+      'AxoProgressIndicator.Loading': i18n('icu:AxoProgressIndicator.Loading'),
       'AxoTextField.Clear': i18n('icu:AxoTextField.Clear'),
       'AxoContactName.InSystemContactsLabel': i18n('icu:contactInAddressBook'),
     };
@@ -40,6 +76,7 @@ export const AppProvider: FC<AppProviderProps> = memo(
     return (
       <StrictMode>
         <AxoProvider
+          env={props.env ?? getAxoEnv()}
           resolvedAppLocale={resolvedAppLocale}
           systemPreferredLanguages={systemPreferredLanguages}
           messages={messages}

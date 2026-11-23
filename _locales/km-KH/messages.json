@@ -2,8 +2,20 @@
   "icu:AxoAlertDialog.Cancel": {
     "messageformat": "បោះបង់"
   },
+  "icu:AxoAlertDialog.Ok": {
+    "messageformat": "យល់ព្រម"
+  },
   "icu:AxoButton.Pending": {
     "messageformat": "មិនទាន់សម្រេច"
+  },
+  "icu:AxoColorSlider.Hue": {
+    "messageformat": "Hue"
+  },
+  "icu:AxoColorSlider.Saturation": {
+    "messageformat": "Saturation"
+  },
+  "icu:AxoColorSlider.Lightness": {
+    "messageformat": "ភ្លឺ"
   },
   "icu:AxoDialog.Back": {
     "messageformat": "ត្រឡប់ក្រោយ"
@@ -11,8 +23,44 @@
   "icu:AxoDialog.Close": {
     "messageformat": "បិទ"
   },
+  "icu:AxoLoadingIndicator.Loading": {
+    "messageformat": "កំពុងផ្ទុក"
+  },
+  "icu:AxoMediaButton.Play": {
+    "messageformat": "ចាក់"
+  },
+  "icu:AxoMediaButton.Pause": {
+    "messageformat": "ផ្អាក"
+  },
+  "icu:AxoMediaButton.Download": {
+    "messageformat": "ទាញយក"
+  },
+  "icu:AxoMediaButton.CancelDownload": {
+    "messageformat": "បោះបង់ការទាញយក"
+  },
+  "icu:AxoOutgoingStatus.Sending": {
+    "messageformat": "កំពុងផ្ញើ"
+  },
+  "icu:AxoOutgoingStatus.Sent": {
+    "messageformat": "បានផ្ញើ"
+  },
+  "icu:AxoOutgoingStatus.Delivered": {
+    "messageformat": "បានបញ្ជូន"
+  },
+  "icu:AxoOutgoingStatus.Read": {
+    "messageformat": "បានអាន"
+  },
+  "icu:AxoOutgoingStatus.Paused": {
+    "messageformat": "ការផ្ញើបានផ្អាក"
+  },
+  "icu:AxoOutgoingStatus.Error": {
+    "messageformat": "មិនអាចផ្ញើបាន"
+  },
   "icu:AxoPasswordField.Reveal": {
     "messageformat": "បង្ហាញពាក្យសម្ងាត់"
+  },
+  "icu:AxoProgressIndicator.Loading": {
+    "messageformat": "កំពុងផ្ទុក"
   },
   "icu:AxoTextField.Clear": {
     "messageformat": "សម្អាត"
@@ -73,12 +121,6 @@
   },
   "icu:LinkedDevicesOnboardingDialog__bullet--2": {
     "messageformat": "ឧបករណ៍ចម្បងរបស់អ្នកគ្រប់គ្រងអ្វីដែលបានភ្ជាប់ អ្នកអាចភ្ជាប់ឧបករណ៍បានរហូតដល់ 5។"
-  },
-  "icu:LinkedDevicesOnboardingDialog__bullet--3": {
-    "messageformat": "ការកំណត់គណនីត្រូវបានគ្រប់គ្រងនៅលើឧបករណ៍ចម្បងរបស់អ្នកតែប៉ុណ្ណោះ រួមទាំងការកំណត់គណនី និងការបម្រុងទុក។"
-  },
-  "icu:LinkedDevicesOnboardingDialog__bullet--3--1": {
-    "messageformat": "ការកំណត់គណនី និងការបម្រុងទុកអាចគ្រប់គ្រងបានតែនៅលើឧបករណ៍ចម្បងរបស់អ្នកប៉ុណ្ណោះ។"
   },
   "icu:LinkedDevicesOnboardingDialog__bullet--3--2": {
     "messageformat": "ការកំណត់គណនី និងការបម្រុងទុកសុវត្ថិភាព Signal អាចគ្រប់គ្រងបានតែនៅលើឧបករណ៍ចម្បងរបស់អ្នកប៉ុណ្ណោះ។"
@@ -260,6 +302,12 @@
   "icu:messageContextMenuButton": {
     "messageformat": "សកម្មភាពច្រើនទៀត"
   },
+  "icu:messageContextMenu__sticker--addFavorite": {
+    "messageformat": "បញ្ចូលទៅក្នុងបញ្ជីសំណព្វ"
+  },
+  "icu:messageContextMenu__sticker--removeFavorite": {
+    "messageformat": "ដកចេញពីបញ្ជីសំណព្វ"
+  },
   "icu:contextMenuCopyLink": {
     "messageformat": "ថតចម្លងតំណភ្ជាប់"
   },
@@ -280,6 +328,9 @@
   },
   "icu:archivedConversations": {
     "messageformat": "ការជជែកដែលបានទុកក្នុងបណ្ណសារ"
+  },
+  "icu:LeftPane__MoreActionsLabel": {
+    "messageformat": "សកម្មភាពច្រើនទៀត"
   },
   "icu:LeftPane__MoreActionsMenu__AddChatFolder": {
     "messageformat": "បញ្ចូលថតឯកសារជជែក"
@@ -641,9 +692,6 @@
   "icu:SafetyNumberViewer__KeyTransparency__popup--unavailable__body": {
     "messageformat": "Signal អាចផ្ទៀងផ្ទាត់ការអ៊ីនគ្រីបដោយស្វ័យប្រវត្តិបានតែនៅក្នុងការជជែកដែលអ្នកបានភ្ជាប់ជាមួយនរណាម្នាក់តាមរយៈលេខទូរសព្ទប៉ុណ្ណោះ។ ប្រសិនបើការជជែកត្រូវបានចាប់ផ្តើមជាមួយឈ្មោះអ្នកប្រើ ឬក្រុមដែលមានឈ្មោះដូចគ្នា សូមផ្ទៀងផ្ទាត់ការអ៊ីនគ្រីបទាំងសងខាងដោយប្រៀបធៀបលេខនៅលើអេក្រង់មុន ឬស្គែនកូដនៅលើឧបករណ៍របស់ពួកគេ។"
   },
-  "icu:SafetyNumberViewer__KeyTransparency__popup__okay": {
-    "messageformat": "យល់ព្រម"
-  },
   "icu:SafetyNumberNotReady__body": {
     "messageformat": "លេខសុវត្ថិភាពមួយនឹងត្រូវបានបង្កើតឡើងជាមួយបុគ្គលនេះ បន្ទាប់ពីអ្នកផ្ញើសារទៅវិញទៅមកជាមួយគេ។"
   },
@@ -671,8 +719,8 @@
   "icu:KeyTransparencyOnboardingDialog__Title": {
     "messageformat": "ឥឡូវនេះ Signal អាចផ្ទៀងផ្ទាត់ការអ៊ីនគ្រីបដោយស្វ័យប្រវត្តិបាន"
   },
-  "icu:KeyTransparencyOnboardingDialog__Description": {
-    "messageformat": "សម្រាប់ទំនាក់ទំនងដែលអ្នកបានភ្ជាប់ជាមួយតាមរយៈលេខទូរសព្ទ Signal អាចបញ្ជាក់ដោយស្វ័យប្រវត្តិថាតើការភ្ជាប់នោះមានសុវត្ថិភាពឬអត់ ដោយប្រើដំណើរការមួយដែលហៅថា តម្លាភាពកូនសោ។ ដើម្បីសុវត្ថិភាពបន្ថែម អ្នកនៅតែអាចផ្ទៀងផ្ទាត់ការភ្ជាប់ដោយដៃបាន ដោយប្រើកូដ QR ឬដោយប្រៀបធៀបលេខសុវត្ថិភាព។"
+  "icu:KeyTransparencyOnboardingDialog__Description-v2": {
+    "messageformat": "<paragraph>ចំពោះទំនាក់ទំនងដែលអ្នកបានភ្ជាប់ជាមួយតាមរយៈលេខទូរសព្ទ Signal អាចបញ្ជាក់ដោយស្វ័យប្រវត្តិថាតើការភ្ជាប់នោះមានសុវត្ថិភាពឬអត់ ដោយប្រើដំណើរការមួយដែលហៅថា តម្លាភាពកូនសោ។</paragraph><paragraph>ដើម្បីសុវត្ថិភាពបន្ថែម អ្នកនៅតែអាចផ្ទៀងផ្ទាត់ការភ្ជាប់ដោយដៃបាន ដោយប្រើកូដ QR ឬដោយប្រៀបធៀបលេខសុវត្ថិភាព។</paragraph>"
   },
   "icu:KeyTransparencyOnboardingDialog__Continue": {
     "messageformat": "បន្ត"
@@ -755,6 +803,18 @@
   "icu:Toast--ChatFolderCreated": {
     "messageformat": "ថតឯកសារ {chatFolderName} ត្រូវបានបញ្ចូល"
   },
+  "icu:Toast--LinkedDeviceAdded": {
+    "messageformat": "New device \"{name}\" successfully linked"
+  },
+  "icu:Toast--LinkedDeviceRemoved": {
+    "messageformat": "\"{name}\" unlinked"
+  },
+  "icu:Toast--LinkedDeviceNameUpdated": {
+    "messageformat": "Device name updated"
+  },
+  "icu:Toast--LinkedDeviceSyncComplete": {
+    "messageformat": "Message sync complete"
+  },
   "icu:cannotSelectPhotosAndVideosAlongWithFiles": {
     "messageformat": "អ្នកមិនអាចជ្រើសរើសរូបថត និងវីដេអូរួមជាមួយឯកសារបានទេ។"
   },
@@ -769,6 +829,9 @@
   },
   "icu:videoFileTooLargeWarning": {
     "messageformat": "មិនអាចផ្ញើឯកសារវីដេអូនេះបានទេ ព្រោះវាធំពេក។ អ្នកអាចផ្ញើឯកសារវីដេអូដែលមានទំហំរហូតដល់ {limit,number}{units}។"
+  },
+  "icu:videoFileTooLongWarning": {
+    "messageformat": "មិនអាចផ្ញើវីដេអូបានទេ ដោយសារវាវែងជាង {maxDuration}"
   },
   "icu:unableToLoadAttachment": {
     "messageformat": "មិនអាចផ្ទុកឯកសារភ្ជាប់ដែលបានជ្រើសរើស។"
@@ -919,24 +982,6 @@
   },
   "icu:sendMessageToContact": {
     "messageformat": "ផ្ញើសារ"
-  },
-  "icu:home": {
-    "messageformat": "ផ្ទះ"
-  },
-  "icu:work": {
-    "messageformat": "ការងារ"
-  },
-  "icu:mobile": {
-    "messageformat": "ចល័ត"
-  },
-  "icu:email": {
-    "messageformat": "អ៊ីមែល"
-  },
-  "icu:phone": {
-    "messageformat": "ទូរស័ព្ទ"
-  },
-  "icu:address": {
-    "messageformat": "អាសយដ្ឋាន"
   },
   "icu:poBox": {
     "messageformat": "ប្រអប់សំបុត្រ"
@@ -1349,9 +1394,6 @@
   "icu:PinMessageDisappearingMessagesWarningDialog__Description": {
     "messageformat": "សារដែលបាត់ដោយស្វ័យប្រវត្តិនឹងឈប់ខ្ទាស់ នៅពេលមុខងារកំណត់ម៉ោងរបស់វាផុតកំណត់ ហើយសារត្រូវបានដកចេញពីការជជែក។"
   },
-  "icu:PinMessageDisappearingMessagesWarningDialog__Okay": {
-    "messageformat": "យល់ព្រម"
-  },
   "icu:PinnedMessagesBar__AccessibilityLabel": {
     "messageformat": "{pinsCount, plural, other {សារដែលបានខ្ទាស់}}"
   },
@@ -1480,6 +1522,9 @@
   },
   "icu:ConversationMerge--learn-more": {
     "messageformat": "ស្វែងយល់បន្ថែម"
+  },
+  "icu:ConversationMerge--explainer-dialog--label": {
+    "messageformat": "ប្រវត្តិសាររបស់អ្នកត្រូវបានបញ្ចូលគ្នា"
   },
   "icu:ConversationMerge--explainer-dialog--line-1": {
     "messageformat": "បន្ទាប់ពីផ្ញើសារជាមួយ {obsoleteConversationTitle} អ្នកបានដឹងថាលេខនេះជាលេខរបស់ {conversationTitle}។ លេខទូរសព្ទរបស់គេគឺជាលេខឯកជន។"
@@ -1742,6 +1787,9 @@
   "icu:Preferences__EditChatFolderPage__SelectChatsDialog__Search__Placeholder": {
     "messageformat": "ស្វែងរក"
   },
+  "icu:Preferences__EditChatFolderPage__SelectChatsDialog__NoChats": {
+    "messageformat": "មិនមានការជជែកទេ"
+  },
   "icu:Preferences__EditChatFolderPage__SelectChatsDialog__ChatTypesSection__Title": {
     "messageformat": "ប្រភេទនៃការជជែក"
   },
@@ -1804,6 +1852,15 @@
   },
   "icu:Preferences__EditChatFolderPage__CancelButton": {
     "messageformat": "បោះបង់"
+  },
+  "icu:Preferences__PrivacyPage__SealedSender": {
+    "messageformat": "មុខងារការពារអ្នកផ្ញើ"
+  },
+  "icu:Preferences__PrivacyPage__AllowFromAnyone__Label": {
+    "messageformat": "អនុញ្ញាតពីនរណាម្នាក់"
+  },
+  "icu:Preferences__PrivacyPage__AllowFromAnyone__Description": {
+    "messageformat": "បើកមុខងារការពារអ្នកផ្ញើសម្រាប់សារមកពីអ្នកក្រៅបញ្ជីទំនាក់ទំនង និងមនុស្សដែលអ្នកមិនបានចែករំលែកប្រូហ្វាល់អ្នកជាមួយ។ <learnMoreLink>ស្វែងយល់បន្ថែម</learnMoreLink>។"
   },
   "icu:Preferences__PrivacyPage__ShowStatusIcon__Label": {
     "messageformat": "បង្ហាញរូបស្ថានភាព"
@@ -2234,6 +2291,24 @@
   "icu:deleteAccountDialogBody": {
     "messageformat": "វានឹងលុបព័ត៌មានគណនី ប្រូហ្វាល់ និងសារទាំងអស់របស់អ្នក។ អ្នកក៏នឹងត្រូវបានដកចេញពីក្រុម Signal ទាំងអស់ផងដែរ។ កម្មវិធីនឹងបិទបន្ទាប់ពីដំណើរការនេះត្រូវបានបញ្ចប់។"
   },
+  "icu:DeleteAccountConfirmDialog--Title": {
+    "messageformat": "លុបគណនី"
+  },
+  "icu:DeleteAccountConfirmDialog--Description": {
+    "messageformat": "វានឹងលុបព័ត៌មានគណនី ប្រូហ្វាល់ និងសារទាំងអស់របស់អ្នក។ អ្នកក៏នឹងត្រូវបានដកចេញពីក្រុម Signal ទាំងអស់ផងដែរ។"
+  },
+  "icu:DeleteAccountConfirmDialog--ConfirmNumber": {
+    "messageformat": "បញ្ជាក់លេខទូរសព្ទរបស់អ្នក"
+  },
+  "icu:DeleteAccountConfirmDialog--CountryCodePlaceholder": {
+    "messageformat": "លេខកូដប្រទេស"
+  },
+  "icu:DeleteAccountConfirmDialog--NumberPlaceholder": {
+    "messageformat": "លេខទូរសព្ទ"
+  },
+  "icu:DeleteAccountConfirmDialog--DeleteButton": {
+    "messageformat": "លុប"
+  },
   "icu:deleteOldIndexedDBData": {
     "messageformat": "អ្នកមានទិន្នន័យដែលលែងប្រើ ពីការដំឡើង Signal Desktop ពីមុន។ ប្រសិនបើអ្នកជ្រើសរើសបន្ត វានឹងត្រូវលុបចោល ហើយអ្នកនឹងចាប់ផ្តើមសាឡើងវិញទាំងអស់។"
   },
@@ -2386,9 +2461,6 @@
   },
   "icu:callRingtoneNotificationDescription": {
     "messageformat": "ចាក់សំឡេងហៅ"
-  },
-  "icu:callSystemNotificationDescription": {
-    "messageformat": "បង្ហាញសារជូនដំណឹងសម្រាប់ការហៅ"
   },
   "icu:incomingCallNotificationDescription": {
     "messageformat": "បើកការហៅចូល"
@@ -2828,17 +2900,38 @@
   "icu:stickers--StickerManager--UninstallWarning": {
     "messageformat": "អ្នកប្រហែលមិនអាចដំឡើងកញ្ចប់ស្ទីកគ័រនេះឡើងវិញ ប្រសិនបើអ្នកមិនមានសារដើម។"
   },
+  "icu:stickers--StickerManager--UninstallWarning--Title": {
+    "messageformat": "Remove Sticker Pack?"
+  },
+  "icu:stickers--StickerManager--UninstallWarning--Body": {
+    "messageformat": "This will remove the sticker pack. You can't add it again without a link or sticker message."
+  },
+  "icu:stickers--StickerManager--UninstallWarning--Remove": {
+    "messageformat": "Remove"
+  },
   "icu:stickers--StickerManagerHeader--All": {
     "messageformat": "ទាំងអស់"
   },
   "icu:stickers--StickerManagerHeader--MyStickers": {
     "messageformat": "ស្ទីកគ័ររបស់ខ្ញុំ"
   },
+  "icu:stickers--StickerManagerHidePackDialog--Title": {
+    "messageformat": "Hide Sticker Pack?"
+  },
+  "icu:stickers--StickerManagerHidePackDialog--Body": {
+    "messageformat": "This will remove the sticker pack. You can't add it again without a link or sticker message."
+  },
+  "icu:stickers--StickerManagerHidePackDialog--Hide": {
+    "messageformat": "Hide"
+  },
   "icu:stickers--StickerManagerPackContextMenu--Add": {
     "messageformat": "បញ្ចូល"
   },
   "icu:stickers--StickerManagerPackContextMenu--Remove": {
     "messageformat": "ដកចេញ"
+  },
+  "icu:stickers--StickerManagerPackContextMenu--Hide": {
+    "messageformat": "Hide"
   },
   "icu:stickers--StickerManagerPackDragHandle--Label": {
     "messageformat": "អូសដើម្បីតម្រៀបកញ្ចប់ស្ទីកគ័រឡើងវិញ"
@@ -2876,8 +2969,41 @@
   "icu:stickers--StickerPreview--StickerNoEmojiAriaLabel": {
     "messageformat": "ស្ទីកគ័រដែលគ្មានរូបអារម្មណ៍"
   },
+  "icu:stickers--StickerPreview--SeeStickerDetails": {
+    "messageformat": "មើលព័ត៌មានលម្អិតអំពីស្ទីកគ័រ"
+  },
+  "icu:stickers--StickerPreview--StickerDetailsTitle": {
+    "messageformat": "ព័ត៌មានលម្អិតអំពីស្ទីកគ័រ"
+  },
+  "icu:stickers--StickerPreview--AddFavorite": {
+    "messageformat": "បញ្ចូលទៅក្នុងបញ្ជីសំណព្វ"
+  },
+  "icu:stickers--StickerPreview--RemoveFavorite": {
+    "messageformat": "ដកចេញពីបញ្ជីសំណព្វ"
+  },
   "icu:stickers--StickerPackLinkPreviewDescription": {
     "messageformat": "កញ្ចប់ស្ទីកគ័រដោយ {author}"
+  },
+  "icu:stickers--Toast--StickerFavoriteAdded": {
+    "messageformat": "ស្ទីកគ័រត្រូវបានបញ្ចូលទៅក្នុងបញ្ជីសំណព្វ"
+  },
+  "icu:stickers--Toast--StickerFavoriteRemoved": {
+    "messageformat": "ស្ទីកគ័រត្រូវបានដកចេញពីបញ្ជីសំណព្វ"
+  },
+  "icu:stickers--Toast--StickerFavoritesHint": {
+    "messageformat": "Right click a sticker to add to Favorites"
+  },
+  "icu:stickers--Toast--StickerFavoritesTooMany": {
+    "messageformat": "{count, plural, other {អ្នកអាចបញ្ចូលបានតែ {count,number} ស្ទីកគ័រប៉ុណ្ណោះទៅក្នុងបញ្ជីសំណព្វ}}"
+  },
+  "icu:stickers--Toast--StickerPackHidden": {
+    "messageformat": "Sticker pack hidden"
+  },
+  "icu:stickers--Toast--StickerPackHidden--Undo": {
+    "messageformat": "Undo"
+  },
+  "icu:stickers--Toast--StickerPackUnhidden": {
+    "messageformat": "Sticker pack unhidden"
   },
   "icu:stickers--ViewPack": {
     "messageformat": "មើលកញ្ចប់"
@@ -2987,6 +3113,9 @@
   "icu:FunPanelSticker__SubNavLabel": {
     "messageformat": "កញ្ចប់ស្ទីកគ័រ"
   },
+  "icu:FunPanelStickers__SubNavCategoryLabel--Favorites": {
+    "messageformat": "បញ្ជីសំណព្វ"
+  },
   "icu:FunPanelStickers__SubNavCategoryLabel--Recents": {
     "messageformat": "បានប្រើប្រាស់ថ្មីៗ"
   },
@@ -2999,11 +3128,20 @@
   "icu:FunPanelStickers__SectionTitle--Recents": {
     "messageformat": "បានប្រើប្រាស់ថ្មីៗ"
   },
+  "icu:FunPanelStickers__SectionTitle--Favorites": {
+    "messageformat": "បញ្ជីសំណព្វ"
+  },
   "icu:FunPanelStickers__SectionTitle--Featured": {
     "messageformat": "ពិសេស"
   },
   "icu:FunPanelStickers__SearchResults__EmptyHeading": {
     "messageformat": "ពុំមានស្ទីកគ័រ"
+  },
+  "icu:FunPanelStickers__StickerContextMenu--AddFavorite": {
+    "messageformat": "បញ្ចូលទៅក្នុងបញ្ជីសំណព្វ"
+  },
+  "icu:FunPanelStickers__StickerContextMenu--RemoveFavorite": {
+    "messageformat": "ដកចេញពីបញ្ជីសំណព្វ"
   },
   "icu:FunPanelStickers__LightboxDialog__Label": {
     "messageformat": "ការមើលស្ទីកគ័រជាមុន"
@@ -3061,9 +3199,6 @@
   },
   "icu:FunPanelGifs__GiphyAttribution__AccessibilityLabel": {
     "messageformat": "ដំណើរការដោយ GIPHY"
-  },
-  "icu:FunSearch__ClearButtonLabel": {
-    "messageformat": "លុបការស្វែងរក"
   },
   "icu:FunSkinTones__List": {
     "messageformat": "ពណ៌ស្បែក"
@@ -3512,6 +3647,9 @@
   "icu:MessageRequests--unblock-group-confirm-body": {
     "messageformat": "សមាជិកនឹងអាចដាក់អ្នកចូលក្នុងក្រុមនេះបានម្តងទៀត។"
   },
+  "icu:MessageRequests--unblock-signal-confirm-body": {
+    "messageformat": "អ្នកនឹងទទួលដំណឹង និងបច្ចុប្បន្នភាព Signal។"
+  },
   "icu:MessageRequests--block-and-report-spam-success-toast": {
     "messageformat": "បានរាយការណ៍ជាសារឥតបានការ និងបានទប់ស្កាត់។"
   },
@@ -3526,6 +3664,9 @@
   },
   "icu:MessageRequests--block-group-confirm-body": {
     "messageformat": "អ្នកនឹងលែងទទួលបានសារ ឬព័ត៌មានថ្មីៗពីក្រុមនេះទៀតហើយ ហើយសមាជិកនឹងមិនអាចបញ្ចូលអ្នកទៅក្នុងក្រុមនេះម្តងទៀតបានទេ។"
+  },
+  "icu:MessageRequests--block-signal-confirm-body": {
+    "messageformat": "អ្នកនឹងលែងទទួលដំណឹង និងបច្ចុប្បន្នភាព Signal។"
   },
   "icu:MessageRequests--reportAndMaybeBlock": {
     "messageformat": "រាយការណ៍…"
@@ -3854,6 +3995,9 @@
   "icu:callingDeviceSelection__settings": {
     "messageformat": "ការកំណត់"
   },
+  "icu:callingDeviceSelection__settings-v2": {
+    "messageformat": "ការកំណត់ការហៅ"
+  },
   "icu:calling__participants--pluralized": {
     "messageformat": "{people, plural, other {{people,number} នាក់នៅក្នុងការហៅ}}"
   },
@@ -3959,6 +4103,15 @@
   "icu:callingDeviceSelection__select--default": {
     "messageformat": "លំនាំដើម"
   },
+  "icu:callingDeviceSelection__select--default-nonwin": {
+    "messageformat": "លំនាំដើម៖ {deviceName}"
+  },
+  "icu:callingDeviceSelection__select--default_console": {
+    "messageformat": "លំនាំដើម៖ {deviceName}"
+  },
+  "icu:callingDeviceSelection__select--default_communications": {
+    "messageformat": "ការប្រាស្រ័យទាក់ទងលំនាំដើម៖ {deviceName}"
+  },
   "icu:muteNotificationsTitle": {
     "messageformat": "បិទសំឡេងការជូនដំណឹង"
   },
@@ -4027,9 +4180,6 @@
   },
   "icu:DebugLogErrorModal__SubmitDebugLog__Cancel": {
     "messageformat": "ទេ អរគុណ"
-  },
-  "icu:Confirmation--confirm": {
-    "messageformat": "យល់ព្រម"
   },
   "icu:MessageMaxEditsModal__Title": {
     "messageformat": "មិនអាចកែសារបានទេ"
@@ -4811,6 +4961,69 @@
   "icu:CompositionArea__AttachMenu__Poll": {
     "messageformat": "ការស្ទង់មតិ"
   },
+  "icu:CompositionArea__AttachMenu__Contact": {
+    "messageformat": "ទំនាក់ទំនង"
+  },
+  "icu:ShareContactDialog__SelectContact__Title": {
+    "messageformat": "ជ្រើសរើសទំនាក់ទំនង"
+  },
+  "icu:ShareContactDialog__SelectContact__SearchPlaceholder": {
+    "messageformat": "ស្វែងរក"
+  },
+  "icu:ShareContactDialog__SelectContact__EmptyState": {
+    "messageformat": "គ្មានទំនាក់ទំនង"
+  },
+  "icu:ShareContactDialog__SelectContact__NoResults": {
+    "messageformat": "គ្មានលទ្ធផលសម្រាប់ “{searchQuery}”"
+  },
+  "icu:ShareContactDialog__ShareContact__Title": {
+    "messageformat": "ចែករំលែកទំនាក់ទំនង"
+  },
+  "icu:ShareContactDialog__ShareContact__Description": {
+    "messageformat": "នរណាដែលអ្នកចែករំលែកប្រូហ្វាល់នេះជាមួយ នឹងអាចផ្ញើសារទៅកាន់ {name}។"
+  },
+  "icu:ShareContactDialog__ShareContact__Send": {
+    "messageformat": "ផ្ញើទំនាក់ទំនង"
+  },
+  "icu:ShareContactDialog__ShareContact__EditName": {
+    "messageformat": "កែឈ្មោះ"
+  },
+  "icu:ShareContactDialog__EditName__Title": {
+    "messageformat": "កែឈ្មោះ"
+  },
+  "icu:ShareContactDialog__EditName__Prefix": {
+    "messageformat": "ខាងដើម"
+  },
+  "icu:ShareContactDialog__EditName__GivenName": {
+    "messageformat": "នាមខ្លួន"
+  },
+  "icu:ShareContactDialog__EditName__MiddleName": {
+    "messageformat": "ឈ្មោះកណ្តាល"
+  },
+  "icu:ShareContactDialog__EditName__FamilyName": {
+    "messageformat": "ត្រកូល"
+  },
+  "icu:ShareContactDialog__EditName__Suffix": {
+    "messageformat": "ខាងចុង"
+  },
+  "icu:ShareContactDialog__EditName__Organization": {
+    "messageformat": "ស្ថាប័ន"
+  },
+  "icu:ShareContactDialog__ShareContact__EditPhoto": {
+    "messageformat": "កែរូបថត"
+  },
+  "icu:ShareContactDialog__SelectPhoto__Title": {
+    "messageformat": "ជ្រើសរើសរូបថតមួយ"
+  },
+  "icu:ShareContactDialog__SelectPhoto__ContactPhoto": {
+    "messageformat": "រូបថតទំនាក់ទំនង"
+  },
+  "icu:ShareContactDialog__SelectPhoto__ProfilePhoto": {
+    "messageformat": "រូបថតប្រូហ្វាល់"
+  },
+  "icu:ShareContactDialog__SelectPhoto__DefaultAvatar": {
+    "messageformat": "រូបតំណាងលំនាំដើម"
+  },
   "icu:CompositionArea--attach-plus": {
     "messageformat": "បញ្ចូលឯកសារភ្ជាប់ ឬការស្ទង់មតិ"
   },
@@ -4849,9 +5062,6 @@
   },
   "icu:CompositionInput__editing-message": {
     "messageformat": "កែសារ"
-  },
-  "icu:countMutedConversationsDescription": {
-    "messageformat": "រាប់បញ្ចូលទាំងការជជែកដែលបានបិទសំឡេងនៅក្នុងស្លាកចំនួន"
   },
   "icu:ContactModal--nickname": {
     "messageformat": "ឈ្មោះហៅក្រៅ"
@@ -5432,9 +5642,6 @@
   },
   "icu:DeleteAttachmentModal__Delete": {
     "messageformat": "លុប"
-  },
-  "icu:DeleteAttachmentModal__Cancel": {
-    "messageformat": "បោះបង់"
   },
   "icu:SelectModeActions__toast--TooManyMessagesToForward": {
     "messageformat": "អ្នកអាចបញ្ជូនបន្តបានត្រឹមតែ 30 សារប៉ុណ្ណោះ"
@@ -6079,6 +6286,9 @@
   "icu:Preferences__button--account": {
     "messageformat": "គណនី"
   },
+  "icu:Preferences__button--linked-devices": {
+    "messageformat": "Linked Devices"
+  },
   "icu:Preferences__button--general": {
     "messageformat": "ទូទៅ"
   },
@@ -6148,6 +6358,186 @@
   "icu:Preferences--system": {
     "messageformat": "ប្រព័ន្ធ"
   },
+  "icu:LinkDevice--OSPrompt--Mac": {
+    "messageformat": "link a new device"
+  },
+  "icu:LinkDevice--OSPrompt--Windows": {
+    "messageformat": "Verify your identity to link a new device."
+  },
+  "icu:LinkDevice--OSPrompt--description--Linux": {
+    "messageformat": "Link a device"
+  },
+  "icu:LinkDevice--OSPrompt--message--Linux": {
+    "messageformat": "Authentication is required to link a new device."
+  },
+  "icu:Preferences--LinkedDevices--title": {
+    "messageformat": "Linked devices"
+  },
+  "icu:Preferences--LinkedDevices--description": {
+    "messageformat": "Use Signal on another device. Your messages will sync to your linked devices. <learnMore>Learn more</learnMore>"
+  },
+  "icu:Preferences--LinkedDevices--button": {
+    "messageformat": "Link a new device"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--title": {
+    "messageformat": "Linked devices"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--defaultName": {
+    "messageformat": "Linked device"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--createdAt": {
+    "messageformat": "Linked {date}"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--lastSeenAt": {
+    "messageformat": "Last active {date}"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--openMenu": {
+    "messageformat": "Open menu"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--Menu--rename": {
+    "messageformat": "Rename"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--Menu--unlink": {
+    "messageformat": "Unlink"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--footer": {
+    "messageformat": "Messages and chat info are protected by end-to-end encryption on all devices"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--title": {
+    "messageformat": "Signal on a linked device"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet1": {
+    "messageformat": "All messaging on linked devices is private"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet2": {
+    "messageformat": "Signal messages are synchronized with Signal on your desktop after it is linked."
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet3": {
+    "messageformat": "On your other device, visit <linkToSignal>signal.org/download</linkToSignal> to install Signal"
+  },
+  "icu:Preferences--LinkedDevices--EditDeviceNameDialog--title": {
+    "messageformat": "Edit device name"
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--title": {
+    "messageformat": "Unlink \"{name}\""
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--description": {
+    "messageformat": "This device will no longer be able to send or receive messages if it is unlinked."
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--unlinkButton": {
+    "messageformat": "Unlink"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--title": {
+    "messageformat": "Scan QR code"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--description": {
+    "messageformat": "Scan the QR code displayed on the device to link"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--title": {
+    "messageformat": "Linking device failed"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--description": {
+    "messageformat": "Make sure you are on the latest version of Signal, and scanning a QR code from within Signal and not another app."
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--retry-button": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--title": {
+    "messageformat": "Finish linking"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--linkNSync--title": {
+    "messageformat": "Transfer Message History"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--linkNSync--description": {
+    "messageformat": "Transfer your text messages and your last 45 days of media"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--doNotTransfer--title": {
+    "messageformat": "Don't transfer"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--doNotTransfer--description": {
+    "messageformat": "No old messages or media will be transferred to your linked device"
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--title": {
+    "messageformat": "Syncing messages..."
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--progress": {
+    "messageformat": "{percentage,number,percent} complete"
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--do-not-close": {
+    "messageformat": "Do not close Signal"
+  },
+  "icu:Preferences--LinkedDevices--LinkingDeviceDialog--title": {
+    "messageformat": "Linking device"
+  },
+  "icu:Preferences--LinkedDevices--LinkingDeviceDialog--progress": {
+    "messageformat": "Your device is being linked..."
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--title": {
+    "messageformat": "Linking device failed"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--description": {
+    "messageformat": "Something went wrong! Please ensure that both devices are connected to the internet and try again."
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--learn-more": {
+    "messageformat": "Learn more"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--retry": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--NotEnoughSpaceDialog--title": {
+    "messageformat": "Not enough storage space"
+  },
+  "icu:Preferences--LinkedDevices--NotEnoughSpaceDialog--description": {
+    "messageformat": "You don’t have enough free storage space on your device to transfer your messages. Free up some space and try again, or link your device without transferring your messages."
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--title": {
+    "messageformat": "Message sync failed"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--description": {
+    "messageformat": "Your device was successfully linked, but your messages could not be transferred."
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--learn-more": {
+    "messageformat": "Learn more"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--continue": {
+    "messageformat": "Continue"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--title": {
+    "messageformat": "Message sync failed"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--description": {
+    "messageformat": "Your messages couldn’t be transferred to your linked device. You can try re-linking and transferring again, or continue without transferring your message history."
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--continue-no-transfer": {
+    "messageformat": "Continue without transferring"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--retry": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--title": {
+    "messageformat": "Include a debug log?"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--description": {
+    "messageformat": "Including your debug log helps us diagnose and fix the issue, and does not contain identifying information. This is optional."
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--include-log-checkbox": {
+    "messageformat": "Include debug log"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--view": {
+    "messageformat": "View"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--no-thanks": {
+    "messageformat": "No thanks"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
   "icu:Preferences--signal-login": {
     "messageformat": "Signal Login"
   },
@@ -6168,9 +6558,6 @@
   },
   "icu:Preferences__SignalAccountKeys__Description": {
     "messageformat": "សូមរក្សាទុកវាក្នុងកន្លែងដែលមានសុវត្ថិភាព ព្រោះព័ត៌មានចូលគណនីរបស់អ្នកគឺត្រូវមានជាចាំបាច់សម្រាប់ការស្តារគណនី និងទិន្នន័យរបស់អ្នក។ កុំចែករំលែកវាជាមួយនរណាម្នាក់ឱ្យសោះ។"
-  },
-  "icu:Preferences__SignalAccountKeys__AccountKey": {
-    "messageformat": "លេខកូដគណនី"
   },
   "icu:Preferences__SignalAccountKeys__AccountID": {
     "messageformat": "លេខសម្គាល់គណនី"
@@ -6271,9 +6658,6 @@
   "icu:Preferences--pin-reminders--header": {
     "messageformat": "ការរំលឹកលេខកូដសម្ងាត់"
   },
-  "icu:Preferences--pin-reminders--description": {
-    "messageformat": "គេនឹងស្នើទៅអ្នកតិចជាងមុននៅពេលខាងមុខ"
-  },
   "icu:Preferences--registration-lock__label": {
     "messageformat": "ការចាក់សោការចុះឈ្មោះ"
   },
@@ -6291,9 +6675,6 @@
   },
   "icu:Preferences__Notifications__SoundsSection__Title": {
     "messageformat": "សំឡេង"
-  },
-  "icu:Preferences__Notifications__AppBadgeSection__Title": {
-    "messageformat": "ស្លាកកម្មវិធី"
   },
   "icu:Preferences__Notifications__AppBadgeSection__Title-v2": {
     "messageformat": "ស្លាកមិនទាន់អាន"
@@ -6673,6 +7054,9 @@
   "icu:Preferences--blocked-users--description": {
     "messageformat": "អ្នកប្រើដែលបានទប់ស្កាត់នឹងមិនអាចហៅ ឬផ្ញើសារមកអ្នកបានទេ"
   },
+  "icu:Preferences--add-blocked": {
+    "messageformat": "បញ្ចូលអ្នកប្រើ ឬក្រុមដែលបានទប់ស្កាត់"
+  },
   "icu:Preferences--blocked-users": {
     "messageformat": "អ្នកប្រើដែលបានទប់ស្កាត់"
   },
@@ -6681,6 +7065,12 @@
   },
   "icu:Preferences--blocked--blocked-on": {
     "messageformat": "បានទប់ស្កាត់នៅថ្ងៃទី {blockedAt}"
+  },
+  "icu:Preferences--BlockChooser--Done": {
+    "messageformat": "រួចរាល់"
+  },
+  "icu:Preferences--BlockChooser--Search--Placeholder": {
+    "messageformat": "ស្វែងរក"
   },
   "icu:Preferences--signal-backups": {
     "messageformat": "ការបម្រុងទុកសុវត្ថិភាព Signal"
@@ -7078,6 +7468,36 @@
   "icu:InstallScreenUpdateDialog--cannot-update__body": {
     "messageformat": "Signal Desktop មិនអាចដំឡើងកំណែបានទេ ប៉ុន្តែមានកំណែថ្មីមួយដែលអាចប្រើបាន។ សូមចូលទៅកាន់ {downloadUrl} ហើយដំឡើងកំណែថ្មីនោះដោយផ្ទាល់ បន្ទាប់មកទាក់ទងផ្នែកជំនួយ ឬរាយការណ៍អំពីបញ្ហានេះ។"
   },
+  "icu:EntryPoint--signal-logo": {
+    "messageformat": "និមិត្តសញ្ញា Signal"
+  },
+  "icu:EntryPoint--Title--Line1": {
+    "messageformat": "រក្សាឯកជនភាពជូនអ្នក។"
+  },
+  "icu:EntryPoint--Title--Line2": {
+    "messageformat": "សូមមានភាពជាខ្លួនឯងនៅក្នុងគ្រប់សារទាំងអស់។"
+  },
+  "icu:EntryPoint--link-button": {
+    "messageformat": "ភ្ជាប់គណនីរបស់អ្នក"
+  },
+  "icu:EntryPoint--more-options-button": {
+    "messageformat": "ជម្រើសច្រើនទៀត"
+  },
+  "icu:EntryPoint--nonprofit": {
+    "messageformat": "Signal គឺជាស្ថាប័នមិនស្វែងរកប្រាក់ចំណេញ"
+  },
+  "icu:EntryPoint--terms": {
+    "messageformat": "លក្ខខណ្ឌ និងគោលការណ៍ឯកជនភាព"
+  },
+  "icu:EntryPoint--MoreOptions--Title": {
+    "messageformat": "ជម្រើសច្រើនទៀត"
+  },
+  "icu:EntryPoint--MoreOptions--RegistrationButton--Title": {
+    "messageformat": "បង្កើតគណនីថ្មី"
+  },
+  "icu:EntryPoint--MoreOptions--RegistrationButton--Description": {
+    "messageformat": "បង្កើតគណនី Signal ថ្មីមួយដោយប្រើលេខទូរសព្ទរបស់អ្នក។"
+  },
   "icu:StandaloneRegistration--signal-logo": {
     "messageformat": "និមិត្តសញ្ញា Signal"
   },
@@ -7097,7 +7517,7 @@
     "messageformat": "សូមព្យាយាមម្តងទៀតក្នុងពេល {duration} ទៀត។"
   },
   "icu:StandaloneRegistration--PhoneNumber--RegionCodeSelector--Label": {
-    "messageformat": "Select region code"
+    "messageformat": "ជ្រើសរើសកូដប្រទេស"
   },
   "icu:StandaloneRegistration--PhoneNumber--placeholder": {
     "messageformat": "លេខទូរសព្ទ"
@@ -7272,6 +7692,21 @@
   },
   "icu:StandaloneRegistration--VerificationCode--CannotSendCodeTemporary--ok-button": {
     "messageformat": "យល់ព្រម"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Title": {
+    "messageformat": "មានបញ្ហាក្នុងការចុះឈ្មោះឬ?"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet1": {
+    "messageformat": "ត្រូវប្រាកដថា ទូរសព្ទរបស់អ្នកមានសេវា ដើម្បីទទូលបានសារ SMS ឬការហៅ"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet2": {
+    "messageformat": "សូមបញ្ជាក់ថា អ្នកអាចទទួលការហៅទូរសព្ទទៅកាន់លេខនោះបាន"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet3": {
+    "messageformat": "សូមពិនិត្យមើលថា តើអ្នកបានបញ្ចូលលេខទូរសព្ទរបស់អ្នកបានត្រឹមត្រូវឬទេ"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Footer": {
+    "messageformat": "ប្រសិនបើអ្នកនៅតែមិនអាចចុះឈ្មោះបាន សូមអនុវត្តតាម<troubleshootingLink>ជំហានដោះស្រាយបញ្ហា</troubleshootingLink>ទាំងនេះ ឬ<contactSupportLink>ទាក់ទងផ្នែកជំនួយ</contactSupportLink>។"
   },
   "icu:StandaloneRegistration--ProfileEntry--header": {
     "messageformat": "រៀបចំប្រូហ្វាល់របស់អ្នក"
@@ -8008,6 +8443,9 @@
   "icu:StoryDetailsModal__download-attachment": {
     "messageformat": "ទាញយកឯកសារភ្ជាប់"
   },
+  "icu:StoryDetailsModal__more-actions": {
+    "messageformat": "More actions"
+  },
   "icu:StoryViewsNRepliesModal__read-receipts-off": {
     "messageformat": "បើកមុខងារមើលសារដើម្បីមើលថានរណាខ្លះដែលបានមើលរឿងរ៉ាវរបស់អ្នក។ បើកកម្មវិធី Signal នៅលើឧបករណ៍ចល័តរបស់អ្នក ហើយចូលទៅកាន់ការកំណត់ > រឿងរ៉ាវ។"
   },
@@ -8561,12 +8999,6 @@
   "icu:CallLinkPendingParticipantModal__DenyButtonLabel": {
     "messageformat": "បដិសេធមិនឱ្យចូល"
   },
-  "icu:CallLinkRestrictionsSelect__Option--Off": {
-    "messageformat": "បិទ"
-  },
-  "icu:CallLinkRestrictionsSelect__Option--On": {
-    "messageformat": "បើក"
-  },
   "icu:CallLinkAddNameModal__Title": {
     "messageformat": "ដាក់ឈ្មោះសម្រាប់ការហៅ"
   },
@@ -8614,6 +9046,39 @@
   },
   "icu:SaveMultiDialog__title": {
     "messageformat": "រក្សាទុកឯកសារភ្ជាប់"
+  },
+  "icu:EmbeddedContact__message": {
+    "messageformat": "ផ្ញើសារ"
+  },
+  "icu:ContactDetail__message": {
+    "messageformat": "ផ្ញើសារ"
+  },
+  "icu:ContactDetail__add-to-group": {
+    "messageformat": "ដាក់បញ្ចូលទៅក្រុមមួយ"
+  },
+  "icu:ContactDetail__nickname": {
+    "messageformat": "ឈ្មោះហៅក្រៅ"
+  },
+  "icu:ContactDetail__note": {
+    "messageformat": "កំណត់ចំណាំ"
+  },
+  "icu:email-v2": {
+    "messageformat": "អ៊ីមែល"
+  },
+  "icu:home-v2": {
+    "messageformat": "ផ្ទះ"
+  },
+  "icu:mobile-v2": {
+    "messageformat": "ទូរសព្ទចល័ត"
+  },
+  "icu:work-v2": {
+    "messageformat": "កន្លែងធ្វើការ"
+  },
+  "icu:phone-v2": {
+    "messageformat": "ទូរសព្ទ"
+  },
+  "icu:address-v2": {
+    "messageformat": "អាសយដ្ឋាន"
   },
   "icu:WhatsNew__modal-title": {
     "messageformat": "អ្វីដែលថ្មី"
@@ -8781,7 +9246,7 @@
     "messageformat": "សូមអរគុណចំពោះការគាំទ្រ Signal។ ការចូលរួមចំណែករបស់អ្នកជួយជំរុញដល់បេសកកម្មការពារការបញ្ចេញមតិដោយសេរី និងញ៉ាំងឱ្យមានការប្រាស្រ័យទាក់ទងគ្នាជាសាកលដោយសុវត្ថិភាពសម្រាប់មនុស្សរាប់លាននាក់ជុំវិញពិភពលោក តាមរយៈបច្ចេកវិទ្យាឯកជនភាពប្រភពបើកចំហ។ ប្រសិនបើអ្នកជាអ្នករស់នៅក្នុងសហរដ្ឋអាមេរិក សូមរក្សាទុកបង្កាន់ដៃនេះសម្រាប់កំណត់ត្រាពន្ធរបស់អ្នក។ Signal Technology Foundation គឺជាអង្គការមិនរកប្រាក់ចំណេញដែលទទួលបានការលើកលែងពន្ធនៅក្នុងសហរដ្ឋអាមេរិកក្រោមផ្នែក 501c3 នៃក្រមស្តីពីចំណូលផ្ទៃក្នុង។ លេខអត្តសញ្ញាណកម្មពន្ធសហព័ន្ធរបស់យើងគឺ 82-4506840។ Signal មិនបានផ្តល់ទំនិញ ឬសេវាកម្មណាមួយជាការតបស្នងចំពោះការចូលរួមចំណែកនេះឡើយ។"
   },
   "icu:MessageCta__Donate": {
-    "messageformat": "Donate Now"
+    "messageformat": "បរិច្ចាគឥឡូវនេះ"
   },
   "icu:Donations__OfflineTooltip": {
     "messageformat": "អ្នកមិនមានអ៊ីនធឺណិតទេ។ សូមភ្ជាប់អ៊ីនធឺណិត ដើម្បីបំពេញការបរិច្ចាគ។"
@@ -8981,6 +9446,9 @@
   "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__AccessibilityLabel": {
     "messageformat": "ការពណ៌នាអំពីបញ្ហា"
   },
+  "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__Placeholder": {
+    "messageformat": "ពណ៌នាអំពីបញ្ហារបស់អ្នក"
+  },
   "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__HelpText": {
     "messageformat": "សូមបញ្ចូលព័ត៌មានលម្អិតដែលទាក់ទងនឹងបញ្ហា។ អ្វីក៏ដោយដែលអ្នកចែករំលែកនៅទីនេះនឹងត្រូវបានរក្សាទុកជាឯកជន ហើយនឹងត្រូវបានប្រើដើម្បីជួយកែលម្អការហៅទូរសព្ទនៅក្នុង Signal ប៉ុណ្ណោះ។"
   },
@@ -9090,10 +9558,16 @@
     "messageformat": "ការកែប្រែបន្តិចបន្តួច ការដោះស្រាយបញ្ហា និងការបង្កើនប្រតិបត្តិការ។ សូមអរគុណចំពោះការប្រើប្រាស់ Signal!",
     "ignoreUnused": true
   },
-  "icu:WhatsNew__8.30--0": {
-    "messageformat": "ដោយសារមានការកែលម្អដំណើរការមួយចំនួន CPU របស់អ្នកនឹងដំណើរការបានប្រសើរជាងមុនបន្តិចក្នុងអំឡុងពេលហៅជាវីដេអូ (ទោះបីជាអ្នកមិនញញឹមក៏ដោយ)។"
+  "icu:WhatsNew__8.34--0": {
+    "messageformat": "ឥឡូវនេះ Signal Desktop ក៏អាចប្រើបានចំពោះការចែករំលែកទំនាក់ទំនងដែរ ដូច្នេះអ្នកអាចបន្តសម្លឹងមើលអេក្រង់កុំព្យូទ័ររបស់អ្នកបាន ដោយមិនចាំបាច់ប៉ះទូរសព្ទឆ្លាតវៃរបស់អ្នកឡើយ។"
   },
-  "icu:WhatsNew__8.30--1": {
-    "messageformat": "យើងក៏បានបន្ថែមផ្លូវកាត់ដ៏ងាយស្រួលមួយដែរ ដើម្បីបើកការកំណត់ប្រព័ន្ធរបស់យើងនៅលើ Windows ប្រសិនបើអ្នកព្យាយាមចូលរួមការហៅជាវីដេអូ ប៉ុន្តែ Signal មិនមានការអនុញ្ញាតក្នុងការប្រើប្រាស់កាមេរ៉ា។ ឥឡូវនេះ កាន់តែងាយស្រួលជាងមុនក្នុងការមើលថាអ្នកត្រូវធ្វើអ្វីខ្លះ ដូច្នេះអ្នកផ្សេងទៀតអាចមើលឃើញអ្នកបាន។"
+  "icu:WhatsNew__8.34--1": {
+    "messageformat": "ការគ្រប់គ្រង និងដំណើរការកាន់តែប្រសើរឡើងសម្រាប់ឧបករណ៍សំឡេងដែលបានតភ្ជាប់។"
+  },
+  "icu:WhatsNew__8.36--0": {
+    "messageformat": "Your top stickers now have a place to remain stuck. Add any sticker pack to your list of favorites so it's easy to stick with the ones you love."
+  },
+  "icu:WhatsNew__8.36--0--fix": {
+    "messageformat": "ឥឡូវនេះ អ្នកអាចរក្សាទុកស្ទីកគ័រដែលអ្នកចូលចិត្តប្រើនៅកន្លែងតែមួយបានហើយ។ បញ្ចូលស្ទីកគ័រណាមួយទៅក្នុងបញ្ជីសំណព្វរបស់អ្នក ដើម្បីឱ្យងាយស្រួលប្រើស្ទីកគ័រដែលអ្នកពេញចិត្ត។"
   }
 }

@@ -3,7 +3,7 @@
 
 import { useCallback, type JSX } from 'react';
 import type { LocalizerType } from '../types/Util.std.ts';
-import { AxoAlertDialog } from '../axo/AxoAlertDialog.dom.tsx';
+import { AxoAlertDialog } from '../axo/dialogs/AxoAlertDialog.dom.tsx';
 
 export type PropsType = Readonly<{
   i18n: LocalizerType;
@@ -32,7 +32,7 @@ export function TerminateGroupFailedModal(props: PropsType): JSX.Element {
         </AxoAlertDialog.Body>
         <AxoAlertDialog.Footer>
           <AxoAlertDialog.Cancel />
-          <AxoAlertDialog.Action variant="strong-secondary" onClick={onRetry}>
+          <AxoAlertDialog.Action variant="subtle-secondary" onClick={onRetry}>
             {i18n('icu:TerminateGroupFailedModal__try-again')}
           </AxoAlertDialog.Action>
         </AxoAlertDialog.Footer>

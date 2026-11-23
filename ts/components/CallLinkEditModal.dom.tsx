@@ -11,7 +11,7 @@ import {
 import { linkCallRoute } from '../util/signalRoutes.std.ts';
 import { getColorForCallLink } from '../util/getColorForCallLink.std.ts';
 import { InAnotherCallTooltip } from './conversation/InAnotherCallTooltip.dom.tsx';
-import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 import { tw } from '../axo/tw.dom.tsx';
 import { AxoButton } from '../axo/AxoButton.dom.tsx';
 import { AxoList } from '../axo/items/AxoList.dom.tsx';
@@ -48,7 +48,11 @@ export function CallLinkEditModal({
 
   return (
     <AxoDialog.Root open onOpenChange={onClose}>
-      <AxoDialog.Content size="sm" escape="cancel-is-noop">
+      <AxoDialog.Content
+        size="sm"
+        escape="cancel-is-noop"
+        disableMissingAriaDescriptionWarning
+      >
         <AxoDialog.Header>
           <AxoDialog.Title>
             {i18n('icu:CallLinkEditModal__Title')}
@@ -86,9 +90,9 @@ export function CallLinkEditModal({
                             'focus-visible:axo-focus-ring focus-visible:outline-none'
                           )}
                         >
-                          <div className={tw('line-clamp-2 break-all')}>
+                          <span className={tw('line-clamp-2 break-all')}>
                             {callLinkWebUrl}
-                          </div>
+                          </span>
                         </button>
                       </AxoItem.Description>
                       <AxoItem.Accessory centerToFullHeight>

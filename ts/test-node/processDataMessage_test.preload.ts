@@ -389,6 +389,7 @@ describe('processDataMessage', () => {
   it('should process quote, dropping second attachment', () => {
     const out = check({
       quote: {
+        groupId: null,
         id: 1n,
         authorAci: null,
         authorAciBinary: ACI_BINARY_1,
@@ -413,6 +414,7 @@ describe('processDataMessage', () => {
     assert.deepStrictEqual(out.quote, {
       id: 1,
       authorAci: ACI_1,
+      groupId: null,
       text: 'text',
       attachments: [
         {
@@ -434,6 +436,9 @@ describe('processDataMessage', () => {
       email: [],
       address: [],
       organization: '',
+      aciBinary: null,
+      note: null,
+      nickname: null,
     };
     const out = check({
       contact: [
@@ -456,6 +461,7 @@ describe('processDataMessage', () => {
 
     assert.deepStrictEqual(out.contact, [
       {
+        aci: undefined,
         name: undefined,
         number: [],
         email: [],
@@ -465,6 +471,8 @@ describe('processDataMessage', () => {
           avatar: PROCESSED_ATTACHMENT,
           isProfile: false,
         },
+        nickname: undefined,
+        note: undefined,
       },
     ]);
   });

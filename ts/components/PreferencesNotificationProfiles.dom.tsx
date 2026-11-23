@@ -9,21 +9,22 @@ import {
   useId,
   useMemo,
 } from 'react';
-import type { MutableRefObject, JSX, ReactNode } from 'react';
 import { sample, isEqual, noop } from 'lodash';
 import classNames from 'classnames';
+
+import type { MutableRefObject, JSX, ReactNode } from 'react';
 
 import { FunStaticEmoji } from './fun/FunEmoji.dom.tsx';
 import { FunEmojiPicker } from './fun/FunEmojiPicker.dom.tsx';
 import { FunEmojiPickerButton } from './fun/FunButton.dom.tsx';
-import { tw } from '../axo/tw.dom.tsx';
+import { tw, type TailwindStyles } from '../axo/tw.dom.tsx';
 import { AxoButton } from '../axo/AxoButton.dom.tsx';
-import { AxoSelect } from '../axo/AxoSelect.dom.tsx';
+import { AxoSelect } from '../axo/menus/AxoSelect.dom.tsx';
 import { AxoSwitch } from '../axo/AxoSwitch.dom.tsx';
 import { AxoSymbol } from '../axo/AxoSymbol.dom.tsx';
 import { Input } from './Input.dom.tsx';
 import { Checkbox } from './Checkbox.dom.tsx';
-import { AvatarColorMap, AvatarColors } from '../types/Colors.std.ts';
+import { AvatarColorMap, AvatarColors } from '../types/Avatar.std.ts';
 import { PreferencesSelectChatsDialog } from './preferences/PreferencesSelectChatsDialog.dom.tsx';
 import { DayOfWeek } from '../types/NotificationProfile.std.ts';
 import { Avatar } from './Avatar.dom.tsx';
@@ -32,6 +33,11 @@ import { strictAssert } from '../util/assert.std.ts';
 import { SettingsPage } from '../types/Nav.std.ts';
 import { useConfirmDiscard } from '../hooks/useConfirmDiscard.dom.tsx';
 import { AriaClickable } from '../axo/AriaClickable.dom.tsx';
+import { Emoji } from '../axo/emoji.std.ts';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
+import { NotificationProfilesOnboardingDialog } from './preferences/notificationProfiles/NotificationProfilesOnboardingDialog.dom.tsx';
+import { formatTimeForDisplay, TimePicker } from './TimePicker.dom.tsx';
+
 import type { LocalizerType } from '../types/I18N.std.ts';
 import type { ThemeType } from '../types/Util.std.ts';
 import type { ConversationType } from '../state/ducks/conversations.preload.ts';
@@ -43,10 +49,6 @@ import type {
   ScheduleDays,
 } from '../types/NotificationProfile.std.ts';
 import type { SettingsLocation } from '../types/Nav.std.ts';
-import { Emoji } from '../axo/emoji.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
-import { NotificationProfilesOnboardingDialog } from './preferences/notificationProfiles/NotificationProfilesOnboardingDialog.dom.tsx';
-import { formatTimeForDisplay, TimePicker } from './TimePicker.dom.tsx';
 
 enum CreateFlowPage {
   Name = 'Name',
@@ -648,7 +650,7 @@ function NotificationProfilesNamePage({
             }
             maxLengthCount={140}
             maxByteCount={512}
-            moduleClassName="NotificationProfiles__NamePage"
+            className="NotificationProfiles__NamePage"
             onChange={handleInputChange}
             ref={undefined}
             placeholder={i18n('icu:NotificationProfiles--name-placeholder')}
@@ -1443,7 +1445,9 @@ function EmojiOrMoon({
     return (
       <div
         className={tw(
-          'absolute inset-s-1/2 top-1/2 -translate-1/2 text-accent'
+          // oxlint-disable-next-line better-tailwindcss/no-restricted-classes
+          'left-1/2',
+          'absolute top-1/2 -translate-1/2 text-accent'
         )}
         style={
           forceLightTheme
@@ -1464,7 +1468,11 @@ function EmojiOrMoon({
 
   return (
     <span
-      className={tw('absolute inset-s-1/2 top-1/2 -translate-1/2 leading-0')}
+      className={tw(
+        // oxlint-disable-next-line better-tailwindcss/no-restricted-classes
+        'left-1/2',
+        'absolute top-1/2 -translate-1/2 leading-0'
+      )}
     >
       <FunStaticEmoji
         role="img"
@@ -1619,6 +1627,13 @@ function ExceptionsSection({
   );
 }
 
+const IconSizeClassNames: Record<IconSize, TailwindStyles> = {
+  large: tw('size-[80px]'),
+  medium: tw('size-[36px]'),
+  'medium-small': tw('size-[28px]'),
+  small: tw('size-[20px]'),
+};
+
 export function ProfileAvatar({
   i18n,
   isActive,
@@ -1635,22 +1650,11 @@ export function ProfileAvatar({
     : undefined;
   const forceLightTheme = profile && !profile.emoji;
 
-  const sizeMap = useMemo(
-    () => ({
-      large: tw('size-[80px]'),
-      medium: tw('size-[36px]'),
-      'medium-small': tw('size-[28px]'),
-      small: tw('size-[20px]'),
-    }),
-    []
-  );
-  const sizeClass = sizeMap[size];
-
   return (
     <div
       className={classNames(
         tw('relative rounded-full'),
-        sizeClass,
+        IconSizeClassNames[size],
         isActive ? tw('border-2 border-selected') : undefined,
         !backgroundColor ? tw('bg-accent-tint') : undefined
       )}

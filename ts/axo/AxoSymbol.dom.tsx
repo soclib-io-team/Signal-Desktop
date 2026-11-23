@@ -9,6 +9,7 @@ import {
   _getAxoSymbolInlineGlyph,
 } from './_internal/AxoSymbolDefs.generated.std.ts';
 import type { _AxoSymbolName } from './_internal/AxoSymbolDefs.generated.std.ts';
+import type { UnionToTuple } from 'type-fest';
 
 const { useDirection } = Direction;
 
@@ -40,9 +41,16 @@ export namespace AxoSymbol {
     return useMemo(() => {
       return (
         <>
-          <span aria-hidden className="axo-symbol-glyph">
-            {glyph}
-          </span>
+          {/*
+           * The glyph is rendered with CSS (see `.axo-symbol-glyph::before`)
+           * so that it isn't included in the `textContent` of its parents
+           * (Ex: menu item typeahead, copied text)
+           */}
+          <span
+            aria-hidden
+            className="axo-symbol-glyph"
+            data-axo-symbol-glyph={glyph}
+          />
           {label != null && (
             <VisuallyHidden className="axo-symbol-label">
               {label}
@@ -109,7 +117,11 @@ export namespace AxoSymbol {
    */
 
   /** Available icon sizes in pixels. */
-  export type IconSize = 12 | 14 | 16 | 18 | 20 | 24 | 36 | 48;
+  export type IconSize = 12 | 14 | 16 | 18 | 20 | 24 | 32 | 36 | 48 | 60;
+
+  export function getAllIconSizes(): UnionToTuple<IconSize> {
+    return [12, 14, 16, 18, 20, 24, 32, 36, 48, 60];
+  }
 
   export type IconProps = Readonly<{
     /** Size of the icon in pixels. */

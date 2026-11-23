@@ -15,7 +15,7 @@ import lodash from 'lodash';
 
 import type { LocalizerType } from '../types/Util.std.ts';
 import type { UsernameReservationType } from '../types/Username.std.ts';
-import { ToastType } from '../types/Toast.dom.tsx';
+import { ToastType } from '../types/Toast.std.ts';
 import { missingCaseError } from '../util/missingCaseError.std.ts';
 import {
   getNickname,
@@ -27,16 +27,16 @@ import {
   UsernameReservationError,
 } from '../state/ducks/usernameEnums.std.ts';
 import type { ReserveUsernameOptionsType } from '../state/ducks/username.preload.ts';
-import type { ShowToastAction } from '../state/ducks/toast.preload.ts';
+import type { ShowToastAction } from '../state/ducks/toast.dom.ts';
 import { useConfirmDiscard } from '../hooks/useConfirmDiscard.dom.tsx';
 import { AxoButton } from '../axo/AxoButton.dom.tsx';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
-import { AxoAlertDialog } from '../axo/AxoAlertDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 import { AxoSymbol } from '../axo/AxoSymbol.dom.tsx';
 import { AxoFieldGroup } from '../axo/fields/AxoFieldGroup.dom.tsx';
 import { AxoTextField } from '../axo/fields/AxoTextField.dom.tsx';
 import { AxoFieldList } from '../axo/items/AxoFieldList.dom.tsx';
 import { tw } from '../axo/tw.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 
 const { noop } = lodash;
 
@@ -446,19 +446,35 @@ export function UsernameEditor({
 
       {confirmDiscardModal}
 
-      <AxoConfirmDialog.Root
+      <AxoDialog.Root
         open={isLearnMoreVisible}
         onOpenChange={setIsLearnMoreVisible}
-        title={
-          <>
-            <AxoSymbol.InlineGlyph symbol="number" label={null} />{' '}
-            {i18n('icu:EditUsernameModalBody__learn-more__title')}
-          </>
-        }
-        description={i18n('icu:EditUsernameModalBody__learn-more__body')}
       >
-        <AxoAlertDialog.Cancel>{i18n('icu:ok')}</AxoAlertDialog.Cancel>
-      </AxoConfirmDialog.Root>
+        <AxoDialog.Content size="sm" escape="cancel-is-noop">
+          <AxoDialog.Header>
+            <AxoDialog.Title>
+              <AxoSymbol.InlineGlyph symbol="number" label={null} />
+              &nbsp;
+              {i18n('icu:EditUsernameModalBody__learn-more__title')}
+            </AxoDialog.Title>
+          </AxoDialog.Header>
+          <AxoDialog.Body>
+            <AxoDialog.Description>
+              {i18n('icu:EditUsernameModalBody__learn-more__body')}
+            </AxoDialog.Description>
+          </AxoDialog.Body>
+          <AxoDialog.Footer>
+            <AxoDialog.Actions width="fill">
+              <AxoDialog.Action
+                variant="strong-primary"
+                onClick={() => setIsLearnMoreVisible(false)}
+              >
+                {i18n('icu:ok')}
+              </AxoDialog.Action>
+            </AxoDialog.Actions>
+          </AxoDialog.Footer>
+        </AxoDialog.Content>
+      </AxoDialog.Root>
 
       <AxoConfirmDialog.Root
         open={error === UsernameReservationError.General}
@@ -467,7 +483,7 @@ export function UsernameEditor({
         title={null}
         description={i18n('icu:ProfileEditor--username--general-error')}
       >
-        <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+        <AxoConfirmDialog.Ok />
       </AxoConfirmDialog.Root>
 
       <AxoConfirmDialog.Root
@@ -483,7 +499,7 @@ export function UsernameEditor({
           username: reservation?.username ?? nickname ?? '',
         })}
       >
-        <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+        <AxoConfirmDialog.Ok />
       </AxoConfirmDialog.Root>
 
       <AxoConfirmDialog.Root

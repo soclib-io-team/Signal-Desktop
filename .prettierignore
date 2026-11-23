@@ -18,6 +18,8 @@ stylesheets/manifest.css
 stylesheets/tailwind.css
 ts/util/lint/exceptions.json
 storybook-static
+.vitest/**
+**/__traces__/**
 build/locale-display-names.json
 build/country-display-names.json
 build/compact-locales/**/*.json
@@ -30,12 +32,14 @@ packages/*/node_modules/**
 packages/lame/wrapper.mjs
 packages/lame/lame-*/
 packages/windows-ucv/dist/**
+packages/types/dist/**
 packages/mock-server/src/**/*.js
 packages/mock-server/src/**/*.d.ts
 packages/mock-server/test/**/*.js
 packages/mock-server/protos/*.d.ts
 packages/mock-server/protos/*.js
 danger/node_modules/**
+.github/scripts/min-os-version/node_modules/**
 sticker-creator/node_modules/**
 components/**
 scripts/emoji-datasource/emoji-datasource.json

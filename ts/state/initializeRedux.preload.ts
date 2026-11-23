@@ -9,7 +9,7 @@ import { getInitialState } from './getInitialState.preload.ts';
 import type { BadgesStateType } from './ducks/badges.preload.ts';
 import type { CallHistoryDetails } from '../types/CallDisposition.std.ts';
 import type { DonationsStateType } from './ducks/donations.preload.ts';
-import type { MainWindowStatsType } from '../windows/context.preload.ts';
+import type { MainWindowStatsType } from '../windows/context.sandbox.ts';
 import type { MenuOptionsType } from '../types/menu.std.ts';
 import type { StoryDataType } from './ducks/stories.preload.ts';
 import type { StoryDistributionListDataType } from './ducks/storyDistributionLists.preload.ts';
@@ -20,17 +20,23 @@ import type { StickersStateType } from './ducks/stickers.preload.ts';
 import type { GifsStateType } from './ducks/gifs.preload.ts';
 import type { NotificationProfileType } from '../types/NotificationProfile.std.ts';
 import type { CurrentChatFolder } from '../types/CurrentChatFolders.std.ts';
+import type { ChatStyle } from '../types/ChatStyle.std.ts';
+import type { Account } from '../types/Account.std.ts';
 import type { MegaphonesStateType } from './ducks/megaphones.preload.ts';
+import type { LinkedDevicesStateType } from './ducks/linkedDevices.preload.ts';
 
 export type ReduxInitData = {
   badgesState: BadgesStateType;
   callHistory: ReadonlyArray<CallHistoryDetails>;
   callHistoryUnreadCountsByConversationId: Record<string, number>;
   callLinks: ReadonlyArray<CallLinkType>;
+  account: Account;
+  customChatColors: ReadonlyArray<ChatStyle.CustomChatColor>;
   chatFolders: ReadonlyArray<CurrentChatFolder>;
   donations: DonationsStateType;
   emojis: EmojisStateType;
   gifs: GifsStateType;
+  linkedDevices: LinkedDevicesStateType;
   mainWindowStats: MainWindowStatsType;
   megaphones: MegaphonesStateType;
   menuOptions: MenuOptionsType;
@@ -50,7 +56,7 @@ export function initializeRedux(data: ReduxInitData): void {
   // Binding these actions to our redux store and exposing them allows us to update
   //   redux when things change in the rest of the app.
   window.reduxActions = {
-    accounts: bindActionCreators(actionCreators.accounts, store.dispatch),
+    account: bindActionCreators(actionCreators.account, store.dispatch),
     app: bindActionCreators(actionCreators.app, store.dispatch),
     installer: bindActionCreators(actionCreators.installer, store.dispatch),
     audioPlayer: bindActionCreators(actionCreators.audioPlayer, store.dispatch),
@@ -62,6 +68,7 @@ export function initializeRedux(data: ReduxInitData): void {
     badges: bindActionCreators(actionCreators.badges, store.dispatch),
     callHistory: bindActionCreators(actionCreators.callHistory, store.dispatch),
     calling: bindActionCreators(actionCreators.calling, store.dispatch),
+    chatColors: bindActionCreators(actionCreators.chatColors, store.dispatch),
     chatFolders: bindActionCreators(actionCreators.chatFolders, store.dispatch),
     composer: bindActionCreators(actionCreators.composer, store.dispatch),
     conversations: bindActionCreators(
@@ -83,6 +90,10 @@ export function initializeRedux(data: ReduxInitData): void {
     ),
     items: bindActionCreators(actionCreators.items, store.dispatch),
     lightbox: bindActionCreators(actionCreators.lightbox, store.dispatch),
+    linkedDevices: bindActionCreators(
+      actionCreators.linkedDevices,
+      store.dispatch
+    ),
     linkPreviews: bindActionCreators(
       actionCreators.linkPreviews,
       store.dispatch

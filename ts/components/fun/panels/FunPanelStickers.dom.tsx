@@ -1,6 +1,6 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { CSSProperties, PointerEvent, JSX } from 'react';
+import type { CSSProperties, PointerEvent, JSX, ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { VisuallyHidden } from 'react-aria';
 import type {
@@ -71,6 +71,8 @@ import { FunSticker } from '../FunSticker.dom.tsx';
 import { getAnalogTime } from '../../../util/getAnalogTime.std.ts';
 import { getDateTimeFormatter } from '../../../util/formatTimestamp.dom.ts';
 import { Emoji } from '../../../axo/emoji.std.ts';
+import { AxoContextMenu } from '../../../axo/menus/AxoContextMenu.dom.tsx';
+import { ToastType } from '../../../types/Toast.std.ts';
 
 const STICKER_GRID_COLUMNS = 4;
 const STICKER_GRID_CELL_WIDTH = 80;
@@ -127,11 +129,15 @@ function toGridSectionNode(
 
 function getSelectedSection(
   hasSearchQuery: boolean,
+  hasFavoriteStickers: boolean,
   hasRecentStickers: boolean,
   firstInstalledStickerPack: StickerPackType | null
 ): FunStickersSection {
   if (hasSearchQuery) {
     return FunSectionCommon.SearchResults;
+  }
+  if (hasFavoriteStickers) {
+    return FunStickersSectionBase.Favorites;
   }
   if (hasRecentStickers) {
     return FunSectionCommon.Recents;
@@ -156,6 +162,9 @@ function getTitleForSection(
   if (section === FunStickersSectionBase.StickersSetup) {
     return '';
   }
+  if (section === FunStickersSectionBase.Favorites) {
+    return i18n('icu:FunPanelStickers__SectionTitle--Favorites');
+  }
   if (section === FunStickersSectionBase.Featured) {
     return i18n('icu:FunPanelStickers__SectionTitle--Featured');
   }
@@ -174,20 +183,23 @@ export type FunStickerSelection = Readonly<{
 }>;
 
 export type FunPanelStickersProps = Readonly<{
-  isReply: boolean;
   showTimeStickers: boolean;
   onSelectTimeSticker?: (style: FunTimeStickerStyle) => void;
   onSelectSticker: (stickerSelection: FunStickerSelection) => void;
   onAddStickerPack: (() => void) | null;
+  onMarkStickerAsFavorite: (
+    stickerSelection: FunStickerSelection,
+    markAsFavorite: boolean
+  ) => void;
   onClose: () => void;
 }>;
 
 export function FunPanelStickers({
-  isReply,
   showTimeStickers,
   onSelectTimeSticker,
   onSelectSticker,
   onAddStickerPack,
+  onMarkStickerAsFavorite,
   onClose,
 }: FunPanelStickersProps): JSX.Element {
   const fun = useFunContext();
@@ -195,10 +207,12 @@ export function FunPanelStickers({
     i18n,
     storedSearchInput,
     onStoredSearchInputChange,
+    favoriteStickers,
+    isFavoriteStickersEnabled,
     recentStickers,
     installedStickerPacks,
     onSelectSticker: onFunSelectSticker,
-    onStageStickerReply,
+    showToast,
   } = fun;
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -213,6 +227,11 @@ export function FunPanelStickers({
 
   const stickerLookup = useMemo(() => {
     const result: StickerLookup = {};
+    if (isFavoriteStickersEnabled) {
+      for (const sticker of favoriteStickers) {
+        result[getStickerId(sticker)] = { kind: 'sticker', sticker };
+      }
+    }
     for (const sticker of recentStickers) {
       result[getStickerId(sticker)] = { kind: 'sticker', sticker };
     }
@@ -225,7 +244,20 @@ export function FunPanelStickers({
       result[getTimeStickerId(style)] = { kind: 'timeSticker', style };
     }
     return result;
-  }, [recentStickers, installedStickerPacks]);
+  }, [
+    favoriteStickers,
+    isFavoriteStickersEnabled,
+    recentStickers,
+    installedStickerPacks,
+  ]);
+
+  const favoriteStickersSet = useMemo(() => {
+    const result = new Set<string>();
+    for (const sticker of favoriteStickers) {
+      result.add(getStickerId(sticker));
+    }
+    return result;
+  }, [favoriteStickers]);
 
   const [focusedCellKey, setFocusedCellKey] = useState<CellKey | null>(null);
   const [searchInput, setSearchInput] = useState(storedSearchInput);
@@ -233,10 +265,13 @@ export function FunPanelStickers({
 
   const [selectedSection, setSelectedSection] = useState(() => {
     const hasSearchQuery = searchQuery !== '';
+    const hasFavoriteStickers =
+      isFavoriteStickersEnabled && favoriteStickers.length > 0;
     const hasRecentStickers = recentStickers.length > 0;
     const firstInstalledStickerPack = installedStickerPacks.at(0) ?? null;
     return getSelectedSection(
       hasSearchQuery,
+      hasFavoriteStickers,
       hasRecentStickers,
       firstInstalledStickerPack
     );
@@ -278,6 +313,15 @@ export function FunPanelStickers({
       );
     }
 
+    if (isFavoriteStickersEnabled && favoriteStickers.length > 0) {
+      result.push(
+        toGridSectionNode(
+          FunStickersSectionBase.Favorites,
+          toStickerIds(favoriteStickers)
+        )
+      );
+    }
+
     if (recentStickers.length > 0) {
       result.push(
         toGridSectionNode(
@@ -293,7 +337,14 @@ export function FunPanelStickers({
     }
 
     return result;
-  }, [showTimeStickers, recentStickers, installedStickerPacks, searchQuery]);
+  }, [
+    showTimeStickers,
+    favoriteStickers,
+    isFavoriteStickersEnabled,
+    recentStickers,
+    installedStickerPacks,
+    searchQuery,
+  ]);
 
   const [virtualizer, layout] = useFunVirtualGrid({
     scrollerRef,
@@ -313,11 +364,14 @@ export function FunPanelStickers({
   const handleSearchInputChange = useCallback(
     (nextSearchInput: string) => {
       const hasSearchQuery = nextSearchInput.trim() !== '';
+      const hasFavoriteStickers =
+        isFavoriteStickersEnabled && favoriteStickers.length > 0;
       const hasRecentStickers = recentStickers.length > 0;
       const firstInstalledStickerPack = installedStickerPacks.at(0) ?? null;
       setSelectedSection(
         getSelectedSection(
           hasSearchQuery,
+          hasFavoriteStickers,
           hasRecentStickers,
           firstInstalledStickerPack
         )
@@ -325,11 +379,25 @@ export function FunPanelStickers({
       setSearchInput(nextSearchInput);
       onStoredSearchInputChange(nextSearchInput);
     },
-    [onStoredSearchInputChange, recentStickers, installedStickerPacks]
+    [
+      onStoredSearchInputChange,
+      favoriteStickers,
+      isFavoriteStickersEnabled,
+      recentStickers,
+      installedStickerPacks,
+    ]
   );
 
   const handleSelectSection = useCallback(
     (section: FunStickersSection) => {
+      if (
+        section === FunStickersSectionBase.Favorites &&
+        favoriteStickers.length === 0
+      ) {
+        showToast({ toastType: ToastType.StickerFavoritesHint });
+        return;
+      }
+
       const layoutSection = layout.sections.find(s => s.id === section);
       strictAssert(layoutSection != null, `Missing section to for ${section}`);
       setSelectedSection(section);
@@ -338,7 +406,7 @@ export function FunPanelStickers({
         align: 'start',
       });
     },
-    [virtualizer, layout]
+    [favoriteStickers.length, virtualizer, layout, showToast]
   );
 
   const handleScrollSectionChange = useCallback((sectionId: string) => {
@@ -361,11 +429,6 @@ export function FunPanelStickers({
 
   const handleClickSticker = useCallback(
     (event: PointerEvent, stickerSelection: FunStickerSelection) => {
-      if (isReply) {
-        onStageStickerReply(stickerSelection);
-        return;
-      }
-
       onFunSelectSticker(stickerSelection);
       onSelectSticker(stickerSelection);
       if (!(event.ctrlKey || event.metaKey)) {
@@ -373,7 +436,7 @@ export function FunPanelStickers({
         onClose();
       }
     },
-    [isReply, onFunSelectSticker, onSelectSticker, onStageStickerReply, onClose]
+    [onFunSelectSticker, onSelectSticker, onClose]
   );
 
   const handleClickTimeSticker = useCallback(
@@ -392,6 +455,13 @@ export function FunPanelStickers({
     onAddStickerPack();
     onClose();
   }, [onAddStickerPack, onClose]);
+
+  const handleClickStickerAsFavorite = useCallback(
+    (stickerSelection: FunStickerSelection, markAsFavorite: boolean) => {
+      onMarkStickerAsFavorite(stickerSelection, markAsFavorite);
+    },
+    [onMarkStickerAsFavorite]
+  );
 
   return (
     <FunPanel>
@@ -414,6 +484,16 @@ export function FunPanelStickers({
                   selected={selectedSection}
                   onSelect={handleSelectSection}
                 >
+                  {isFavoriteStickersEnabled && (
+                    <FunSubNavListBoxItem
+                      id={FunStickersSectionBase.Favorites}
+                      label={i18n(
+                        'icu:FunPanelStickers__SubNavCategoryLabel--Favorites'
+                      )}
+                    >
+                      <FunSubNavIcon iconClassName="FunSubNav__Icon--Favorites" />
+                    </FunSubNavListBoxItem>
+                  )}
                   {recentStickers.length > 0 && (
                     <FunSubNavListBoxItem
                       id={FunSectionCommon.Recents}
@@ -518,12 +598,21 @@ export function FunPanelStickers({
                           return (
                             <Row
                               key={row.key}
+                              sectionId={section.id}
+                              i18n={i18n}
                               rowIndex={row.rowIndex}
                               cells={row.cells}
                               stickerLookup={stickerLookup}
+                              favoriteStickersSet={favoriteStickersSet}
                               focusedCellKey={focusedCellKey}
+                              isFavoriteStickersEnabled={
+                                isFavoriteStickersEnabled
+                              }
                               onClickSticker={handleClickSticker}
                               onClickTimeSticker={handleClickTimeSticker}
+                              onClickStickerAsFavorite={
+                                handleClickStickerAsFavorite
+                              }
                             />
                           );
                         })}
@@ -541,15 +630,23 @@ export function FunPanelStickers({
 }
 
 const Row = memo(function Row(props: {
+  i18n: LocalizerType;
   rowIndex: number;
   stickerLookup: StickerLookup;
+  favoriteStickersSet: Set<string>;
   cells: ReadonlyArray<CellLayoutNode>;
   focusedCellKey: CellKey | null;
+  isFavoriteStickersEnabled: boolean;
+  sectionId: string;
   onClickSticker: (
     event: PointerEvent,
     stickerSelection: FunStickerSelection
   ) => void;
   onClickTimeSticker: (event: PointerEvent, style: FunTimeStickerStyle) => void;
+  onClickStickerAsFavorite: (
+    stickerSelection: FunStickerSelection,
+    markAsFavorite: boolean
+  ) => void;
 }): JSX.Element {
   return (
     <FunGridRow rowIndex={props.rowIndex}>
@@ -561,14 +658,19 @@ const Row = memo(function Row(props: {
         return (
           <Cell
             key={cell.key}
+            i18n={props.i18n}
             value={cell.value}
             cellKey={cell.key}
             rowIndex={cell.rowIndex}
             colIndex={cell.colIndex}
+            sectionId={props.sectionId}
+            favoriteStickersSet={props.favoriteStickersSet}
             stickerLookup={props.stickerLookup}
+            isFavoriteStickersEnabled={props.isFavoriteStickersEnabled}
             isTabbable={isTabbable}
             onClickSticker={props.onClickSticker}
             onClickTimeSticker={props.onClickTimeSticker}
+            onClickStickerAsFavorite={props.onClickStickerAsFavorite}
           />
         );
       })}
@@ -577,19 +679,36 @@ const Row = memo(function Row(props: {
 });
 
 const Cell = memo(function Cell(props: {
+  i18n: LocalizerType;
   value: string;
   cellKey: CellKey;
   colIndex: number;
   rowIndex: number;
+  sectionId: string;
+  favoriteStickersSet: Set<string>;
   stickerLookup: StickerLookup;
+  isFavoriteStickersEnabled: boolean;
   isTabbable: boolean;
   onClickSticker: (
     event: PointerEvent,
     stickerSelection: FunStickerSelection
   ) => void;
   onClickTimeSticker: (event: PointerEvent, style: FunTimeStickerStyle) => void;
+  onClickStickerAsFavorite: (
+    stickerSelection: FunStickerSelection,
+    markAsFavorite: boolean
+  ) => void;
 }): JSX.Element {
-  const { onClickSticker, onClickTimeSticker } = props;
+  const {
+    i18n,
+    isFavoriteStickersEnabled,
+    sectionId,
+    onClickSticker,
+    onClickTimeSticker,
+    onClickStickerAsFavorite,
+  } = props;
+
+  const isFavoriteSticker = props.favoriteStickersSet.has(props.value);
   const stickerLookupItem = props.stickerLookup[props.value];
   strictAssert(stickerLookupItem, 'Missing stickerLookupItem');
 
@@ -608,6 +727,92 @@ const Cell = memo(function Cell(props: {
     [stickerLookupItem, onClickSticker, onClickTimeSticker]
   );
 
+  const handleClickMarkAsFavorite = useCallback(
+    (event: Event, markAsFavorite: boolean) => {
+      if (stickerLookupItem.kind === 'sticker') {
+        // When unfavoriting from the Favorites list, the sticker disappears so the default
+        // behavior to refocus the previous selection can't find the original sticker.
+        if (!markAsFavorite && sectionId === FunStickersSectionBase.Favorites) {
+          event.preventDefault();
+        }
+
+        onClickStickerAsFavorite(
+          {
+            stickerPackId: stickerLookupItem.sticker.packId,
+            stickerId: stickerLookupItem.sticker.id,
+            stickerUrl: stickerLookupItem.sticker.url,
+          },
+          markAsFavorite
+        );
+      }
+    },
+    [sectionId, stickerLookupItem, onClickStickerAsFavorite]
+  );
+
+  const handleFavorite = useCallback(
+    (event: Event) => {
+      handleClickMarkAsFavorite(event, true);
+    },
+    [handleClickMarkAsFavorite]
+  );
+
+  const handleUnfavorite = useCallback(
+    (event: Event) => {
+      handleClickMarkAsFavorite(event, false);
+    },
+    [handleClickMarkAsFavorite]
+  );
+
+  if (stickerLookupItem.kind === 'sticker') {
+    if (isFavoriteStickersEnabled) {
+      return (
+        <FunGridCell
+          data-key={props.cellKey}
+          colIndex={props.colIndex}
+          rowIndex={props.rowIndex}
+        >
+          <StickerContextMenu
+            i18n={i18n}
+            onClickFavorite={isFavoriteSticker ? null : handleFavorite}
+            onClickUnfavorite={isFavoriteSticker ? handleUnfavorite : null}
+          >
+            <FunItemButton
+              excludeFromTabOrder={!props.isTabbable}
+              aria-label={stickerLookupItem.sticker.emoji ?? ''}
+              onClick={handleClick}
+            >
+              <FunSticker
+                role="presentation"
+                src={stickerLookupItem.sticker.url}
+                size={68}
+              />
+            </FunItemButton>
+          </StickerContextMenu>
+        </FunGridCell>
+      );
+    }
+
+    return (
+      <FunGridCell
+        data-key={props.cellKey}
+        colIndex={props.colIndex}
+        rowIndex={props.rowIndex}
+      >
+        <FunItemButton
+          excludeFromTabOrder={!props.isTabbable}
+          aria-label={stickerLookupItem.sticker.emoji ?? ''}
+          onClick={handleClick}
+        >
+          <FunSticker
+            role="presentation"
+            src={stickerLookupItem.sticker.url}
+            size={68}
+          />
+        </FunItemButton>
+      </FunGridCell>
+    );
+  }
+
   return (
     <FunGridCell
       data-key={props.cellKey}
@@ -616,20 +821,9 @@ const Cell = memo(function Cell(props: {
     >
       <FunItemButton
         excludeFromTabOrder={!props.isTabbable}
-        aria-label={
-          stickerLookupItem.kind === 'sticker'
-            ? (stickerLookupItem.sticker.emoji ?? '')
-            : stickerLookupItem.style
-        }
+        aria-label={stickerLookupItem.style}
         onClick={handleClick}
       >
-        {stickerLookupItem.kind === 'sticker' && (
-          <FunSticker
-            role="presentation"
-            src={stickerLookupItem.sticker.url}
-            size={68}
-          />
-        )}
         {stickerLookupItem.kind === 'timeSticker' &&
           stickerLookupItem.style === 'digital' && (
             <DigitalTimeSticker size={68} />
@@ -642,6 +836,33 @@ const Cell = memo(function Cell(props: {
     </FunGridCell>
   );
 });
+
+function StickerContextMenu(props: {
+  i18n: LocalizerType;
+  onClickFavorite: ((event: Event) => void) | null;
+  onClickUnfavorite: ((event: Event) => void) | null;
+  children: ReactNode;
+}) {
+  const { i18n, onClickFavorite, onClickUnfavorite } = props;
+
+  return (
+    <AxoContextMenu.Root>
+      <AxoContextMenu.Trigger>{props.children}</AxoContextMenu.Trigger>
+      <AxoContextMenu.Content>
+        {onClickFavorite && (
+          <AxoContextMenu.Item symbol="star" onSelect={onClickFavorite}>
+            {i18n('icu:FunPanelStickers__StickerContextMenu--AddFavorite')}
+          </AxoContextMenu.Item>
+        )}
+        {onClickUnfavorite && (
+          <AxoContextMenu.Item symbol="star-slash" onSelect={onClickUnfavorite}>
+            {i18n('icu:FunPanelStickers__StickerContextMenu--RemoveFavorite')}
+          </AxoContextMenu.Item>
+        )}
+      </AxoContextMenu.Content>
+    </AxoContextMenu.Root>
+  );
+}
 
 function StickersLightbox(props: {
   i18n: LocalizerType;

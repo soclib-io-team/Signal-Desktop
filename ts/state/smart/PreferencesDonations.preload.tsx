@@ -14,7 +14,7 @@ import { useDonationsActions } from '../ducks/donations.preload.ts';
 import type { StateType } from '../reducer.preload.ts';
 import { useConversationsActions } from '../ducks/conversations.preload.ts';
 import { generateDonationReceiptBlob } from '../../util/generateDonationReceipt.dom.ts';
-import { useToastActions } from '../ducks/toast.preload.ts';
+import { useToastActions } from '../ducks/toast.dom.ts';
 import {
   getCachedSubscriptionConfiguration,
   maybeHydrateDonationConfigCache,
@@ -97,7 +97,7 @@ export const SmartPreferencesDonations = memo(
 
         const boostBadge = badgeData[ONE_TIME_DONATION_CONFIG_ID];
         if (boostBadge) {
-          updateOrCreate([boostBadge]);
+          void updateOrCreate([boostBadge]);
           return boostBadge;
         }
       } catch (error) {

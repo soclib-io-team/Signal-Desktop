@@ -21,9 +21,11 @@ import { BrandedQRCode } from '../BrandedQRCode.dom.tsx';
 import { TitlebarDragArea } from '../TitlebarDragArea.dom.tsx';
 import { InstallScreenSignalLogo } from './InstallScreenSignalLogo.dom.tsx';
 import { InstallScreenUpdateDialog } from './InstallScreenUpdateDialog.dom.tsx';
-import { getClassNamesFor } from '../../util/getClassNamesFor.std.ts';
-import type { UpdatesStateType } from '../../state/ducks/updates.preload.ts';
-import { AxoAlertDialog } from '../../axo/AxoAlertDialog.dom.tsx';
+import type { UpdatesStateType } from '../../state/ducks/updates.dom.ts';
+import { AxoAlertDialog } from '../../axo/dialogs/AxoAlertDialog.dom.tsx';
+import { AxoIconButton } from '../../axo/AxoIconButton.dom.tsx';
+import { tw } from '../../axo/tw.dom.tsx';
+import { AxoTheme } from '../../axo/AxoTheme.dom.tsx';
 
 const { noop } = lodash;
 
@@ -42,13 +44,11 @@ export type PropsType = Readonly<{
   startUpdate: () => void;
   forceCheck: () => void;
   isConfirmingDataDeletion: boolean;
+  isStandaloneFeatureEnabled: boolean;
+  openEntryPoint: () => void;
   continueInstallWithDataDeletion: () => void;
   restartInstall: () => void;
 }>;
-
-const getQrCodeClassName = getClassNamesFor(
-  'module-InstallScreenQrCodeNotScannedStep__qr-code'
-);
 
 const SUPPORT_PAGE =
   'https://support.signal.org/hc/articles/360007320551-Linked-Devices';
@@ -64,6 +64,8 @@ export function InstallScreenQrCodeNotScannedStep({
   startUpdate,
   forceCheck,
   isConfirmingDataDeletion,
+  isStandaloneFeatureEnabled,
+  openEntryPoint,
   restartInstall,
   continueInstallWithDataDeletion,
   updates,
@@ -88,12 +90,33 @@ export function InstallScreenQrCodeNotScannedStep({
       <InstallScreenSignalLogo />
 
       <div className="module-InstallScreenQrCodeNotScannedStep__contents">
-        <InstallScreenQrCode
-          i18n={i18n}
-          {...provisioningUrl}
-          retryGetQrCode={retryGetQrCode}
-        />
-        <div className="module-InstallScreenQrCodeNotScannedStep__instructions">
+        {isStandaloneFeatureEnabled ? (
+          <div className={tw('flex')}>
+            <div className={tw('me-2')}>
+              <AxoTheme.Override theme="force-light">
+                <AxoIconButton.Root
+                  variant="implied-secondary"
+                  size="sm"
+                  symbol="chevron-[start]"
+                  onClick={() => openEntryPoint()}
+                  label={i18n('icu:StandaloneRegistration--back')}
+                />
+              </AxoTheme.Override>
+            </div>
+            <InstallScreenQrCode
+              i18n={i18n}
+              {...provisioningUrl}
+              retryGetQrCode={retryGetQrCode}
+            />
+          </div>
+        ) : (
+          <InstallScreenQrCode
+            i18n={i18n}
+            {...provisioningUrl}
+            retryGetQrCode={retryGetQrCode}
+          />
+        )}
+        <div>
           <h1>{i18n('icu:Install__scan-this-code')}</h1>
           <ol>
             <li>{i18n('icu:Install__instructions__1')}</li>
@@ -143,7 +166,7 @@ export function InstallScreenQrCodeNotScannedStep({
             </AxoAlertDialog.Body>
             <AxoAlertDialog.Footer>
               <AxoAlertDialog.Action
-                variant="strong-secondary"
+                variant="subtle-secondary"
                 onClick={restartInstall}
               >
                 {i18n('icu:cancel')}
@@ -208,9 +231,7 @@ function InstallScreenQrCode(
         case InstallScreenQRCodeError.Timeout:
           contents = (
             <>
-              <span
-                className={classNames(getQrCodeClassName('__error-message'))}
-              >
+              <span className="module-InstallScreenQrCodeNotScannedStep__qr-code__error-message">
                 {i18n('icu:Install__qr-failed-load__error--timeout')}
               </span>
               <RetryButton onClick={retryGetQrCode}>
@@ -222,9 +243,7 @@ function InstallScreenQrCode(
         case InstallScreenQRCodeError.Unknown:
           contents = (
             <>
-              <span
-                className={classNames(getQrCodeClassName('__error-message'))}
-              >
+              <span className="module-InstallScreenQrCodeNotScannedStep__qr-code__error-message">
                 <I18n
                   i18n={i18n}
                   id="icu:Install__qr-failed-load__error--unknown"
@@ -240,14 +259,12 @@ function InstallScreenQrCode(
         case InstallScreenQRCodeError.NetworkIssue:
           contents = (
             <>
-              <span
-                className={classNames(getQrCodeClassName('__error-message'))}
-              >
+              <span className="module-InstallScreenQrCodeNotScannedStep__qr-code__error-message">
                 {i18n('icu:Install__qr-failed-load__error--network')}
               </span>
 
               <a
-                className={classNames(getQrCodeClassName('__get-help'))}
+                className="module-InstallScreenQrCodeNotScannedStep__qr-code__get-help"
                 target="_blank"
                 rel="noreferrer"
                 href={SUPPORT_PAGE}
@@ -280,12 +297,13 @@ function InstallScreenQrCode(
   return (
     <div
       className={classNames(
-        getQrCodeClassName(''),
+        'module-InstallScreenQrCodeNotScannedStep__qr-code',
         props.loadingState === LoadingState.Loaded &&
-          getQrCodeClassName('--loaded'),
+          'module-InstallScreenQrCodeNotScannedStep__qr-code--loaded',
         props.loadingState === LoadingState.LoadFailed &&
-          getQrCodeClassName('--load-failed'),
-        isJustButton && getQrCodeClassName('--just-button')
+          'module-InstallScreenQrCodeNotScannedStep__qr-code--load-failed',
+        isJustButton &&
+          'module-InstallScreenQrCodeNotScannedStep__qr-code--just-button'
       )}
     >
       {contents}
@@ -333,8 +351,9 @@ function QRCodeImage({
       role="img"
       aria-label={i18n('icu:Install__scan-this-code')}
       className={classNames(
-        getQrCodeClassName('__code'),
-        isCopying && getQrCodeClassName('__code--copying')
+        'module-InstallScreenQrCodeNotScannedStep__qr-code__code',
+        isCopying &&
+          'module-InstallScreenQrCodeNotScannedStep__qr-code__code--copying'
       )}
       onDoubleClick={onDoubleClick}
       viewBox="0 0 16 16"
@@ -366,7 +385,7 @@ function RetryButton({
 
   return (
     <button
-      className={getQrCodeClassName('__link')}
+      className="module-InstallScreenQrCodeNotScannedStep__qr-code__link"
       onClick={onClick}
       onKeyDown={onKeyDown}
       type="button"

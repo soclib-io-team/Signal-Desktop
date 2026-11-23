@@ -24,8 +24,14 @@ const ALLOWED_REFERENCES = /* @type {const} */ [
   },
   {
     fileSuffix: 'preload',
-    requiredLine: 'import { ipcRenderer } from "electron";',
+    requiredLine:
+      'import { ipcRenderer } from "electron";import { readFile } from "node:fs";',
     depSuffixes: ['std', 'node', 'preload'],
+  },
+  {
+    fileSuffix: 'sandbox',
+    requiredLine: 'import { ipcRenderer } from "electron";',
+    depSuffixes: ['std', 'dom', 'sandbox'],
   },
   {
     fileSuffix: 'main',
@@ -35,11 +41,15 @@ const ALLOWED_REFERENCES = /* @type {const} */ [
 ];
 
 const DISALLOWED_REFERENCES = /* @type {const} */ [
-  { fileSuffix: 'std', depSuffixes: ['dom', 'node', 'preload', 'main'] },
-  { fileSuffix: 'dom', depSuffixes: ['node', 'preload', 'main'] },
-  { fileSuffix: 'node', depSuffixes: ['preload', 'main'] },
+  {
+    fileSuffix: 'std',
+    depSuffixes: ['dom', 'node', 'preload', 'sandbox', 'main'],
+  },
+  { fileSuffix: 'dom', depSuffixes: ['node', 'preload', 'sandbox', 'main'] },
+  { fileSuffix: 'node', depSuffixes: ['preload', 'sandbox', 'main'] },
   { fileSuffix: 'preload', depSuffixes: ['main'] },
-  { fileSuffix: 'main', depSuffixes: ['dom', 'preload'] },
+  { fileSuffix: 'sandbox', depSuffixes: ['preload', 'main', 'node'] },
+  { fileSuffix: 'main', depSuffixes: ['dom', 'preload', 'sandbox'] },
 ];
 
 ruleTester.run('file-suffix', enforceFileSuffix, {
@@ -68,6 +78,31 @@ ruleTester.run('file-suffix', enforceFileSuffix, {
       filename: 'a.std.ts',
       code: `import type { ReadonlyDeep } from './b.dom.ts'`,
     },
+    {
+      name: 'std test file',
+      filename: 'a.std.test.ts',
+      code: `import { test } from 'vitest'; import { x } from './a.std.ts';`,
+    },
+    {
+      name: 'std bench file',
+      filename: 'a.std.bench.ts',
+      code: `import { test } from 'vitest'; import { x } from './a.std.ts';`,
+    },
+    {
+      name: 'dom test file',
+      filename: 'a.dom.test.tsx',
+      code: `import { page } from 'vitest/browser'; import { x } from './a.dom.tsx';`,
+    },
+    {
+      name: 'dom visual test file',
+      filename: 'a.dom.visual.test.tsx',
+      code: `import { render } from 'vitest-browser-react';`,
+    },
+    {
+      name: 'node mts file',
+      filename: 'a.node.mts',
+      code: `import type { BrowserCommand } from 'vitest/node'; import { x } from 'vitest/node';`,
+    },
   ],
   invalid: [
     ...DISALLOWED_REFERENCES.map(({ fileSuffix, depSuffixes }) => {
@@ -87,7 +122,7 @@ ruleTester.run('file-suffix', enforceFileSuffix, {
       });
     }).flat(),
 
-    ...['dom', 'node', 'preload', 'main'].map(fileSuffix => {
+    ...['dom', 'node', 'preload', 'main', 'sandbox'].map(fileSuffix => {
       /** @type {const} */
       return {
         name: `no ${fileSuffix} imports`,
@@ -101,6 +136,29 @@ ruleTester.run('file-suffix', enforceFileSuffix, {
         ],
       };
     }),
+
+    {
+      name: 'test file without a suffix',
+      filename: 'a.test.ts',
+      code: '',
+      errors: [
+        {
+          messageId: 'wrongFileSuffix',
+          data: { fileSuffix: 'test', expectedSuffix: 'std' },
+        },
+      ],
+    },
+    {
+      name: 'vitest/browser in std test file',
+      filename: 'a.std.test.ts',
+      code: `import { page } from 'vitest/browser';`,
+      errors: [
+        {
+          messageId: 'wrongFileSuffix',
+          data: { fileSuffix: 'std', expectedSuffix: 'dom' },
+        },
+      ],
+    },
 
     // Invalid imports
     {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import memoizee from 'memoizee';
-import type { MessageAttributesType } from '../model-types.d.ts';
+import type { MessageAttributesType } from '../model-types.std.ts';
 
 /**
  * `SendStatus` represents the send status of a message to a single recipient. For
@@ -48,6 +48,16 @@ export type VisibleSendStatus =
   | SendStatus.Delivered
   | SendStatus.Read
   | SendStatus.Viewed;
+
+/** In the order recipients are grouped by status in message and story details */
+export const VISIBLE_SEND_STATUS_ORDER: ReadonlyArray<VisibleSendStatus> = [
+  SendStatus.Failed,
+  SendStatus.Viewed,
+  SendStatus.Read,
+  SendStatus.Delivered,
+  SendStatus.Sent,
+  SendStatus.Pending,
+];
 
 const STATUS_NUMBERS: Record<SendStatus, number> = {
   [SendStatus.Failed]: 0,

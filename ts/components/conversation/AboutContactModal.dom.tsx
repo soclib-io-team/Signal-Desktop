@@ -9,13 +9,12 @@ import { SharedGroupNames } from '../SharedGroupNames.dom.tsx';
 import { About } from './About.dom.tsx';
 import { I18n } from '../I18n.dom.tsx';
 import { canHaveNicknameAndNote } from '../../util/nicknames.dom.ts';
-import { Tooltip, TooltipPlacement } from '../Tooltip.dom.tsx';
 import { FunStaticEmoji } from '../fun/FunEmoji.dom.tsx';
 import { missingEmojiPlaceholder } from '../../types/GroupMemberLabels.std.ts';
 import type { ConversationType } from '../../state/ducks/conversations.preload.ts';
 import type { LocalizerType } from '../../types/Util.std.ts';
 import { Emoji } from '../../axo/emoji.std.ts';
-import { AxoDialog } from '../../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../../axo/dialogs/AxoDialog.dom.tsx';
 import { tw } from '../../axo/tw.dom.tsx';
 import { AxoList } from '../../axo/items/AxoList.dom.tsx';
 import { AxoItem } from '../../axo/items/AxoItem.dom.tsx';
@@ -23,9 +22,7 @@ import { AxoTextItem } from '../../axo/items/AxoTextItem.dom.tsx';
 import { AxoClickableItem } from '../../axo/items/AxoClickableItem.dom.tsx';
 
 function muted(parts: Array<string | JSX.Element>) {
-  return (
-    <span className="AboutContactModal__TitleWithoutNickname">{parts}</span>
-  );
+  return <span>{parts}</span>;
 }
 
 export type PropsType = Readonly<{
@@ -151,24 +148,7 @@ export function AboutContactModal({
           id="icu:AboutContactModal__TitleAndTitleWithoutNickname"
           components={{
             nickname: <UserText text={contact.title} />,
-            titleNoNickname: (
-              <Tooltip
-                className="AboutContactModal__TitleWithoutNickname__Tooltip"
-                direction={TooltipPlacement.Top}
-                content={
-                  <I18n
-                    i18n={i18n}
-                    id="icu:AboutContactModal__TitleWithoutNickname__Tooltip"
-                    components={{
-                      title: <UserText text={contact.titleNoNickname} />,
-                    }}
-                  />
-                }
-                delay={0}
-              >
-                <UserText text={contact.titleNoNickname} />
-              </Tooltip>
-            ),
+            titleNoNickname: <UserText text={contact.titleNoNickname} />,
             muted,
           }}
         />
@@ -179,9 +159,13 @@ export function AboutContactModal({
 
   return (
     <AxoDialog.Root open onOpenChange={onClose}>
-      <AxoDialog.Content size="sm" escape="cancel-is-noop">
-        <AxoDialog.Header>
-          <AxoDialog.Title screenReaderOnly>
+      <AxoDialog.Content
+        size="sm"
+        escape="cancel-is-noop"
+        disableMissingAriaDescriptionWarning
+      >
+        <AxoDialog.Header floating>
+          <AxoDialog.Title>
             {isMe
               ? i18n('icu:AboutContactModal__title--myself')
               : i18n('icu:AboutContactModal__title')}
@@ -224,12 +208,7 @@ export function AboutContactModal({
                   {!isMe && contact.about && (
                     <AxoTextItem.Root
                       symbol="pencil"
-                      label={
-                        <About
-                          className="AboutContactModal__about"
-                          text={contact.about}
-                        />
-                      }
+                      label={<About text={contact.about} />}
                     />
                   )}
                   {!isMe && contact.isVerified && (

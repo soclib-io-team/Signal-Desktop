@@ -27,7 +27,7 @@ message BackupInfo {
 //    LTR locales), but can appear anywhere relative to other frames respecting
 //    rule 2 (after Recipients and Chats).
 //
-// Recipients, Chats, StickerPacks, AdHocCalls, and NotificationProfiles
+// Recipients, Chats, StickerPacks, AdHocCalls, NotificationProfiles, and FavoriteStickerList
 // can be in any order. (But must respect rule 2.)
 //
 // For example, Chats may all be together at the beginning,
@@ -39,10 +39,12 @@ message Frame {
     Recipient recipient = 2;
     Chat chat = 3;
     ChatItem chatItem = 4;
-    StickerPack stickerPack = 5;
+    StickerPack installedStickerPack = 5;
     AdHocCall adHocCall = 6;
     NotificationProfile notificationProfile = 7;
     ChatFolder chatFolder = 8;
+    StickerPack hiddenStickerPack = 9; // Only applies to available/uninstalled sticker packs.
+    FavoriteStickerList favoriteStickerList = 10;
   }
 }
 
@@ -290,6 +292,7 @@ message Contact {
   // Opaque blob containing key transparency data for the contact
   optional bytes keyTransparencyData = 22;
   uint64 blockedAtTimestamp = 23; // if `blocked` is true, 0 means unknown block time
+  Name sharedName = 24; // absent iff both `given` and `family` are empty, name provided by third party
 }
 
 message Group {
@@ -690,6 +693,12 @@ message ContactAttachment {
     string nickname = 6;
   }
 
+  // The sharer's Signal nickname for this contact
+  message SignalNickname {
+    string given = 1;
+    string family = 2;
+  }
+
   message Phone {
     enum Type {
       UNKNOWN = 0; // Interpret as "Home"
@@ -738,11 +747,15 @@ message ContactAttachment {
   }
 
   optional Name name = 1;
+  reserved 2;
   repeated Phone number = 3;
   repeated Email email = 4;
   repeated PostalAddress address = 5;
   optional FilePointer avatar = 6;
   string organization = 7;
+  bytes aci = 8; // should be 16 bytes
+  optional SignalNickname nickname = 9; // absent iff both `given` and `family` are empty
+  string note = 10;
 }
 
 message StickerMessage {
@@ -879,6 +892,14 @@ message Quote {
   optional Text text = 3;
   repeated QuotedAttachment attachments = 4;
   Type type = 5;
+  
+  // We don't always know the group for a private reply in cases where groups were fully deleted after
+  // receiving the message. Always prefer setting the [privateReplyGroupRecipientId] if available, falling back to
+  // [unknownPrivateReply] only when it isn't.
+  oneof privateReplyDescriptor {
+    bool unknownPrivateReply = 6;
+    uint64 privateReplyGroupRecipientId = 7;
+  }
 }
 
 message BodyRange {
@@ -1057,6 +1078,7 @@ message LearnedProfileChatUpdate {
   oneof previousName {
     uint64 e164 = 1;
     string username = 2;
+    string sharedName = 3;
   }
 }
 
@@ -1339,6 +1361,17 @@ message PinMessageUpdate {
 message StickerPack {
   bytes packId = 1;
   bytes packKey = 2;
+}
+
+message FavoriteStickerList {
+  message FavoriteSticker {
+    bytes packId = 1;
+    bytes packKey = 2;
+    uint32 stickerId = 3;
+    uint64 favoritedAtTimestamp = 4;
+  }
+
+  repeated FavoriteSticker favoriteSticker = 1;  // At most 500 stickers
 }
 
 message ChatStyle {

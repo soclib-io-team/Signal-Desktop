@@ -13,36 +13,6 @@
   pointer-events: auto;
 }
 
-.CallingAdhocCallInfo__width-container {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  max-width: none;
-  height: auto;
-  padding-block: 1px;
-  padding-inline-start: 15px;
-  margin-block-end: 80px;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.CallingAdhocCallInfo__width-container::after {
-  content: '';
-  display: flex;
-  flex-shrink: 1;
-  flex-basis: 480px;
-}
-
-.CallingAdhocCallInfo__overlay {
-  background: transparent;
-}
-
-.CallingAdhocCallInfo__overlay-container {
-  flex-direction: column;
-  padding: 0;
-  justify-content: flex-end;
-}
-
 .CallingAdhocCallInfo__MenuItem {
   @include mixins.button-reset;
   & {
@@ -107,16 +77,6 @@
   margin-block: 16px;
   margin-inline: 10px;
   border: 1px solid variables.$color-gray-65;
-}
-
-.CallingAdhocCallInfo__RemoveClient {
-  @include mixins.button-reset;
-  & {
-    width: 16px;
-    height: 16px;
-    margin-inline: 8px;
-    background: variables.$color-white;
-  }
 }
 
 .CallingAdhocCallInfo__UnknownContactInfoButton {

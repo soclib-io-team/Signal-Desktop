@@ -30,6 +30,7 @@ import {
   protocol as electronProtocol,
 } from 'electron';
 import type {
+  IpcMainEvent,
   MenuItemConstructorOptions,
   Settings,
   BrowserWindowConstructorOptions,
@@ -78,6 +79,7 @@ import * as attachmentChannel from './attachment_channel.main.ts';
 import * as bounce from '../ts/services/bounce.main.ts';
 import * as updater from '../ts/updater/index.main.ts';
 import { updateDefaultSession } from './updateDefaultSession.main.ts';
+import { sanitize as sanitizeWebp } from '@signalapp/libsignal-client/dist/WebpSanitizer.js';
 import { PreventDisplaySleepService } from './PreventDisplaySleepService.std.ts';
 import {
   SystemTrayService,
@@ -97,6 +99,7 @@ import {
   getDefaultSystemTraySetting,
   isSystemTraySupported,
   isContentProtectionEnabledByDefault,
+  isContentProtectionSupported,
 } from '../ts/types/Settings.std.ts';
 import * as ephemeralConfig from './ephemeral_config.main.ts';
 import * as mainProcessLogging from '../ts/logging/main_process_logging.main.ts';
@@ -578,6 +581,7 @@ async function handleCommonWindowEvents(window: BrowserWindow) {
   // by user in settings.
   if (
     !DISABLE_SCREEN_SECURITY &&
+    isContentProtectionSupported(OS) &&
     (contentProtection ?? isContentProtectionEnabledByDefault(OS, os.release()))
   ) {
     window.once('ready-to-show', async () => {
@@ -1098,6 +1102,14 @@ ipc.handle(
     });
 
     return promise;
+  }
+);
+
+ipc.handle(
+  'art-creator:sanitizeWebp',
+  (_event: Electron.Event, data: Uint8Array<ArrayBuffer>) => {
+    // Throws if the image is invalid
+    sanitizeWebp(data);
   }
 );
 
@@ -1624,6 +1636,8 @@ async function showCallDiagnosticWindow() {
 
 let permissionsPopupWindow: BrowserWindow | undefined;
 function showPermissionsPopupWindow(forCalling: boolean, forCamera: boolean) {
+  const PERMISSIONS_WINDOW_WIDTH = 400;
+
   // oxlint-disable-next-line no-async-promise-executor
   return new Promise<void>(async (resolveFn, reject) => {
     if (permissionsPopupWindow) {
@@ -1639,9 +1653,10 @@ function showPermissionsPopupWindow(forCalling: boolean, forCamera: boolean) {
     const size = mainWindow.getSize();
     const options = {
       // oxlint-disable-next-line typescript/no-non-null-assertion
-      width: Math.min(400, size[0]!),
+      width: Math.min(PERMISSIONS_WINDOW_WIDTH, size[0]!),
       // oxlint-disable-next-line typescript/no-non-null-assertion
-      height: Math.min(150, size[1]!),
+      height: Math.min(140, size[1]!),
+      useContentSize: true,
       resizable: false,
       title: getResolvedMessagesLocale().i18n('icu:allowAccess'),
       titleBarStyle: nonMainTitleBarStyle,
@@ -1665,18 +1680,33 @@ function showPermissionsPopupWindow(forCalling: boolean, forCamera: boolean) {
 
     await handleCommonWindowEvents(permissionsPopupWindow);
 
+    const onSetHeight = (event: IpcMainEvent, height: number) => {
+      if (
+        !permissionsPopupWindow ||
+        event.sender !== permissionsPopupWindow.webContents
+      ) {
+        return;
+      }
+
+      permissionsPopupWindow.setContentSize(
+        PERMISSIONS_WINDOW_WIDTH,
+        Math.min(height, 400)
+      );
+
+      // Wait for the computed height before showing the popup to avoid resize flash
+      if (!permissionsPopupWindow.isVisible()) {
+        addDarkOverlay();
+        permissionsPopupWindow.show();
+      }
+    };
+    ipc.on('permissions-popup:set-height', onSetHeight);
+
     permissionsPopupWindow.on('closed', () => {
+      ipc.removeListener('permissions-popup:set-height', onSetHeight);
       removeDarkOverlay();
       permissionsPopupWindow = undefined;
 
       resolveFn();
-    });
-
-    permissionsPopupWindow.once('ready-to-show', () => {
-      if (permissionsPopupWindow) {
-        addDarkOverlay();
-        permissionsPopupWindow.show();
-      }
     });
 
     await safeLoadURL(
@@ -1724,6 +1754,33 @@ function generateSQLKey(): string {
   return randomBytes(32).toString('hex');
 }
 
+function checkIsEncryptionAvailable(
+  isLinux: boolean,
+  safeStorageBackend: string | undefined
+): boolean {
+  if (!app.isPackaged) {
+    // Don't use safeStorage if not packaged and building preload cache,
+    // running test-electron, or running Signal-Test-Infra-Private tests to
+    // avoid blocking prompt on macOS CI.
+    if (process.env.GENERATE_PRELOAD_CACHE) {
+      return false;
+    }
+    if (process.env.SIGNAL_TEST_INFRA_TEST) {
+      return false;
+    }
+    if (isTestEnvironment(getEnvironment())) {
+      return false;
+    }
+  }
+  if (!safeStorage.isEncryptionAvailable()) {
+    return false;
+  }
+  if (isLinux) {
+    return safeStorageBackend !== 'basic_text';
+  }
+  return true;
+}
+
 function getSQLKey(): string {
   let update = false;
   const isLinux = OS.isLinux();
@@ -1736,14 +1793,10 @@ function getSQLKey(): string {
   const safeStorageBackend: string | undefined = isLinux
     ? safeStorage.getSelectedStorageBackend()
     : undefined;
-  const isEncryptionAvailable =
-    // Don't use safeStorage if not packaged and building preload cache or
-    // running test-electron to avoid blocking prompt on macOS CI.
-    (app.isPackaged ||
-      (!process.env.GENERATE_PRELOAD_CACHE &&
-        !isTestEnvironment(getEnvironment()))) &&
-    safeStorage.isEncryptionAvailable() &&
-    (!isLinux || safeStorageBackend !== 'basic_text');
+  const isEncryptionAvailable = checkIsEncryptionAvailable(
+    isLinux,
+    safeStorageBackend
+  );
 
   // On Linux the backend can change based on desktop environment and command line flags.
   // If the backend changes we won't be able to decrypt the key.
@@ -2205,7 +2258,9 @@ app.on('ready', async () => {
     installFileHandler({
       session: session.defaultSession,
       userDataPath,
+      unresolvedUserDataPath: app.getPath('userData'),
       installPath,
+      unresolvedInstallPath: rootDir,
       isWindows: OS.isWindows(),
     });
   }
@@ -2330,7 +2385,9 @@ app.on('ready', async () => {
     installFileHandler({
       session: session.defaultSession,
       userDataPath,
+      unresolvedUserDataPath: app.getPath('userData'),
       installPath,
+      unresolvedInstallPath: rootDir,
       isWindows: OS.isWindows(),
     });
   }
@@ -2943,7 +3000,6 @@ ipc.on('get-config', async event => {
 
   const parsed = safeParseLoose(rendererConfigSchema, {
     name: packageJson.productName,
-    availableLocales: getResolvedMessagesLocale().availableLocales,
     resolvedTranslationsLocale: getResolvedMessagesLocale().name,
     resolvedTranslationsLocaleDirection: getResolvedMessagesLocale().direction,
     hourCyclePreference: getResolvedMessagesLocale().hourCyclePreference,
@@ -3021,12 +3077,6 @@ ipc.on('get-config', async event => {
 ipc.on('locale-data', event => {
   // oxlint-disable-next-line no-param-reassign
   event.returnValue = getResolvedMessagesLocale().messages;
-});
-
-// Ingested in preload.js via a sendSync call
-ipc.on('locale-display-names', event => {
-  // oxlint-disable-next-line no-param-reassign
-  event.returnValue = getResolvedMessagesLocale().localeDisplayNames;
 });
 
 // Ingested in preload.js via a sendSync call

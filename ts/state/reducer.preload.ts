@@ -3,7 +3,6 @@
 
 import { combineReducers } from 'redux';
 
-import { reducer as accounts } from './ducks/accounts.preload.ts';
 import { reducer as app } from './ducks/app.preload.ts';
 import { reducer as audioPlayer } from './ducks/audioPlayer.preload.ts';
 import { reducer as audioRecorder } from './ducks/audioRecorder.preload.ts';
@@ -11,10 +10,12 @@ import { reducer as backups } from './ducks/backups.preload.ts';
 import { reducer as badges } from './ducks/badges.preload.ts';
 import { reducer as calling } from './ducks/calling.preload.ts';
 import { reducer as callHistory } from './ducks/callHistory.preload.ts';
+import { reducer as account } from './ducks/account.preload.ts';
+import { reducer as chatColors } from './ducks/chatColors.preload.ts';
 import { reducer as chatFolders } from './ducks/chatFolders.preload.ts';
 import { reducer as composer } from './ducks/composer.preload.ts';
 import { reducer as conversations } from './ducks/conversations.preload.ts';
-import { reducer as crashReports } from './ducks/crashReports.preload.ts';
+import { reducer as crashReports } from './ducks/crashReports.dom.ts';
 import { reducer as donations } from './ducks/donations.preload.ts';
 import { reducer as emojis } from './ducks/emojis.preload.ts';
 import { reducer as expiration } from './ducks/expiration.std.ts';
@@ -24,6 +25,7 @@ import { reducer as inbox } from './ducks/inbox.std.ts';
 import { reducer as installer } from './ducks/installer.preload.ts';
 import { reducer as items } from './ducks/items.preload.ts';
 import { reducer as lightbox } from './ducks/lightbox.preload.ts';
+import { reducer as linkedDevices } from './ducks/linkedDevices.preload.ts';
 import { reducer as linkPreviews } from './ducks/linkPreviews.preload.ts';
 import { reducer as mediaGallery } from './ducks/mediaGallery.preload.ts';
 import { reducer as megaphones } from './ducks/megaphones.preload.ts';
@@ -37,13 +39,13 @@ import { reducer as standaloneInstaller } from './ducks/standaloneInstaller.prel
 import { reducer as stickers } from './ducks/stickers.preload.ts';
 import { reducer as stories } from './ducks/stories.preload.ts';
 import { reducer as storyDistributionLists } from './ducks/storyDistributionLists.preload.ts';
-import { reducer as toast } from './ducks/toast.preload.ts';
-import { reducer as updates } from './ducks/updates.preload.ts';
+import { reducer as toast } from './ducks/toast.dom.ts';
+import { reducer as updates } from './ducks/updates.dom.ts';
 import { reducer as user } from './ducks/user.preload.ts';
 import { reducer as username } from './ducks/username.preload.ts';
 
 export const reducer = combineReducers({
-  accounts,
+  account,
   app,
   audioPlayer,
   audioRecorder,
@@ -51,6 +53,7 @@ export const reducer = combineReducers({
   badges,
   calling,
   callHistory,
+  chatColors,
   chatFolders,
   composer,
   conversations,
@@ -64,6 +67,7 @@ export const reducer = combineReducers({
   installer,
   items,
   lightbox,
+  linkedDevices,
   linkPreviews,
   mediaGallery,
   megaphones,

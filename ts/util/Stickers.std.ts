@@ -1,7 +1,10 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import * as Bytes from '../Bytes.std.ts';
+import { fromBase64 } from '../Bytes.std.ts';
+
+export const MAX_FAVORITE_STICKERS = 500;
+export const MAX_STICKERS_PER_PACK = 1024;
 
 const VALID_PACK_ID_REGEXP = /^[0-9a-f]{32}$/i;
 
@@ -14,5 +17,5 @@ export function redactPackId(packId: string): string {
 }
 
 export function fromBase64PackKeyToHex(packKey: string): string {
-  return Bytes.fromBase64(packKey).toHex();
+  return fromBase64(packKey).toHex();
 }

@@ -11,7 +11,6 @@ import { MuteExpiration } from '@signalapp/types';
 import { Backups, SignalService } from '../../protobuf/index.std.ts';
 import {
   DataReader,
-  DataWriter,
   pauseWriteAccess,
   resumeWriteAccess,
 } from '../../sql/Client.preload.ts';
@@ -21,9 +20,11 @@ import type {
 } from '../../sql/Interface.std.ts';
 import { createLogger } from '../../logging/log.std.ts';
 import { GiftBadgeStates } from '../../types/GiftBadgeStates.std.ts';
-import { type CustomColorType } from '../../types/Colors.std.ts';
+import type { ChatStyle } from '../../types/ChatStyle.std.ts';
+import { getConversationBubbleColor } from '../../util/conversationBubbleColor.std.ts';
 import { StorySendMode, MY_STORY_ID } from '../../types/Stories.std.ts';
-import { getStickerPacksForBackup } from '../../types/Stickers.preload.ts';
+import { getInstalledStickerPacksForBackup } from '../../types/Stickers.preload.ts';
+import { MAX_FAVORITE_STICKERS } from '../../util/Stickers.std.ts';
 import {
   isPniString,
   isServiceIdString,
@@ -41,7 +42,8 @@ import type {
   ConversationAttributesType,
   MessageAttributesType,
   QuotedAttachmentType,
-} from '../../model-types.d.ts';
+  QuotedMessageType,
+} from '../../model-types.std.ts';
 import { isNotNil } from '../../util/isNotNil.std.ts';
 import {
   isDirectConversation,
@@ -52,8 +54,9 @@ import {
 } from '../../util/whatTypeOfConversation.dom.ts';
 import { uuidToBytes } from '../../util/uuidToBytes.std.ts';
 import { strictAssert } from '../../util/assert.std.ts';
+import { combineNames } from '../../util/combineNames.std.ts';
 import { getSafeLongFromTimestamp } from '../../util/timestampLongUtils.std.ts';
-import { DAY, DurationInSeconds } from '../../util/durations/index.std.ts';
+import { DurationInSeconds } from '../../util/durations/index.std.ts';
 import {
   PhoneNumberDiscoverability,
   parsePhoneNumberDiscoverability,
@@ -113,13 +116,7 @@ import {
   AdhocCallStatus,
 } from '../../types/CallDisposition.std.ts';
 import { isAciString } from '../../util/isAciString.std.ts';
-import { hslToRGBInt } from '../../util/hslToRGB.std.ts';
-import type {
-  AboutMe,
-  BackupExportOptions,
-  LocalChatStyle,
-  StatsType,
-} from './types.std.ts';
+import type { AboutMe, LocalChatStyle, StatsType } from './types.std.ts';
 import { messageHasPaymentEvent } from '../../messages/payments.std.ts';
 import {
   numberToAddressType,
@@ -134,18 +131,18 @@ import {
   hasRequiredInformationForRemoteBackup,
 } from '../../util/Attachment.std.ts';
 import { getFilePointerForAttachment } from './util/filePointers.preload.ts';
+import type { BackupContentPolicy } from './policy.std.ts';
 import { getBackupMediaRootKey } from './crypto.preload.ts';
 import type {
   CoreAttachmentBackupJobType,
   CoreAttachmentLocalBackupJobType,
 } from '../../types/AttachmentBackup.std.ts';
-import { AttachmentBackupManager } from '../../jobs/AttachmentBackupManager.preload.ts';
 import {
   getBackupCdnInfo,
   getLocalBackupFileNameForAttachment,
   getMediaNameForAttachment,
+  getPlaintextExportFileNameForAttachment,
 } from './util/mediaId.preload.ts';
-import { calculateExpirationTimestamp } from '../../util/expirationTimer.std.ts';
 import { ReadStatus } from '../../messages/MessageReadStatus.std.ts';
 import { CallLinkRestrictions } from '../../types/CallLink.std.ts';
 import {
@@ -166,7 +163,6 @@ import {
   isTestEnvironment,
   isTestOrMockEnvironment,
 } from '../../environment.std.ts';
-import { calculateLightness } from '../../util/getHSL.std.ts';
 import { isSignalServiceId } from '../../types/SignalConversation.std.ts';
 import { isValidE164 } from '../../util/isValidE164.std.ts';
 import { toDayOfWeekArray } from '../../types/NotificationProfile.std.ts';
@@ -177,12 +173,13 @@ import {
 import { KIBIBYTE } from '../../types/AttachmentSize.std.ts';
 import { itemStorage } from '../../textsecure/Storage.preload.ts';
 import { ChatFolderType } from '../../types/ChatFolder.std.ts';
-import { expiresTooSoonForBackup } from './util/expiration.std.ts';
+import { canIncludeExpiringMessageInBackup } from './util/expiration.std.ts';
 import type { PinnedMessage } from '../../types/PinnedMessage.std.ts';
-import type { ThemeType } from '../../util/preload.preload.ts';
+import type { ThemeType } from '../../util/preload.sandbox.ts';
 import { safeParseStrict } from '../../util/schemas.std.ts';
 import type { WithRequiredProperties } from '../../types/Util.std.ts';
 import type { Emoji } from '../../axo/emoji.std.ts';
+import { canHaveSharedName } from '../../util/getTitle.preload.ts';
 
 const { isNumber } = lodash;
 
@@ -257,7 +254,7 @@ type RunResultType = Readonly<{
 }>;
 
 export class BackupExportStream {
-  readonly #options: BackupExportOptions;
+  readonly #policy: BackupContentPolicy;
   // Shared between all methods for consistency.
   readonly #now = Date.now();
 
@@ -279,27 +276,33 @@ export class BackupExportStream {
     chatFolders: 0,
     chats: 0,
     distributionLists: 0,
+    favoriteStickers: 0,
     fixedDirectMessages: 0,
+    hiddenStickerPacks: 0,
+    installedStickerPacks: 0,
     messages: 0,
     notificationProfiles: 0,
     skippedConversations: 0,
     skippedMessages: 0,
-    stickerPacks: 0,
     unknownConversationReferences: new Map<string, number>(),
   };
   #pendingRecipients: Array<Backups.Recipient.Params> = [];
   #ourConversation?: ConversationAttributesType;
-  #attachmentBackupJobs: Array<
+  readonly #attachmentBackupJobs: Array<
     CoreAttachmentBackupJobType | CoreAttachmentLocalBackupJobType
   > = [];
   #nextRecipientId = 1n;
 
-  // Map from custom color uuid to an index in accountSettings.customColors
-  // array.
-  readonly #customColorIdByUuid = new Map<string, bigint>();
+  // Map from database custom color ids to ids in
+  // accountSettings.customChatColors. Backup ids are renumbered from 1 so that
+  // they don't depend on the database's autoincrement counter.
+  readonly #backupIdByCustomChatColorId = new Map<
+    ChatStyle.CustomChatColorId,
+    bigint
+  >();
 
-  constructor(options: BackupExportOptions) {
-    this.#options = options;
+  constructor(policy: BackupContentPolicy) {
+    this.#policy = policy;
   }
 
   public run(): RunResultType {
@@ -322,7 +325,6 @@ export class BackupExportStream {
 
   async *#run(): AsyncIterable<NonNullable<Backups.Frame.Params['item']>> {
     log.info('starting...');
-    await AttachmentBackupManager.stop();
 
     log.info('message migration starting...');
     await migrateAllMessages();
@@ -335,35 +337,6 @@ export class BackupExportStream {
       isPaused = false;
       await resumeWriteAccess();
 
-      // TODO (DESKTOP-7344): Clear & add backup jobs in a single transaction
-      const { type } = this.#options;
-      switch (type) {
-        case 'remote':
-          log.info(
-            `Enqueuing ${this.#attachmentBackupJobs.length} remote attachment backup jobs`
-          );
-          await DataWriter.clearAllAttachmentBackupJobs();
-          await Promise.all(
-            this.#attachmentBackupJobs.map(job => {
-              if (job.type === 'local') {
-                log.error(
-                  "Can't enqueue local backup jobs during remote backup, skipping"
-                );
-                return Promise.resolve();
-              }
-
-              return AttachmentBackupManager.addJobAndMaybeThumbnailJob(job);
-            })
-          );
-          this.#attachmentBackupJobs = [];
-          break;
-        case 'plaintext-export':
-        case 'local-encrypted':
-        case 'cross-client-integration-test':
-          break;
-        default:
-          throw missingCaseError(type);
-      }
       log.info('finished successfully');
     } catch (error) {
       log.error('errored', toLogFormat(error));
@@ -372,7 +345,6 @@ export class BackupExportStream {
       if (isPaused) {
         await resumeWriteAccess();
       }
-      await AttachmentBackupManager.start();
     }
   }
 
@@ -553,17 +525,36 @@ export class BackupExportStream {
       this.#stats.callLinks += 1;
     }
 
-    const stickerPacks = await getStickerPacksForBackup();
+    const installedStickerPacks = await getInstalledStickerPacksForBackup();
 
-    for (const { id, key } of stickerPacks) {
+    for (const { id, key } of installedStickerPacks) {
       yield {
-        stickerPack: {
+        installedStickerPack: {
           packId: Bytes.fromHex(id),
           packKey: Bytes.fromBase64(key),
         },
       };
 
-      this.#stats.stickerPacks += 1;
+      this.#stats.installedStickerPacks += 1;
+    }
+
+    const hiddenStickerPacks =
+      await DataReader.getAllHiddenStickerPacksActive();
+
+    for (const { packId, packKey } of hiddenStickerPacks) {
+      if (packKey == null) {
+        log.warn('Dropping hidden sticker pack; missing packKey');
+        continue;
+      }
+
+      yield {
+        hiddenStickerPack: {
+          packId: Bytes.fromHex(packId),
+          packKey: Bytes.fromBase64(packKey),
+        },
+      };
+
+      this.#stats.hiddenStickerPacks += 1;
     }
 
     const pinnedConversationIds =
@@ -637,8 +628,7 @@ export class BackupExportStream {
               ? Bytes.fromBase64(attributes.wallpaperPhotoPointerBase64)
               : undefined,
             wallpaperPreset: attributes.wallpaperPreset,
-            color: attributes.conversationColor,
-            customColorId: attributes.customColorId,
+            bubbleColor: getConversationBubbleColor(attributes) ?? undefined,
             dimWallpaperInDarkMode: attributes.dimWallpaperInDarkMode,
             autoBubbleColor: attributes.autoBubbleColor,
           }),
@@ -832,6 +822,47 @@ export class BackupExportStream {
       this.#stats.chatFolders += 1;
     }
 
+    const activeFavoriteStickers =
+      await DataReader.getAllFavoriteStickersForBackup();
+
+    // Favorite stickers are backed up as a single frame containing all of them.
+    const favoriteStickers: Array<Backups.FavoriteStickerList.FavoriteSticker.Params> =
+      [];
+
+    for (const favorite of activeFavoriteStickers) {
+      const { packId, packKey, stickerId, favoritedAtTimestampMs } = favorite;
+      if (packKey == null) {
+        log.warn('Dropping favorite sticker; missing packKey');
+        continue;
+      }
+
+      favoriteStickers.push({
+        packId: Bytes.fromHex(packId),
+        packKey: Bytes.fromBase64(packKey),
+        stickerId,
+        favoritedAtTimestamp: getSafeLongFromTimestamp(favoritedAtTimestampMs),
+      });
+
+      this.#stats.favoriteStickers += 1;
+
+      if (this.#stats.favoriteStickers >= MAX_FAVORITE_STICKERS) {
+        const droppedCount =
+          activeFavoriteStickers.length - MAX_FAVORITE_STICKERS;
+        log.warn(
+          `Reached favorite sticker limit of ${MAX_FAVORITE_STICKERS}, dropping ${droppedCount}`
+        );
+        break;
+      }
+    }
+
+    if (favoriteStickers.length > 0) {
+      yield {
+        favoriteStickerList: {
+          favoriteSticker: favoriteStickers,
+        },
+      };
+    }
+
     const FLUSH_EVERY = 10000;
 
     const iter = pMapIterable(
@@ -891,6 +922,11 @@ export class BackupExportStream {
 
   async #toAccountData(): Promise<Backups.AccountData.Params> {
     const me = window.ConversationController.getOurConversationOrThrow();
+
+    const [customChatColors, account] = await Promise.all([
+      DataReader.getAllCustomChatColors(),
+      DataReader.getAccount(),
+    ]);
 
     const rawPreferredReactionEmoji = itemStorage.get('preferredReactionEmoji');
 
@@ -1035,22 +1071,25 @@ export class BackupExportStream {
         reactionNotifications: itemStorage.get('reaction-notification') ?? null,
         phoneNumberSharingMode,
         // Note that this should be called before `toDefaultChatStyle` because
-        // it builds `customColorIdByUuid`
-        customChatColors: this.#toCustomChatColors(),
-        defaultChatStyle: this.#toDefaultChatStyle(),
+        // it builds `backupIdByCustomChatColorId`
+        customChatColors: this.#toCustomChatColors(customChatColors),
+        defaultChatStyle: this.#toDefaultChatStyle(account.defaultBubbleColor),
         backupTier: backupTier != null ? BigInt(backupTier) : null,
         appTheme,
         callsUseLessDataSetting:
           itemStorage.get('callsUseLessDataSetting') ||
           Backups.AccountData.CallsUseLessDataSetting.MOBILE_DATA_ONLY,
+        allowSealedSenderFromAnyone: itemStorage.get(
+          'allowSealedSenderFromAnyone',
+          false
+        ),
 
         // Test only values
         ...(isTestOrMockEnvironment()
           ? {
               optimizeOnDeviceStorage:
                 itemStorage.get('optimizeOnDeviceStorage') ?? null,
-              allowSealedSenderFromAnyone:
-                itemStorage.get('allowSealedSenderFromAnyone') ?? null,
+
               pinReminders: itemStorage.get('pinReminders') ?? null,
               screenLockTimeoutMinutes:
                 itemStorage.get('screenLockTimeoutMinutes') ?? null,
@@ -1065,7 +1104,6 @@ export class BackupExportStream {
             }
           : {
               optimizeOnDeviceStorage: null,
-              allowSealedSenderFromAnyone: null,
               pinReminders: null,
               screenLockTimeoutMinutes: null,
               autoDownloadSettings: null,
@@ -1233,7 +1271,13 @@ export class BackupExportStream {
         identityKey = options.identityKeysById.get(convo.serviceId);
       }
 
-      const { nicknameGivenName, nicknameFamilyName, note } = convo;
+      const {
+        nicknameGivenName,
+        nicknameFamilyName,
+        sharedGivenName,
+        sharedFamilyName,
+        note,
+      } = convo;
 
       const maybePni = convo.pni ?? convo.serviceId;
 
@@ -1313,6 +1357,13 @@ export class BackupExportStream {
                 ? {
                     given: nicknameGivenName ?? null,
                     family: nicknameFamilyName ?? null,
+                  }
+                : null,
+            sharedName:
+              canHaveSharedName(convo) && (sharedGivenName || sharedFamilyName)
+                ? {
+                    given: sharedGivenName ?? null,
+                    family: sharedFamilyName ?? null,
                   }
                 : null,
             note: note ?? null,
@@ -1540,23 +1591,14 @@ export class BackupExportStream {
       return undefined;
     }
 
-    const expirationTimestamp = calculateExpirationTimestamp(message);
     if (
-      expiresTooSoonForBackup({ messageExpiresAt: expirationTimestamp ?? null })
+      !canIncludeExpiringMessageInBackup({
+        message,
+        expiringMessagesPolicy: this.#policy.expiringMessages,
+        now: this.#now,
+      })
     ) {
       return undefined;
-    }
-
-    if (message.expireTimer) {
-      if (this.#options.type === 'plaintext-export') {
-        // All disappearing messages are excluded in plaintext export
-        return undefined;
-      }
-
-      if (DurationInSeconds.toMillis(message.expireTimer) <= DAY) {
-        // Message has an expire timer that's too short for export
-        return undefined;
-      }
     }
 
     let authorId: bigint | undefined;
@@ -1789,7 +1831,7 @@ export class BackupExportStream {
     } else if (contact && contact[0]) {
       const [contactDetails] = contact;
 
-      const { name } = contactDetails;
+      const { name, nickname } = contactDetails;
       const hasName =
         name != null &&
         Boolean(
@@ -1800,6 +1842,9 @@ export class BackupExportStream {
           name.middleName ||
           name.nickname
         );
+
+      const hasNickname =
+        nickname != null && Boolean(nickname.givenName || nickname.familyName);
 
       item = {
         contactMessage: {
@@ -1846,6 +1891,16 @@ export class BackupExportStream {
                 })
               : null,
             organization: contactDetails.organization ?? null,
+            aci: contactDetails.aci
+              ? this.#aciToBytes(contactDetails.aci)
+              : null,
+            nickname: hasNickname
+              ? {
+                  given: nickname.givenName ?? null,
+                  family: nickname.familyName ?? null,
+                }
+              : null,
+            note: contactDetails.note ?? null,
           },
           reactions: this.#getMessageReactions(message),
         },
@@ -2483,6 +2538,10 @@ export class BackupExportStream {
         'Missing title transition data'
       );
       const { renderInfo } = message.titleTransition;
+      const sharedName = combineNames(
+        renderInfo.sharedGivenName ?? undefined,
+        renderInfo.sharedFamilyName ?? undefined
+      );
       if (renderInfo.e164) {
         updateMessage.update = {
           learnedProfileChange: {
@@ -2495,9 +2554,15 @@ export class BackupExportStream {
             previousName: { username: renderInfo.username },
           },
         };
+      } else if (sharedName) {
+        updateMessage.update = {
+          learnedProfileChange: {
+            previousName: { sharedName },
+          },
+        };
       } else {
         log.warn(
-          `${logId}: Dropping title transition without username or e164`
+          `${logId}: Dropping title transition without username, e164, or sharedName`
         );
         return { kind: NonBubbleResultKind.Drop };
       }
@@ -3145,6 +3210,30 @@ export class BackupExportStream {
     return { updates };
   }
 
+  #toPrivateReplyDescriptor(
+    quote: Pick<QuotedMessageType, 'groupId' | 'isPrivateReplyGroupUnknown'>
+  ): Backups.Quote.Params['privateReplyDescriptor'] {
+    if (quote.groupId) {
+      const group = window.ConversationController.get(quote.groupId);
+      if (group && isGroupV2(group.attributes)) {
+        const recipientId = this.#getRecipientByConversationId(
+          group.id,
+          'private group reply'
+        );
+        if (recipientId != null) {
+          return { privateReplyGroupRecipientId: recipientId };
+        }
+      }
+      return { unknownPrivateReply: true };
+    }
+
+    if (quote.isPrivateReplyGroupUnknown) {
+      return { unknownPrivateReply: true };
+    }
+
+    return null;
+  }
+
   async #toQuote({
     message,
   }: {
@@ -3191,6 +3280,7 @@ export class BackupExportStream {
           ? null
           : BigInt(quote.id),
       authorId,
+      privateReplyDescriptor: this.#toPrivateReplyDescriptor(quote),
       text:
         quote.text != null
           ? {
@@ -3316,21 +3406,31 @@ export class BackupExportStream {
   }): Promise<Backups.FilePointer.Params> {
     const { filePointer, backupJob } = await getFilePointerForAttachment({
       attachment,
-      backupOptions: this.#options,
+      policy: this.#policy,
       messageReceivedAt,
       getBackupCdnInfo,
     });
 
     let mediaName: string | undefined;
-    if (
-      this.#options.type === 'local-encrypted' ||
-      this.#options.type === 'plaintext-export'
-    ) {
-      if (hasRequiredInformationForLocalBackup(attachment)) {
-        mediaName = getLocalBackupFileNameForAttachment(attachment);
-      }
-    } else if (hasRequiredInformationForRemoteBackup(attachment)) {
-      mediaName = getMediaNameForAttachment(attachment);
+    const { attachmentTarget } = this.#policy;
+    switch (attachmentTarget) {
+      case 'local-encrypted':
+        if (hasRequiredInformationForLocalBackup(attachment)) {
+          mediaName = getLocalBackupFileNameForAttachment(attachment);
+        }
+        break;
+      case 'local-plaintext':
+        if (hasRequiredInformationForLocalBackup(attachment)) {
+          mediaName = getPlaintextExportFileNameForAttachment(attachment);
+        }
+        break;
+      case 'remote':
+        if (hasRequiredInformationForRemoteBackup(attachment)) {
+          mediaName = getMediaNameForAttachment(attachment);
+        }
+        break;
+      default:
+        throw missingCaseError(attachmentTarget);
     }
 
     if (mediaName) {
@@ -3686,13 +3786,9 @@ export class BackupExportStream {
     >;
   }): Promise<Backups.ViewOnceMessage.Params> {
     const attachment = message.attachments?.at(0);
-    // Integration tests use the 'link-and-sync' version of export, which will include
-    // view-once attachments
-    const shouldIncludeAttachments =
-      this.#options.type !== 'plaintext-export' && isTestOrMockEnvironment();
     return {
       attachment:
-        !shouldIncludeAttachments || attachment == null
+        !this.#policy.includeViewOnceAttachments || attachment == null
           ? null
           : await this.#processMessageAttachment({
               attachment,
@@ -3780,66 +3876,31 @@ export class BackupExportStream {
     return revisions.filter(isNotNil);
   }
 
-  #toCustomChatColors(): Array<Backups.ChatStyle.CustomChatColor.Params> {
-    const customColors = itemStorage.get('customColors');
-    if (!customColors) {
-      return [];
-    }
-
-    const { order = [] } = customColors;
-    const map = new Map(
-      order
-        .map((id: string): [string, CustomColorType] | undefined => {
-          const color = customColors.colors[id];
-          if (color == null) {
-            return undefined;
-          }
-          return [id, color];
-        })
-        .filter(isNotNil)
-    );
-
-    // Add colors not present in the order list
-    for (const [uuid, color] of Object.entries(customColors.colors)) {
-      if (map.has(uuid)) {
-        continue;
-      }
-      map.set(uuid, color);
-    }
-
+  #toCustomChatColors(
+    customChatColors: ReadonlyArray<ChatStyle.CustomChatColor>
+  ): Array<Backups.ChatStyle.CustomChatColor.Params> {
     const result = new Array<Backups.ChatStyle.CustomChatColor.Params>();
-    for (const [uuid, color] of map.entries()) {
+    for (const color of customChatColors) {
       const id = BigInt(result.length + 1);
-      this.#customColorIdByUuid.set(uuid, id);
+      this.#backupIdByCustomChatColorId.set(color.id, id);
 
-      const start = desktopHslToRgbInt(
-        color.start.hue,
-        color.start.saturation,
-        color.start.lightness
-      );
-
-      if (color.end == null) {
+      if (color.color.solid != null) {
         result.push({
           id,
-          color: { solid: start },
+          color: { solid: color.color.solid },
         });
       } else {
-        const end = desktopHslToRgbInt(
-          color.end.hue,
-          color.end.saturation,
-          color.end.lightness
-        );
-
+        const { gradient } = color.color;
         // Desktop uses a different angle convention than the backup proto. Our degrees
         // rotate in the opposite direction (sadly!) and our start is shifted by 90
         // degrees
-        const backupAngle = 360 - ((color.deg ?? 0) + 90);
+        const backupAngle = 360 - (gradient.angle + 90);
 
         result.push({
           id,
           color: {
             gradient: {
-              colors: [start, end],
+              colors: [gradient.start, gradient.end],
               positions: [0, 1],
               angle: (backupAngle + 360) % 360,
             },
@@ -3851,8 +3912,9 @@ export class BackupExportStream {
     return result;
   }
 
-  #toDefaultChatStyle(): Backups.ChatStyle.Params | null {
-    const defaultColor = itemStorage.get('defaultConversationColor');
+  #toDefaultChatStyle(
+    bubbleColor: ChatStyle['bubbleColor'] | null
+  ): Backups.ChatStyle.Params | null {
     const wallpaperPhotoPointer = itemStorage.get(
       'defaultWallpaperPhotoPointer'
     );
@@ -3866,8 +3928,7 @@ export class BackupExportStream {
     return this.#toChatStyle({
       wallpaperPhotoPointer,
       wallpaperPreset,
-      color: defaultColor?.color,
-      customColorId: defaultColor?.customColorData?.id,
+      bubbleColor: bubbleColor ?? undefined,
       dimWallpaperInDarkMode,
       autoBubbleColor,
     });
@@ -3876,14 +3937,13 @@ export class BackupExportStream {
   #toChatStyle({
     wallpaperPhotoPointer,
     wallpaperPreset,
-    color,
-    customColorId,
+    bubbleColor: color,
     dimWallpaperInDarkMode,
     autoBubbleColor,
   }: LocalChatStyle): Backups.ChatStyle.Params | null {
     // The defaults
     if (
-      (color == null || color === 'ultramarine') &&
+      color == null &&
       wallpaperPhotoPointer == null &&
       wallpaperPreset == null &&
       !dimWallpaperInDarkMode &&
@@ -3906,18 +3966,15 @@ export class BackupExportStream {
     let bubbleColor: Backups.ChatStyle.Params['bubbleColor'];
     if (color == null || autoBubbleColor) {
       bubbleColor = { autoBubbleColor: {} };
-    } else if (color === 'custom') {
-      strictAssert(
-        customColorId != null,
-        'No custom color id for custom color'
+    } else if (color.customChatColorId != null) {
+      const backupId = this.#backupIdByCustomChatColorId.get(
+        color.customChatColorId
       );
-
-      const index = this.#customColorIdByUuid.get(customColorId);
-      if (index != null) {
-        bubbleColor = { customColorId: index };
+      if (backupId != null) {
+        bubbleColor = { customColorId: backupId };
       } else {
         log.warn(
-          `toChatStyle: chat style referenced unknown custom color ${customColorId}`
+          `toChatStyle: chat style referenced unknown custom color ${color.customChatColorId}`
         );
         bubbleColor = { autoBubbleColor: {} };
       }
@@ -3925,7 +3982,7 @@ export class BackupExportStream {
       const { BubbleColorPreset } = Backups.ChatStyle;
 
       let preset: Backups.ChatStyle.BubbleColorPreset;
-      switch (color) {
+      switch (color.bubbleColorPreset) {
         case 'ultramarine':
           preset = BubbleColorPreset.SOLID_ULTRAMARINE;
           break;
@@ -4015,19 +4072,6 @@ function checkServiceIdEquivalence(
   const rightConvo = window.ConversationController.get(right);
 
   return leftConvo && rightConvo && leftConvo === rightConvo;
-}
-
-function desktopHslToRgbInt(
-  hue: number,
-  saturation: number,
-  lightness?: number
-): number {
-  // Desktop stores saturation not as 0.123 (0 to 1.0) but 12.3 (percentage)
-  return hslToRGBInt(
-    hue,
-    saturation / 100,
-    lightness ?? calculateLightness(hue)
-  );
 }
 
 function toGroupCallStateProto(state: CallStatus): Backups.GroupCall.State {

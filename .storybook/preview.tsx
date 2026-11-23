@@ -1,5 +1,6 @@
 // Copyright 2019 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
+// oxlint-disable signal-desktop/enforce-class-name-has-styles
 
 import '../ts/window.d.ts';
 
@@ -19,6 +20,7 @@ import { SystemThemeType, ThemeType } from '../ts/types/Util.std.ts';
 import { setupI18n } from '../ts/util/setupI18n.dom.tsx';
 import { HourCyclePreference } from '../ts/types/I18N.std.ts';
 import { AppProvider } from '../ts/windows/AppProvider.dom.tsx';
+import type { AxoEnv } from '../ts/axo/_internal/AxoEnv.dom.tsx';
 import type { StateType } from '../ts/state/reducer.preload.ts';
 import {
   ScrollerLockContext,
@@ -145,7 +147,6 @@ window.SignalContext = {
   getHourCyclePreference: () => HourCyclePreference.UnknownPreference,
   getPreferredSystemLocales: () => ['en'],
   getLocaleOverride: () => null,
-  getLocaleDisplayNames: () => ({ en: { en: 'English' } }),
   getResolvedMessagesLocale: () => 'en',
 
   getLocalizedEmojiList: async locale => {
@@ -222,6 +223,7 @@ const withGlobalTypesProvider = (Story, context) => {
   document.documentElement.setAttribute('dir', direction);
 
   return (
+    // oxlint-disable-next-line signal-desktop/enforce-static-class-names
     <div className={styles.container}>
       <StorybookThemeContext.Provider value={theme}>
         <Story {...context} />
@@ -257,6 +259,8 @@ function withFunProvider(Story, context) {
       recentGifs={[]}
       emojiSkinToneDefault={Emoji.SkinTone.None}
       onEmojiSkinToneDefaultChange={noop}
+      favoriteStickers={[]}
+      isFavoriteStickersEnabled
       isStickerReplySendEnabled
       installedStickerPacks={[]}
       showStickerPickerHint={false}
@@ -277,15 +281,31 @@ function withFunProvider(Story, context) {
         // oxlint-disable-next-line no-console
         console.log('onSelectGif', gifSelection);
       }}
+      onMarkStickerAsFavorite={function (
+        stickerSelection: FunStickerSelection,
+        markAsFavorite: boolean
+      ): void {
+        // oxlint-disable-next-line no-console
+        console.log(
+          'onMarkStickerAsFavorite',
+          stickerSelection,
+          markAsFavorite
+        );
+      }}
     >
       <Story {...context} />
     </FunProvider>
   );
 }
 
+// See: https://github.com/storybookjs/test-runner#storybooktestrunner-user-agent
+const AXO_ENV: AxoEnv.Env = navigator.userAgent.includes('StorybookTestRunner')
+  ? 'test'
+  : 'dev';
+
 function withAppProvider(Story, context) {
   return (
-    <AppProvider>
+    <AppProvider env={AXO_ENV}>
       <Story {...context} />
     </AppProvider>
   );

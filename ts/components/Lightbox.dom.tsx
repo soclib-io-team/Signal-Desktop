@@ -605,11 +605,10 @@ export function Lightbox({
     content = <>{children}</>;
   } else {
     const isImageTypeSupported = GoogleChrome.isImageTypeSupported(contentType);
-    const isVideoTypeSupported = GoogleChrome.isVideoTypeSupported(contentType);
+    const isVideoTypePlayable = GoogleChrome.isVideoTypePlayable(contentType);
     const isUnsupportedImageType =
       !isImageTypeSupported && isImage(contentType);
-    const isUnsupportedVideoType =
-      !isVideoTypeSupported && isVideo(contentType);
+    const isUnsupportedVideoType = !isVideoTypePlayable && isVideo(contentType);
 
     if (isImageTypeSupported) {
       if (url) {
@@ -655,7 +654,7 @@ export function Lightbox({
           />
         );
       }
-    } else if (isVideoTypeSupported) {
+    } else if (isVideoTypePlayable) {
       const shouldLoop = isAttachmentGIF || isViewOnce;
 
       content = (
@@ -707,7 +706,8 @@ export function Lightbox({
     ? createPortal(
         <AxoTheme.Override theme="force-dark">
           <div
-            className={classNames('Lightbox Lightbox__container', {
+            id="lightbox"
+            className={classNames('Lightbox__container', {
               'Lightbox__container--zoom': isZoomed,
             })}
             onClick={(event: ReactMouseEvent<HTMLDivElement>) => {
@@ -911,7 +911,7 @@ function LightboxHeader({
           title={conversation.title}
         />
       </div>
-      <div className="Lightbox__header--content">
+      <div>
         <div className="Lightbox__header--name">{conversation.title}</div>
         <div className="Lightbox__header--timestamp">
           {formatDateTimeForAttachment(i18n, message.sentAt ?? now)}

@@ -3,29 +3,31 @@
 
 import type { JSX } from 'react';
 
+import type { LanguageTag } from '@signalapp/types';
 import classNames from 'classnames';
 import { createPortal } from 'react-dom';
 
-import { SECOND } from '../util/durations/index.std.ts';
+import { SECOND, MINUTE } from '../util/durations/index.std.ts';
 import { Toast } from './Toast.dom.tsx';
 import { WidthBreakpoint } from './_util.std.ts';
 import { UsernameMegaphone } from './UsernameMegaphone.dom.tsx';
 import { assertDev } from '../util/assert.std.ts';
 import { missingCaseError } from '../util/missingCaseError.std.ts';
-import { ToastType } from '../types/Toast.dom.tsx';
+import { ToastType } from '../types/Toast.std.ts';
 import { MegaphoneType } from '../types/Megaphone.std.ts';
 import { NavTab, SettingsPage } from '../types/Nav.std.ts';
 import { AxoSymbol } from '../axo/AxoSymbol.dom.tsx';
 import { tw } from '../axo/tw.dom.tsx';
 
 import type { LocalizerType } from '../types/Util.std.ts';
-import type { AnyToast } from '../types/Toast.dom.tsx';
+import type { AnyToast } from '../types/Toast.std.ts';
 import type { AnyActionableMegaphone } from '../types/Megaphone.std.ts';
 import type { Location } from '../types/Nav.std.ts';
 import { I18n } from './I18n.dom.tsx';
 import { UserText } from './UserText.dom.tsx';
 import { RemoteMegaphone } from './RemoteMegaphone.dom.tsx';
 import { PinReminderMegaphone } from './PinReminderMegaphone.dom.tsx';
+import { MAX_FAVORITE_STICKERS } from '../util/Stickers.std.ts';
 
 export type PropsType = {
   changeLocation: (newLocation: Location) => unknown;
@@ -40,6 +42,7 @@ export type PropsType = {
     conversationId: string,
     options?: { wasPinned?: boolean }
   ) => unknown;
+  onUndoHideStickerPack: (packId: string) => void;
   retryCallQualitySurvey: () => unknown;
   setDidResumeDonation: (didResume: boolean) => unknown;
   toast?: AnyToast;
@@ -48,6 +51,7 @@ export type PropsType = {
   containerWidthBreakpoint: WidthBreakpoint | null;
   isCompositionAreaVisible?: boolean;
   isInFullScreenCall: boolean;
+  systemPreferredLanguages: Array<LanguageTag>;
 };
 
 const SHORT_TIMEOUT = 3 * SECOND;
@@ -60,10 +64,12 @@ function renderToast({
   saveHeapSnapshot,
   onShowDebugLog,
   onUndoArchive,
+  onUndoHideStickerPack,
   retryCallQualitySurvey,
   setDidResumeDonation,
   OS,
   toast,
+  systemPreferredLanguages,
 }: PropsType): JSX.Element | null {
   if (toast === undefined) {
     return null;
@@ -610,6 +616,20 @@ function renderToast({
       </Toast>
     );
   }
+  if (toastType === ToastType.VideoFileDuration) {
+    const maxDuration = new Intl.DurationFormat(systemPreferredLanguages, {
+      style: 'long',
+    }).format({
+      minutes: Math.floor(toast.parameters.maxDuration / (MINUTE / SECOND)),
+    });
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:videoFileTooLongWarning', {
+          maxDuration,
+        })}
+      </Toast>
+    );
+  }
 
   if (toastType === ToastType.GroupLinkCopied) {
     return (
@@ -630,7 +650,6 @@ function renderToast({
     return (
       <Toast
         autoDismissDisabled
-        className="internal-error-toast"
         onClose={hideToast}
         style={{ maxWidth: '500px' }}
         toastAction={{
@@ -656,6 +675,37 @@ function renderToast({
 
   if (toastType === ToastType.LinkCopied) {
     return <Toast onClose={hideToast}>{i18n('icu:debugLogLinkCopied')}</Toast>;
+  }
+
+  if (toastType === ToastType.LinkedDeviceAdded) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:Toast--LinkedDeviceAdded', { name: toast.parameters.name })}
+      </Toast>
+    );
+  }
+  if (toastType === ToastType.LinkedDeviceRemoved) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:Toast--LinkedDeviceRemoved', {
+          name: toast.parameters.name,
+        })}
+      </Toast>
+    );
+  }
+  if (toastType === ToastType.LinkedDeviceNameUpdated) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:Toast--LinkedDeviceNameUpdated')}
+      </Toast>
+    );
+  }
+  if (toastType === ToastType.LinkedDeviceSyncComplete) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:Toast--LinkedDeviceSyncComplete')}
+      </Toast>
+    );
   }
 
   if (toastType === ToastType.LoadingFullLogs) {
@@ -704,6 +754,14 @@ function renderToast({
           <AxoSymbol.Icon symbol={symbol} size={12} label={label} />
           <span className={tw('mx-[10px]')}>{text}</span>
         </div>
+      </Toast>
+    );
+  }
+
+  if (toastType === ToastType.OriginalMessageAndGroupNotFound) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:Quote__original-message-and-group-not-found')}
       </Toast>
     );
   }
@@ -867,6 +925,64 @@ function renderToast({
     );
   }
 
+  if (toastType === ToastType.StickerFavoriteAdded) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:stickers--Toast--StickerFavoriteAdded')}
+      </Toast>
+    );
+  }
+
+  if (toastType === ToastType.StickerFavoriteRemoved) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:stickers--Toast--StickerFavoriteRemoved')}
+      </Toast>
+    );
+  }
+
+  if (toastType === ToastType.StickerFavoritesHint) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:stickers--Toast--StickerFavoritesHint')}
+      </Toast>
+    );
+  }
+
+  if (toastType === ToastType.StickerFavoritesTooMany) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:stickers--Toast--StickerFavoritesTooMany', {
+          count: MAX_FAVORITE_STICKERS,
+        })}
+      </Toast>
+    );
+  }
+
+  if (toastType === ToastType.StickerPackHidden) {
+    return (
+      <Toast
+        onClose={hideToast}
+        toastAction={{
+          label: i18n('icu:stickers--Toast--StickerPackHidden--Undo'),
+          onClick: () => {
+            onUndoHideStickerPack(toast.parameters.packId);
+          },
+        }}
+      >
+        {i18n('icu:stickers--Toast--StickerPackHidden')}
+      </Toast>
+    );
+  }
+
+  if (toastType === ToastType.StickerPackUnhidden) {
+    return (
+      <Toast onClose={hideToast}>
+        {i18n('icu:stickers--Toast--StickerPackUnhidden')}
+      </Toast>
+    );
+  }
+
   if (toastType === ToastType.StickerPackInstallFailed) {
     return (
       <Toast onClose={hideToast}>
@@ -874,6 +990,7 @@ function renderToast({
       </Toast>
     );
   }
+
   if (toastType === ToastType.SQLError) {
     return (
       <Toast

@@ -12,7 +12,7 @@ import Fuse from 'fuse.js';
 
 import type { LocalizerType } from '../types/Util.std.ts';
 import type { CountryDataType } from '../util/getCountryData.dom.ts';
-import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 import { AxoSearchField } from '../axo/fields/AxoSearchField.dom.tsx';
 import { AxoList } from '../axo/items/AxoList.dom.tsx';
 import { AxoItem } from '../axo/items/AxoItem.dom.tsx';
@@ -59,9 +59,7 @@ export function CountryCodeSelect({
           {selectedCountry?.displayName ??
             i18n('icu:CountryCodeSelect__placeholder')}
         </div>
-        <div className="CountryCodeSelect__value">
-          {selectedCountry?.code ?? defaultCode}
-        </div>
+        <div>{selectedCountry?.code ?? defaultCode}</div>
         <div className="CountryCodeSelect__arrow" />
       </button>
       {isModalOpen ? (

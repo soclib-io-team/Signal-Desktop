@@ -9,7 +9,7 @@ import type {
   ConversationAttributesType,
   ReadonlyMessageAttributesType,
   MessageAttributesType,
-} from '../model-types.d.ts';
+} from '../model-types.std.ts';
 import type { AciString, PniString } from '../types/ServiceId.std.ts';
 import { isPniString } from '../types/ServiceId.std.ts';
 import { getAuthor } from '../messages/sources.preload.ts';
@@ -77,6 +77,24 @@ export async function findMatchingMessage(
       sentTimestamps,
     });
   });
+}
+
+export async function findMessageFromTarget({
+  targetConversation,
+  targetMessage,
+}: Readonly<{
+  targetConversation: ConversationIdentifier;
+  targetMessage: AddressableMessage;
+}>): Promise<MessageAttributesType | undefined> {
+  const conversation = getConversationFromTarget(targetConversation);
+  if (conversation == null) {
+    return undefined;
+  }
+
+  return findMatchingMessage(
+    conversation.id,
+    getMessageQueryFromTarget(targetMessage)
+  );
 }
 
 export function getConversationFromTarget(

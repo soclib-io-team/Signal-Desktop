@@ -1,7 +1,7 @@
 // Copyright 2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ReactNode, JSX } from 'react';
+import type { ReactNode, JSX, CSSProperties } from 'react';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import type { MuteExpiration } from '@signalapp/types';
 
@@ -34,7 +34,6 @@ import type {
 } from './PendingInvites.dom.tsx';
 import { EditConversationAttributesModal } from './EditConversationAttributesModal.dom.tsx';
 import { RequestState } from './util.std.ts';
-import { getCustomColorStyle } from '../../../util/getCustomColorStyle.dom.ts';
 import { openLinkInWebBrowser } from '../../../util/openLinkInWebBrowser.dom.ts';
 import type {
   AvatarDataType,
@@ -51,9 +50,8 @@ import { canHaveNicknameAndNote } from '../../../util/nicknames.dom.ts';
 import { CallHistoryGroupPanelSection } from './CallHistoryGroupPanelSection.dom.tsx';
 import { InAnotherCallTooltip } from '../InAnotherCallTooltip.dom.tsx';
 import type { ContactModalStateType } from '../../../types/globalModals.std.ts';
-import type { ContactNameColorType } from '../../../types/Colors.std.ts';
-import { AxoConfirmDialog } from '../../../axo/AxoConfirmDialog.dom.tsx';
-import { canConversationOnlyBeMutedAlways } from '../../../conversations/canConversationOnlyBeMutedAlways.dom.ts';
+import type { ContactNameColorType } from '../../../types/ContactNameColor.std.ts';
+import { AxoConfirmDialog } from '../../../axo/dialogs/AxoConfirmDialog.dom.tsx';
 import { CONTACT_SUPPORT_URL } from '../../../util/contactSupport.dom.tsx';
 import { AxoStackedButton } from '../../../axo/AxoStackedButton.dom.tsx';
 import { getConversationMuteMenu } from '../../../util/getMuteOptions.std.ts';
@@ -64,7 +62,7 @@ import { AxoClickableItem } from '../../../axo/items/AxoClickableItem.dom.tsx';
 import { AxoTextItem } from '../../../axo/items/AxoTextItem.dom.tsx';
 import { AxoContainer } from '../../../axo/AxoContainer.dom.tsx';
 import { AriaClickable } from '../../../axo/AriaClickable.dom.tsx';
-import { AxoDropdownMenu } from '../../../axo/AxoDropdownMenu.dom.tsx';
+import { AxoDropdownMenu } from '../../../axo/menus/AxoDropdownMenu.dom.tsx';
 
 enum ModalState {
   AddingGroupMembers,
@@ -81,6 +79,7 @@ export type StateProps = {
   canEditGroupInfo: boolean;
   canAddLabel: boolean;
   canAddNewMembers: boolean;
+  bubbleColorBackground: string;
   conversation?: ConversationType;
   hasGroupLink: boolean;
   hasMedia: boolean;
@@ -175,6 +174,7 @@ export function ConversationDetails({
   areWeASubscriber,
   badges,
   blockConversation,
+  bubbleColorBackground,
   callHistoryGroup,
   canEditGroupInfo,
   canAddLabel,
@@ -264,10 +264,8 @@ export function ConversationDetails({
   }, []);
 
   const muteMenu = useMemo(() => {
-    return getConversationMuteMenu(conversation.muteExpiresAt, i18n, {
-      canOnlyBeMutedAlways: canConversationOnlyBeMutedAlways(conversation),
-    });
-  }, [conversation, i18n]);
+    return getConversationMuteMenu(conversation.muteExpiresAt, i18n);
+  }, [conversation.muteExpiresAt, i18n]);
 
   const handleMuteExpiration = useCallback(
     (expiration: MuteExpiration) => {
@@ -618,10 +616,13 @@ export function ConversationDetails({
                 }}
                 accessory={
                   <div
-                    className={`ConversationDetails__chat-color ConversationDetails__chat-color--${conversation.conversationColor}`}
-                    style={{
-                      ...getCustomColorStyle(conversation.customColor),
-                    }}
+                    className="ConversationDetails__chat-color"
+                    style={
+                      {
+                        '--ConversationDetails__chat-color-bg':
+                          bubbleColorBackground,
+                      } as CSSProperties
+                    }
                   />
                 }
               />

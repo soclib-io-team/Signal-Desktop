@@ -15,7 +15,7 @@ import { BadgeDialog } from '../../BadgeDialog.dom.tsx';
 import type { BadgeType } from '../../../badges/types.std.ts';
 import { UserText } from '../../UserText.dom.tsx';
 import { isInSystemContacts } from '../../../util/isInSystemContacts.std.ts';
-import { InContactsIcon } from '../../InContactsIcon.dom.tsx';
+import { AxoContactName } from '../../../axo/AxoContactName.dom.tsx';
 import type { ContactModalStateType } from '../../../types/globalModals.std.ts';
 import { tw } from '../../../axo/tw.dom.tsx';
 import { AxoSymbol } from '../../../axo/AxoSymbol.dom.tsx';
@@ -86,11 +86,13 @@ export function ConversationDetailsHeader({
       });
     }
   } else if (!isMe) {
-    subtitle = (
-      <div className="ConversationDetailsHeader__subtitle__about">
-        <About text={conversation.about} />
-      </div>
-    );
+    if (conversation.about) {
+      subtitle = (
+        <div className="ConversationDetailsHeader__subtitle__about">
+          <About text={conversation.about} />
+        </div>
+      );
+    }
     preferredBadge = badges?.[0];
   }
 
@@ -256,13 +258,10 @@ export function ConversationDetailsHeader({
         <div className="ConversationDetailsHeader__title">
           <UserText text={conversation.title} />
           {isInSystemContacts(conversation) && (
-            <span>
-              {' '}
-              <InContactsIcon
-                className="ConversationDetailsHeader__title-contact-icon"
-                i18n={i18n}
-              />
-            </span>
+            <>
+              &nbsp;
+              <AxoContactName.SystemContactEmblemStatic />
+            </>
           )}
           <span className="ConversationDetailsHeader__about-icon" />
         </div>
@@ -292,7 +291,9 @@ export function ConversationDetailsHeader({
           </span>
         </div>
       )}
-      <div className="ConversationDetailsHeader__subtitle">{subtitle}</div>
+      {subtitle ? (
+        <div className="ConversationDetailsHeader__subtitle">{subtitle}</div>
+      ) : null}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import type { JSX } from 'react';
 import type { LocalizerType } from '../types/Util.std.ts';
 import { missingCaseError } from '../util/missingCaseError.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 export enum BackfillFailureModalKind {
   Timeout = 'Timeout',
@@ -35,7 +35,7 @@ export function BackfillFailureModal(props: PropsType): JSX.Element {
       title={i18n('icu:BackfillFailureModal__title')}
       description={body}
     >
-      <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+      <AxoConfirmDialog.Ok />
     </AxoConfirmDialog.Root>
   );
 }

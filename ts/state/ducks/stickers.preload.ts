@@ -3,8 +3,6 @@
 
 import lodash, { type Dictionary } from 'lodash';
 import type { ReadonlyDeep } from 'type-fest';
-import type { ThunkAction } from 'redux-thunk';
-
 import type {
   StickerPackStatusType,
   StickerType as StickerDBType,
@@ -13,11 +11,13 @@ import type {
 import { DataReader, DataWriter } from '../../sql/Client.preload.ts';
 import type {
   ActionSourceType,
-  RecentStickerType,
+  StickerReferenceType,
   StickerManagerTabType,
+  HiddenStickerPackType,
 } from '../../types/Stickers.preload.ts';
 import {
   downloadStickerPack as externalDownloadStickerPack,
+  getInstalledFavoriteStickersForRedux,
   maybeDeletePack,
 } from '../../types/Stickers.preload.ts';
 import { drop } from '../../util/drop.std.ts';
@@ -26,14 +26,27 @@ import { sendStickerPackSync } from '../../shims/textsecure.preload.ts';
 import { trigger } from '../../shims/events.dom.ts';
 import { ERASE_STORAGE_SERVICE } from './user.preload.ts';
 import type { EraseStorageServiceStateAction } from './user.preload.ts';
-
 import { noopAction, type NoopActionType } from './noop.std.ts';
 import type { BoundActionCreatorsMapObject } from '../../hooks/useBoundActions.std.ts';
 import { useBoundActions } from '../../hooks/useBoundActions.std.ts';
 import { strictAssert } from '../../util/assert.std.ts';
 import type { Emoji } from '../../axo/emoji.std.ts';
-import type { StateType as RootStateType } from '../reducer.preload.ts';
-import { getPacks } from '../selectors/stickers.std.ts';
+import { getFavorites, getPacks } from '../selectors/stickers.std.ts';
+import type { AsyncStateThunk } from '../types.std.ts';
+import { createLogger } from '../../logging/log.std.ts';
+import {
+  MAX_FAVORITE_STICKERS,
+  redactPackId,
+} from '../../util/Stickers.std.ts';
+import {
+  uninstallFavoriteSticker,
+  installFavoriteSticker,
+  maybeUnhideStickerPack,
+} from '../../util/stickers.preload.ts';
+import { showToast, type ShowToastActionType } from './toast.dom.ts';
+import { ToastType } from '../../types/Toast.std.ts';
+
+const log = createLogger('ducks/stickers');
 
 const { omit, reject } = lodash;
 
@@ -45,8 +58,10 @@ const { updateStickerLastUsed } = DataWriter;
 export type StickersStateType = ReadonlyDeep<{
   installedPack: string | null;
   packs: Dictionary<StickerPackDBType>;
-  recentStickers: Array<RecentStickerType>;
+  recentStickers: Array<StickerReferenceType>;
+  favoriteStickers: Array<StickerReferenceType>;
   blessedPacks: Dictionary<boolean>;
+  hiddenPackIds: Array<string>;
   stickerManagerTab: StickerManagerTabType;
 }>;
 
@@ -67,7 +82,7 @@ export type StickerPackType = ReadonlyDeep<{
   isBlessed: boolean;
   cover?: StickerType;
   lastUsed?: number;
-  attemptedStatus?: 'downloaded' | 'installed' | 'ephemeral';
+  attemptedStatus?: 'downloaded' | 'installed' | 'ephemeral' | 'known';
   status: StickerPackStatusType;
   stickers: Array<StickerType>;
   stickerCount: number;
@@ -91,7 +106,7 @@ type InstallStickerPackPayloadType = ReadonlyDeep<{
   status: 'installed';
   installedAt: number;
   position: number | undefined;
-  recentStickers: Array<RecentStickerType>;
+  recentStickers: Array<StickerReferenceType>;
 }>;
 type InstallStickerPackAction = ReadonlyDeep<{
   type: 'stickers/INSTALL_STICKER_PACK';
@@ -110,7 +125,7 @@ type UninstallStickerPackPayloadType = ReadonlyDeep<{
   actionSource: ActionSourceType;
   status: 'downloaded';
   installedAt?: undefined;
-  recentStickers: Array<RecentStickerType>;
+  recentStickers: Array<StickerReferenceType>;
 }>;
 type UninstallStickerPackAction = ReadonlyDeep<{
   type: 'stickers/UNINSTALL_STICKER_PACK';
@@ -154,10 +169,37 @@ type StickerPacksPositionsUpdatedAction = ReadonlyDeep<{
   payload: ReadonlyArray<{ id: string; position: number }>;
 }>;
 
+type AddFavoriteStickerAction = ReadonlyDeep<{
+  type: 'stickers/FAVORITE_STICKER_ADDED';
+  payload: StickerReferenceType;
+}>;
+type RemoveFavoriteStickerAction = ReadonlyDeep<{
+  type: 'stickers/FAVORITE_STICKER_REMOVED';
+  payload: StickerReferenceType;
+}>;
+type FavoriteStickersReloadedAction = ReadonlyDeep<{
+  type: 'stickers/FAVORITE_STICKERS_RELOADED';
+  payload: Array<StickerReferenceType>;
+}>;
+
+type AddHiddenStickerPackAction = ReadonlyDeep<{
+  type: 'stickers/HIDDEN_PACK_ADDED';
+  payload: string;
+}>;
+type RemoveHiddenStickerPackAction = ReadonlyDeep<{
+  type: 'stickers/HIDDEN_PACK_REMOVED';
+  payload: string;
+}>;
+
 export type StickersActionType = ReadonlyDeep<
+  | AddFavoriteStickerAction
+  | AddHiddenStickerPackAction
   | ClearInstalledStickerPackAction
+  | FavoriteStickersReloadedAction
   | InstallStickerPackFulfilledAction
   | NoopActionType
+  | RemoveFavoriteStickerAction
+  | RemoveHiddenStickerPackAction
   | SetStickerManagerTabAction
   | StickerAddedAction
   | StickerPackAddedAction
@@ -171,9 +213,16 @@ export type StickersActionType = ReadonlyDeep<
 // Action Creators
 
 export const actions = {
+  addFavoriteSticker,
+  addHiddenStickerPack,
   clearInstalledStickerPack,
   downloadStickerPack,
   installStickerPack,
+  markStickerAsFavorite,
+  markStickerPackAsHidden,
+  reloadFavoriteStickers,
+  removeFavoriteSticker,
+  removeHiddenStickerPack,
   removeStickerPack,
   setStickerManagerTab,
   stickerAdded,
@@ -269,6 +318,7 @@ async function doInstallStickerPack(
   const timestamp = Date.now();
   const { wasPreviouslyUninstalled, position: newPosition } =
     await DataWriter.installStickerPack(packId, timestamp, position);
+  await maybeUnhideStickerPack(packId);
 
   if (actionSource === 'ui') {
     // Kick this off, but don't wait for it
@@ -420,12 +470,7 @@ function setStickerManagerTab(
 
 function updateStickerPacksPositions(
   orderedPackIds: ReadonlyArray<string>
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  StickerPacksPositionsUpdatedAction
-> {
+): AsyncStateThunk<StickerPacksPositionsUpdatedAction> {
   return async (dispatch, getState) => {
     const packs = getPacks(getState());
     const nextPackPositions = new Array<{ id: string; position: number }>();
@@ -445,6 +490,191 @@ function updateStickerPacksPositions(
   };
 }
 
+function markStickerAsFavorite(
+  {
+    packId,
+    stickerId,
+  }: {
+    packId: string;
+    stickerId: number;
+  },
+  markAsFavorite: boolean
+): AsyncStateThunk<
+  AddFavoriteStickerAction | RemoveFavoriteStickerAction | ShowToastActionType
+> {
+  const logId = `markStickerAsFavorite(${redactPackId(packId)})`;
+  const stickerRef: StickerReferenceType = {
+    packId,
+    stickerId,
+  };
+
+  return async (dispatch, getState) => {
+    if (markAsFavorite) {
+      const favorites = getFavorites(getState());
+      if (favorites.length >= MAX_FAVORITE_STICKERS) {
+        dispatch(showToast({ toastType: ToastType.StickerFavoritesTooMany }));
+        return;
+      }
+
+      const favoriteSticker =
+        await DataWriter.addFavoriteStickerFromStickerRef(stickerRef);
+      if (!favoriteSticker) {
+        log.error(
+          `${logId}: Failed to mark sticker as favorite because pack is not known or installed`
+        );
+        return;
+      }
+
+      await installFavoriteSticker(favoriteSticker, 'ui');
+
+      if (favoriteSticker.storageNeedsSync) {
+        runStorageServiceUploadJob({ reason: 'markStickerAsFavorite(true)' });
+      }
+      dispatch(showToast({ toastType: ToastType.StickerFavoriteAdded }));
+    } else {
+      const { deletedAtTimestampMs, storageNeedsSync } =
+        (await DataWriter.markFavoriteStickerDeleted(stickerRef)) ?? {};
+      if (deletedAtTimestampMs == null) {
+        log.warn(`${logId}: Trying to remove nonexistent favorite sticker`);
+      }
+
+      await uninstallFavoriteSticker(stickerRef);
+
+      if (storageNeedsSync) {
+        runStorageServiceUploadJob({ reason: 'markStickerAsFavorite(false)' });
+      }
+      dispatch(showToast({ toastType: ToastType.StickerFavoriteRemoved }));
+    }
+  };
+}
+
+function addFavoriteSticker(
+  stickerRef: StickerReferenceType
+): AddFavoriteStickerAction {
+  return {
+    type: 'stickers/FAVORITE_STICKER_ADDED',
+    payload: stickerRef,
+  };
+}
+
+function removeFavoriteSticker(
+  stickerRef: StickerReferenceType
+): RemoveFavoriteStickerAction {
+  return {
+    type: 'stickers/FAVORITE_STICKER_REMOVED',
+    payload: stickerRef,
+  };
+}
+
+function reloadFavoriteStickers(): AsyncStateThunk<FavoriteStickersReloadedAction> {
+  return async dispatch => {
+    dispatch({
+      type: 'stickers/FAVORITE_STICKERS_RELOADED',
+      payload: await getInstalledFavoriteStickersForRedux(),
+    });
+  };
+}
+
+function markStickerPackAsHidden(
+  packId: string,
+  markAsHidden: boolean
+): AsyncStateThunk<
+  | AddHiddenStickerPackAction
+  | RemoveHiddenStickerPackAction
+  | ShowToastActionType
+  | UninstallStickerPackFulfilledAction
+> {
+  const logId = `markPackAsHidden(${redactPackId(packId)})`;
+  return async (dispatch, getState) => {
+    if (markAsHidden) {
+      const packs = getPacks(getState());
+      if (packs[packId]?.status === 'installed') {
+        const { key } = packs[packId];
+        const uninstallResult = await doUninstallStickerPack(packId, key, {
+          actionSource: 'ui',
+        });
+        dispatch({
+          type: 'stickers/UNINSTALL_STICKER_PACK_FULFILLED',
+          payload: uninstallResult,
+        });
+      }
+
+      const localHiddenPack = await DataReader.getHiddenStickerPack(packId);
+      const packKey =
+        localHiddenPack?.packKey ??
+        (await DataReader.getKeyFromStickerPack(packId));
+      if (!packKey) {
+        log.error(`${logId}: Sticker pack key missing`);
+        return;
+      }
+
+      let hiddenPack: HiddenStickerPackType | null;
+      if (localHiddenPack) {
+        if (!localHiddenPack.unhiddenAtTimestampMs) {
+          log.warn(`${logId}: Trying to hide an already hidden pack`);
+          return;
+        }
+
+        hiddenPack = {
+          ...localHiddenPack,
+          packKey,
+          unhiddenAtTimestampMs: undefined,
+          storageNeedsSync: true,
+        };
+        await DataWriter.updateHiddenStickerPack(hiddenPack);
+      } else {
+        hiddenPack = {
+          packId,
+          packKey,
+          unhiddenAtTimestampMs: undefined,
+          storageNeedsSync: true,
+        };
+        await DataWriter.createHiddenStickerPack(hiddenPack);
+      }
+
+      dispatch({
+        type: 'stickers/HIDDEN_PACK_ADDED',
+        payload: packId,
+      });
+
+      runStorageServiceUploadJob({ reason: 'markPackAsHidden(true)' });
+      dispatch(
+        showToast({
+          toastType: ToastType.StickerPackHidden,
+          parameters: { packId },
+        })
+      );
+    } else {
+      const unhideResult = await maybeUnhideStickerPack(packId);
+      if (unhideResult?.storageNeedsSync) {
+        runStorageServiceUploadJob({ reason: 'markPackAsHidden(false)' });
+      }
+
+      dispatch({
+        type: 'stickers/HIDDEN_PACK_REMOVED',
+        payload: packId,
+      });
+      dispatch(showToast({ toastType: ToastType.StickerPackUnhidden }));
+    }
+  };
+}
+
+function addHiddenStickerPack(packId: string): AddHiddenStickerPackAction {
+  return {
+    type: 'stickers/HIDDEN_PACK_ADDED',
+    payload: packId,
+  };
+}
+
+function removeHiddenStickerPack(
+  packId: string
+): RemoveHiddenStickerPackAction {
+  return {
+    type: 'stickers/HIDDEN_PACK_REMOVED',
+    payload: packId,
+  };
+}
+
 // Reducer
 
 export function getEmptyState(): StickersStateType {
@@ -452,7 +682,9 @@ export function getEmptyState(): StickersStateType {
     installedPack: null,
     packs: {},
     recentStickers: [],
+    favoriteStickers: [],
     blessedPacks: {},
+    hiddenPackIds: [],
     stickerManagerTab: 'all',
   };
 }
@@ -583,6 +815,78 @@ export function reducer(
     return {
       ...state,
       installedPack: null,
+    };
+  }
+
+  if (action.type === 'stickers/FAVORITE_STICKER_ADDED') {
+    const { payload } = action;
+    const { packId, stickerId } = payload;
+    const { favoriteStickers } = state;
+
+    if (
+      favoriteStickers.find(
+        item => item.packId === packId && item.stickerId === stickerId
+      )
+    ) {
+      return state;
+    }
+
+    return {
+      ...state,
+      favoriteStickers: [payload, ...favoriteStickers],
+    };
+  }
+
+  if (action.type === 'stickers/FAVORITE_STICKER_REMOVED') {
+    const { payload } = action;
+    const { packId, stickerId } = payload;
+    const { favoriteStickers } = state;
+
+    const filteredFavorites = reject(
+      favoriteStickers,
+      item => item.packId === packId && item.stickerId === stickerId
+    );
+
+    return {
+      ...state,
+      favoriteStickers: filteredFavorites,
+    };
+  }
+
+  if (action.type === 'stickers/FAVORITE_STICKERS_RELOADED') {
+    const { payload } = action;
+    return {
+      ...state,
+      favoriteStickers: payload,
+    };
+  }
+
+  if (action.type === 'stickers/HIDDEN_PACK_ADDED') {
+    const { payload: packId } = action;
+    const { hiddenPackIds } = state;
+
+    if (hiddenPackIds.find(existingId => existingId === packId)) {
+      return state;
+    }
+
+    return {
+      ...state,
+      hiddenPackIds: [packId, ...hiddenPackIds],
+    };
+  }
+
+  if (action.type === 'stickers/HIDDEN_PACK_REMOVED') {
+    const { payload: packId } = action;
+    const { hiddenPackIds } = state;
+
+    const filteredHiddenPackIds = reject(
+      hiddenPackIds,
+      existingId => existingId === packId
+    );
+
+    return {
+      ...state,
+      hiddenPackIds: filteredHiddenPackIds,
     };
   }
 

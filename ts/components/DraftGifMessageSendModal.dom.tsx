@@ -11,7 +11,7 @@ import type { FunGifSelection } from './fun/panels/FunPanelGifs.dom.tsx';
 import type { GifDownloadState } from '../state/smart/DraftGifMessageSendModal.preload.tsx';
 import { LoadingState } from '../util/loadable.std.ts';
 import { Emoji } from '../axo/emoji.std.ts';
-import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 import { tw } from '../axo/tw.dom.tsx';
 
 export type DraftGifMessageSendModalProps = Readonly<{
@@ -53,7 +53,11 @@ export function DraftGifMessageSendModal(
 
   return (
     <AxoDialog.Root open onOpenChange={props.onClose}>
-      <AxoDialog.Content size="sm" escape="cancel-is-destructive">
+      <AxoDialog.Content
+        size="sm"
+        escape="cancel-is-destructive"
+        disableMissingAriaDescriptionWarning
+      >
         <AxoDialog.Header>
           <AxoDialog.Title>
             {i18n('icu:DraftGifMessageSendModal__Title')}
@@ -88,7 +92,7 @@ export function DraftGifMessageSendModal(
         <AxoDialog.Footer>
           <AxoDialog.Actions>
             <AxoDialog.Action
-              variant="strong-secondary"
+              variant="subtle-secondary"
               onClick={props.onClose}
             >
               {i18n('icu:cancel')}

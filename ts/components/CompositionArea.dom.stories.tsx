@@ -12,8 +12,8 @@ import { StorybookThemeContext } from '../../.storybook/StorybookThemeContext.st
 import { fakeDraftAttachment } from '../test-helpers/fakeAttachment.std.ts';
 import { landscapeGreenUrl } from '../storybook/Fixtures.std.ts';
 import { RecordingState } from '../types/AudioRecorder.std.ts';
-import type { ContactNameColorType } from '../types/Colors.std.ts';
-import { ContactNameColors, ConversationColors } from '../types/Colors.std.ts';
+import type { ContactNameColorType } from '../types/ContactNameColor.std.ts';
+import { ContactNameColors } from '../types/ContactNameColor.std.ts';
 import { getDefaultConversation } from '../test-helpers/getDefaultConversation.std.ts';
 import { PaymentEventKind } from '../types/Payment.std.ts';
 import { isNotNil } from '../util/isNotNil.std.ts';
@@ -62,7 +62,7 @@ export default {
   title: 'Components/CompositionArea',
   decorators: [
     // necessary for the add attachment button to render properly
-    storyFn => <div className="file-input">{storyFn()}</div>,
+    storyFn => <div>{storyFn()}</div>,
   ],
   argTypes: {
     recordingState: {
@@ -86,6 +86,7 @@ export default {
     isDisabled: false,
     isFormattingEnabled: true,
     isPollSend1to1Enabled: true,
+    isShareContactEnabled: true,
     sendEditedMessage: action('sendEditedMessage'),
     sendMultiMediaMessage: action('sendMultiMediaMessage'),
     platform: 'darwin',
@@ -118,6 +119,7 @@ export default {
     // MediaQualitySelector
     setMediaQualitySetting: action('setMediaQualitySetting'),
     shouldSendHighQualityAttachments: false,
+    showMediaQualitySelector: true,
     // ViewOnce
     isViewOnce: false,
     setViewOnce: action('setViewOnce'),
@@ -155,7 +157,8 @@ export default {
     isSignalConversation: false,
     isFetchingUUID: false,
     renderSmartCompositionRecording: () => <div>RECORDING</div>,
-    renderSmartCompositionRecordingDraft: _ => <div>RECORDING DRAFT</div>,
+    renderSmartCompositionRecordingDraft: () => <div>RECORDING DRAFT</div>,
+    renderShareContactDialog: () => <div>SHARE CONTACT DIALOG</div>,
     // Select mode
     selectedMessageIds: undefined,
     toggleSelectMode: action('toggleSelectMode'),
@@ -273,13 +276,57 @@ export function Quote(args: Props): JSX.Element {
       theme={theme}
       quotedMessageProps={{
         text: 'something',
-        conversationColor: ConversationColors[10],
+        bubbleColor: { bubbleColorPreset: 'vermilion' },
         conversationTitle: getDefaultConversation().title,
         isGiftBadge: false,
         isViewOnce: false,
         referencedMessageNotFound: false,
         authorTitle: 'Someone',
         isFromMe: false,
+      }}
+    />
+  );
+}
+
+export function QuoteFromGroup(args: Props): JSX.Element {
+  const theme = useContext(StorybookThemeContext);
+  return (
+    <CompositionArea
+      {...args}
+      theme={theme}
+      quotedMessageProps={{
+        text: 'something',
+        bubbleColor: { bubbleColorPreset: 'vermilion' },
+        conversationTitle: getDefaultConversation().title,
+        isGiftBadge: false,
+        isViewOnce: false,
+        referencedMessageNotFound: false,
+        authorTitle: 'Someone',
+        isFromMe: false,
+        quotedGroupTitle: 'Soi Dog Rescue',
+        quotedConversationId: 'some-group-id',
+      }}
+    />
+  );
+}
+
+export function QuoteFromGroupWithMention(args: Props): JSX.Element {
+  const theme = useContext(StorybookThemeContext);
+  return (
+    <CompositionArea
+      {...args}
+      theme={theme}
+      quotedMessageProps={{
+        text: '@Jamie can you bring the leashes?',
+        bubbleColor: { bubbleColorPreset: 'vermilion' },
+        conversationTitle: getDefaultConversation().title,
+        isGiftBadge: false,
+        isViewOnce: false,
+        referencedMessageNotFound: false,
+        authorTitle: 'Someone',
+        isFromMe: false,
+        quotedGroupTitle: 'Soi Dog Rescue',
+        quotedConversationId: 'some-group-id',
       }}
     />
   );
@@ -293,7 +340,7 @@ export function QuoteWithPayment(args: Props): JSX.Element {
       theme={theme}
       quotedMessageProps={{
         text: '',
-        conversationColor: ConversationColors[10],
+        bubbleColor: { bubbleColorPreset: 'vermilion' },
         conversationTitle: getDefaultConversation().title,
         isGiftBadge: false,
         isViewOnce: false,

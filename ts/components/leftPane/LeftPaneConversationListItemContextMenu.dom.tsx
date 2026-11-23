@@ -4,7 +4,7 @@ import type { FC, ReactNode, JSX } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { MuteExpiration } from '@signalapp/types';
 
-import { AxoContextMenu } from '../../axo/AxoContextMenu.dom.tsx';
+import { AxoContextMenu } from '../../axo/menus/AxoContextMenu.dom.tsx';
 import type { LocalizerType } from '../../types/I18N.std.ts';
 import type { ConversationType } from '../../state/ducks/conversations.preload.ts';
 import { isConversationUnread } from '../../util/isConversationUnread.std.ts';
@@ -26,8 +26,7 @@ import { CurrentChatFolders } from '../../types/CurrentChatFolders.std.ts';
 import { strictAssert } from '../../util/assert.std.ts';
 import { UserText } from '../UserText.dom.tsx';
 import { isConversationMuted } from '../../util/isConversationMuted.std.ts';
-import { isInternalFeaturesEnabled } from '../../util/isInternalFeaturesEnabled.dom.ts';
-import { canConversationOnlyBeMutedAlways } from '../../conversations/canConversationOnlyBeMutedAlways.dom.ts';
+import { isInternalFeaturesEnabled } from '../../util/isInternalFeaturesEnabled.std.ts';
 
 export type ChatFolderToggleChat = (
   chatFolderId: ChatFolderId,
@@ -83,10 +82,8 @@ export const LeftPaneConversationListItemContextMenu: FC<LeftPaneConversationLis
     }, [selectedChatFolder]);
 
     const muteMenu = useMemo(() => {
-      return getConversationMuteMenu(muteExpiresAt, i18n, {
-        canOnlyBeMutedAlways: canConversationOnlyBeMutedAlways(conversation),
-      });
-    }, [muteExpiresAt, i18n, conversation]);
+      return getConversationMuteMenu(muteExpiresAt, i18n);
+    }, [muteExpiresAt, i18n]);
 
     const isMuted = useMemo(() => {
       return isConversationMuted(conversation);

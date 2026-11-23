@@ -17,7 +17,7 @@ import {
   writeNewMegaphoneImageFileData,
 } from '../util/migrations.preload.ts';
 import { strictAssert } from '../util/assert.std.ts';
-import type { MessageAttributesType } from '../model-types.d.ts';
+import type { MessageAttributesType } from '../model-types.std.ts';
 import { ReadStatus } from '../messages/MessageReadStatus.std.ts';
 import { incrementMessageCounter } from '../util/incrementMessageCounter.preload.ts';
 import { SeenStatus } from '../MessageSeenStatus.std.ts';
@@ -44,7 +44,7 @@ import { isNotNil } from '../util/isNotNil.std.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
 import { DataReader, DataWriter } from '../sql/Client.preload.ts';
 import { type RemoteMegaphoneType } from '../types/Megaphone.std.ts';
-import { isCountryPpmCsvBucketEnabled } from '../RemoteConfig.dom.ts';
+import { isCountryPpmCsvBucketEnabled } from '../util/RemoteConfig.node.ts';
 import type { AciString } from '../types/ServiceId.std.ts';
 import {
   deleteMegaphoneAndRemoveFromRedux,

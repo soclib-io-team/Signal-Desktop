@@ -1,14 +1,14 @@
 // Copyright 2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-
-import type { ThunkAction, ThunkDispatch } from 'redux-thunk';
 import lodash from 'lodash';
-
 import type { ReadonlyDeep } from 'type-fest';
+import { v4 as generateUuid } from 'uuid';
+import type { ThunkActionDispatch } from 'redux-thunk';
 import * as Errors from '../../types/errors.std.ts';
 import type { AttachmentType } from '../../types/Attachment.std.ts';
+import type { LinkPreviewDraftType } from '../../types/LinkPreview.std.ts';
 import type { DraftBodyRanges } from '../../types/BodyRange.std.ts';
-import type { ReadonlyMessageAttributesType } from '../../model-types.d.ts';
+import type { ReadonlyMessageAttributesType } from '../../model-types.std.ts';
 import type {
   MessageChangedActionType,
   MessageDeletedActionType,
@@ -20,14 +20,17 @@ import type { StateType as RootStateType } from '../reducer.preload.ts';
 import type {
   StoryViewTargetType,
   StoryViewType,
+  StoryDraftAttachmentType,
 } from '../../types/Stories.std.ts';
 import type { SyncType } from '../../jobs/helpers/syncHelpers.preload.ts';
 import type { StoryDistributionIdString } from '../../types/StoryDistributionId.std.ts';
 import type { ServiceIdString } from '../../types/ServiceId.std.ts';
 import { isAciString } from '../../util/isAciString.std.ts';
+import { promoteDraftAttachment } from '../../util/promoteDraftAttachment.preload.ts';
 import { createLogger } from '../../logging/log.std.ts';
 import { TARGETED_CONVERSATION_CHANGED } from './conversations.preload.ts';
 import { SIGNAL_ACI } from '../../types/SignalConversation.std.ts';
+import { TEXT_ATTACHMENT } from '../../types/MIME.std.ts';
 import { DataReader, DataWriter } from '../../sql/Client.preload.ts';
 import { ReadStatus } from '../../messages/MessageReadStatus.std.ts';
 import { SendStatus } from '../../messages/MessageSendState.std.ts';
@@ -73,9 +76,9 @@ import { useBoundActions } from '../../hooks/useBoundActions.std.ts';
 import { verifyStoryListMembers as doVerifyStoryListMembers } from '../../util/verifyStoryListMembers.preload.ts';
 import { viewSyncJobQueue } from '../../jobs/viewSyncJobQueue.preload.ts';
 import { getOwn } from '../../util/getOwn.std.ts';
-import { SHOW_TOAST } from './toast.preload.ts';
-import { ToastType } from '../../types/Toast.dom.tsx';
-import type { ShowToastActionType } from './toast.preload.ts';
+import { SHOW_TOAST } from './toast.dom.ts';
+import { ToastType } from '../../types/Toast.std.ts';
+import type { ShowToastActionType } from './toast.dom.ts';
 import {
   conversationJobQueue,
   conversationQueueJobEnum,
@@ -85,6 +88,11 @@ import { cleanupMessages } from '../../util/cleanup.preload.ts';
 import { AttachmentDownloadUrgency } from '../../types/AttachmentDownload.std.ts';
 import { itemStorage } from '../../textsecure/Storage.preload.ts';
 import type { Emoji } from '../../axo/emoji.std.ts';
+import type {
+  AsyncStateThunk,
+  StateDispatch,
+  SyncStateThunk,
+} from '../types.std.ts';
 
 const { isEqual, pick } = lodash;
 
@@ -303,7 +311,7 @@ export type StoriesActionType =
 
 function deleteGroupStoryReply(
   messageId: string
-): ThunkAction<void, RootStateType, unknown, StoryReplyDeletedActionType> {
+): AsyncStateThunk<StoryReplyDeletedActionType> {
   return async dispatch => {
     await DataWriter.removeMessageById(messageId, { cleanupMessages });
     dispatch({
@@ -315,7 +323,7 @@ function deleteGroupStoryReply(
 
 function deleteGroupStoryReplyForEveryone(
   replyMessageId: string
-): ThunkAction<void, RootStateType, unknown, NoopActionType> {
+): AsyncStateThunk<NoopActionType> {
   return async dispatch => {
     await doDeleteGroupStoryReplyForEveryone(replyMessageId);
 
@@ -327,7 +335,7 @@ function deleteGroupStoryReplyForEveryone(
 
 function deleteStoryForEveryone(
   story: StoryViewType
-): ThunkAction<void, RootStateType, unknown, DOEStoryActionType> {
+): AsyncStateThunk<DOEStoryActionType> {
   return async (dispatch, getState) => {
     if (!story.sendState) {
       return;
@@ -351,7 +359,7 @@ function deleteStoryForEveryone(
 function loadStoryReplies(
   conversationId: string,
   messageId: string
-): ThunkAction<void, RootStateType, unknown, LoadStoryRepliesActionType> {
+): AsyncStateThunk<LoadStoryRepliesActionType> {
   return async (dispatch, getState) => {
     const conversation = getConversationSelector(getState())(conversationId);
     const replies = await DataReader.getOlderMessagesByConversation({
@@ -373,7 +381,7 @@ function loadStoryReplies(
 
 function markStoryRead(
   messageId: string
-): ThunkAction<void, RootStateType, unknown, MarkStoryReadActionType> {
+): AsyncStateThunk<MarkStoryReadActionType> {
   return async (dispatch, getState) => {
     const { stories } = getState().stories;
 
@@ -488,12 +496,7 @@ function markStoryRead(
 
 function queueStoryDownload(
   storyId: string
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  NoopActionType | QueueStoryDownloadActionType
-> {
+): AsyncStateThunk<NoopActionType | QueueStoryDownloadActionType> {
   return async (dispatch, getState) => {
     const { stories } = getState().stories;
     const story = stories.find(item => item.messageId === storyId);
@@ -556,12 +559,7 @@ function queueStoryDownload(
 function reactToStory(
   nextReaction: Emoji.Variant,
   messageId: string
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
-  ShowToastActionType | NoopActionType
-> {
+): AsyncStateThunk<ShowToastActionType | NoopActionType> {
   return async dispatch => {
     try {
       await enqueueReactionForSend({
@@ -588,7 +586,7 @@ function replyToStory(
   bodyRanges: DraftBodyRanges,
   timestamp: number,
   story: StoryViewType
-): ThunkAction<void, RootStateType, unknown, StoryChangedActionType> {
+): AsyncStateThunk<StoryChangedActionType> {
   return async (dispatch, getState) => {
     const conversation = window.ConversationController.get(conversationId);
 
@@ -632,12 +630,10 @@ function replyToStory(
 function sendStoryMessage(
   listIds: Array<StoryDistributionIdString>,
   conversationIds: Array<string>,
-  attachment: AttachmentType,
+  draftAttachment: StoryDraftAttachmentType,
+  linkPreviewDraft: LinkPreviewDraftType | undefined,
   bodyRanges: DraftBodyRanges | undefined
-): ThunkAction<
-  void,
-  RootStateType,
-  unknown,
+): AsyncStateThunk<
   SendStoryModalOpenStateChanged | SetStorySendingType | SetAddStoryDataType
 > {
   return async (dispatch, getState) => {
@@ -677,10 +673,26 @@ function sendStoryMessage(
     }
 
     try {
+      let attachment: AttachmentType;
+      if (draftAttachment.type === 'media') {
+        const resolved = await promoteDraftAttachment(
+          draftAttachment.attachment
+        );
+        strictAssert(resolved != null, 'Failed to resolve draft attachment');
+        attachment = resolved;
+      } else {
+        attachment = {
+          contentType: TEXT_ATTACHMENT,
+          textAttachment: draftAttachment.attachment,
+          size: draftAttachment.attachment.text?.length || 0,
+          clientUuid: generateUuid(),
+        };
+      }
       await doSendStoryMessage(
         listIds,
         conversationIds,
         attachment,
+        linkPreviewDraft,
         bodyRanges
       );
 
@@ -715,7 +727,7 @@ function storyChanged(story: StoryDataType): StoryChangedActionType {
 
 function sendStoryModalOpenStateChanged(
   value: boolean
-): ThunkAction<void, RootStateType, unknown, SendStoryModalOpenStateChanged> {
+): SyncStateThunk<SendStoryModalOpenStateChanged> {
   return (dispatch, getState) => {
     const { stories } = getState();
 
@@ -755,7 +767,7 @@ function verifyStoryListMembers({
   conversationId: string;
   distributionId: StoryDistributionIdString | undefined;
   serviceIds: Array<ServiceIdString>;
-}): ThunkAction<void, RootStateType, unknown, ListMembersVerified> {
+}): AsyncStateThunk<ListMembersVerified> {
   return async (dispatch, getState) => {
     const { stories } = getState();
     const { sendStoryModalData } = stories;
@@ -816,7 +828,7 @@ const getSelectedStoryDataForDistributionListId = (
 };
 
 const getSelectedStoryDataForConversationId = (
-  dispatch: ThunkDispatch<RootStateType, unknown, NoopActionType>,
+  dispatch: StateDispatch,
   getState: () => RootStateType,
   {
     conversationId,
@@ -872,7 +884,7 @@ const getSelectedStoryDataForConversationId = (
       return;
     }
 
-    queueStoryDownload(messageId)(dispatch, getState, null);
+    void dispatch(queueStoryDownload(messageId));
   });
 
   return {
@@ -883,19 +895,20 @@ const getSelectedStoryDataForConversationId = (
   };
 };
 
-export type ViewUserStoriesActionCreatorType = ReadonlyDeep<
-  (opts: {
-    conversationId: string;
-    storyViewMode?: StoryViewModeType;
-    viewTarget?: StoryViewTargetType;
-  }) => unknown
+// oxlint-disable-next-line signal-desktop/enforce-type-alias-readonlydeep
+export type ViewUserStoriesActionCreatorType = ThunkActionDispatch<
+  typeof viewUserStories
 >;
 
-const viewUserStories: ViewUserStoriesActionCreatorType = ({
+function viewUserStories({
   conversationId,
   storyViewMode,
   viewTarget,
-}): ThunkAction<void, RootStateType, unknown, ViewStoryActionType> => {
+}: {
+  conversationId: string;
+  storyViewMode?: StoryViewModeType;
+  viewTarget?: StoryViewTargetType;
+}): SyncStateThunk<ViewStoryActionType> {
   return (dispatch, getState) => {
     const { currentIndex, hasUnread, numStories, storiesByConversationId } =
       getSelectedStoryDataForConversationId(dispatch, getState, {
@@ -947,7 +960,7 @@ const viewUserStories: ViewUserStoriesActionCreatorType = ({
       },
     });
   };
-};
+}
 
 function removeAllStories(): RemoveAllStoriesActionType {
   return {
@@ -971,15 +984,9 @@ export type ViewStoryActionCreatorType = ReadonlyDeep<
   (opts: ViewStoryOptionsType) => unknown
 >;
 
-export type DispatchableViewStoryType = ReadonlyDeep<
-  (
-    opts: ViewStoryOptionsType
-  ) => ThunkAction<void, RootStateType, unknown, ViewStoryActionType>
->;
-
-const viewStory: ViewStoryActionCreatorType = (
-  opts
-): ThunkAction<void, RootStateType, unknown, ViewStoryActionType> => {
+function viewStory(
+  opts: ViewStoryOptionsType
+): SyncStateThunk<ViewStoryActionType> {
   return (dispatch, getState) => {
     if ('closeViewer' in opts) {
       dispatch({
@@ -1381,7 +1388,7 @@ const viewStory: ViewStoryActionCreatorType = (
       payload: undefined,
     });
   };
-};
+}
 
 function setAddStoryData(addStoryData: AddStoryData): SetAddStoryDataType {
   return {
@@ -1406,9 +1413,7 @@ function setHasAllStoriesUnmuted(
   };
 }
 
-function setStoriesDisabled(
-  value: boolean
-): ThunkAction<void, RootStateType, unknown, never> {
+function setStoriesDisabled(value: boolean): AsyncStateThunk {
   return async () => {
     await utilSetStoriesDisabled(value);
   };
@@ -1416,7 +1421,7 @@ function setStoriesDisabled(
 
 function removeAllContactStories(
   conversationId: string
-): ThunkAction<void, RootStateType, unknown, NoopActionType> {
+): AsyncStateThunk<NoopActionType> {
   return async (dispatch, getState) => {
     const logId = `removeAllContactStories(${conversationId})`;
     const { stories } = getState().stories;

@@ -3,7 +3,7 @@
 import { useCallback, useState, type JSX } from 'react';
 
 import type { LocalizerType } from '../types/Util.std.ts';
-import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 import { tw } from '../axo/tw.dom.tsx';
 import { AxoPasswordField } from '../axo/fields/AxoPasswordField.dom.tsx';
 import {
@@ -109,11 +109,7 @@ export function PinChangeModal({
         }
       }}
     >
-      <AxoDialog.Content
-        size="sm"
-        escape="cancel-is-noop"
-        disableMissingAriaDescriptionWarning
-      >
+      <AxoDialog.Content size="sm" escape="cancel-is-noop">
         <form
           onSubmit={event => {
             event.preventDefault();
@@ -126,38 +122,32 @@ export function PinChangeModal({
             <AxoDialog.Close />
           </AxoDialog.Header>
           <AxoDialog.Body>
-            <div className={tw('mb-10 items-center')}>
-              <div
-                className={tw(
-                  'mb-6 min-h-9 text-center type-body-medium text-secondary'
-                )}
+            <AxoDialog.Description>
+              <div className={tw('mb-6')}>{body}</div>
+            </AxoDialog.Description>
+            <InputContainer helperElement={<Spacer className={tw('h-8')} />}>
+              <AxoPasswordField.Root
+                maxBytes={PIN_MAX_BYTES}
+                maxGraphemes={PIN_MAX_GRAPHEMES}
+                onValueChange={handlePinInputChange}
+                value={pin}
               >
-                {body}
-              </div>
-              <InputContainer helperElement={<Spacer className={tw('h-8')} />}>
-                <AxoPasswordField.Root
-                  maxBytes={PIN_MAX_BYTES}
-                  maxGraphemes={PIN_MAX_GRAPHEMES}
-                  onValueChange={handlePinInputChange}
-                  value={pin}
-                >
-                  <AxoPasswordField.Input
-                    autoFocus
-                    autoComplete="current-password"
-                    placeholder={
-                      step === 'create'
-                        ? i18n(
-                            'icu:PinChangeModal__pin-input-placeholder--create'
-                          )
-                        : i18n(
-                            'icu:PinChangeModal__pin-input-placeholder--confirm'
-                          )
-                    }
-                  />
-                  <AxoPasswordField.Reveal />
-                </AxoPasswordField.Root>
-              </InputContainer>
-            </div>
+                <AxoPasswordField.Input
+                  autoFocus
+                  autoComplete="current-password"
+                  placeholder={
+                    step === 'create'
+                      ? i18n(
+                          'icu:PinChangeModal__pin-input-placeholder--create'
+                        )
+                      : i18n(
+                          'icu:PinChangeModal__pin-input-placeholder--confirm'
+                        )
+                  }
+                />
+                <AxoPasswordField.Reveal />
+              </AxoPasswordField.Root>
+            </InputContainer>
           </AxoDialog.Body>
           <AxoDialog.Footer>
             <AxoDialog.Actions>

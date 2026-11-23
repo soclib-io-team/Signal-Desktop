@@ -46,8 +46,13 @@ import {
 import { SmartPinMessageDialog } from './PinMessageDialog.preload.tsx';
 import { SmartGroupMemberLabelInfoModal } from './GroupMemberLabelInfoModal.preload.tsx';
 import { SmartTerminateGroupFailedModal } from './TerminateGroupFailedModal.preload.tsx';
+import { SmartGroupV2JoinDialog } from './GroupV2JoinDialog.preload.tsx';
 import { SmartPinReminderModal } from './PinReminderModal.preload.tsx';
 import { SmartPinChangeModal } from './PinChangeModal.preload.tsx';
+
+function renderGroupV2JoinDialog(): JSX.Element {
+  return <SmartGroupV2JoinDialog />;
+}
 
 function renderCallLinkAddNameModal(): JSX.Element {
   return <SmartCallLinkAddNameModal />;
@@ -191,6 +196,7 @@ export const SmartGlobalModalContainer = memo(
       errorModalProps,
       forwardMessagesProps,
       groupMemberLabelInfoModalState,
+      groupV2JoinDialogOpen,
       lowDiskSpaceBackupImportModal,
       mediaPermissionsModalProps,
       messageRequestActionsConfirmationProps,
@@ -258,13 +264,12 @@ export const SmartGlobalModalContainer = memo(
     const renderErrorModal = useCallback(
       (props: ErrorModalDataProps) => (
         <ErrorModal
-          i18n={i18n}
           onClose={closeErrorModal}
           title={props.title}
           description={props.description}
         />
       ),
-      [closeErrorModal, i18n]
+      [closeErrorModal]
     );
 
     const renderDebugLogErrorModal = useCallback(
@@ -318,6 +323,7 @@ export const SmartGlobalModalContainer = memo(
         hideLowDiskSpaceBackupImportModal={hideLowDiskSpaceBackupImportModal}
         lowDiskSpaceBackupImportModal={lowDiskSpaceBackupImportModal}
         terminateGroupFailedModal={terminateGroupFailedModal}
+        groupV2JoinDialogOpen={groupV2JoinDialogOpen}
         messageRequestActionsConfirmationProps={
           messageRequestActionsConfirmationProps
         }
@@ -381,6 +387,7 @@ export const SmartGlobalModalContainer = memo(
         renderStickerPreviewModal={renderStickerPreviewModal}
         renderStoriesSettings={renderStoriesSettings}
         renderTerminateGroupFailedModal={renderTerminateGroupFailedModal}
+        renderGroupV2JoinDialog={renderGroupV2JoinDialog}
         safetyNumberChangedBlockingData={safetyNumberChangedBlockingData}
         safetyNumberModalContactId={safetyNumberModalContactId}
         shouldShowPlaintextExportWorkflow={shouldShowPlaintextExportWorkflow}

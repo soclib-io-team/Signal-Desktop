@@ -35,19 +35,6 @@
     position: relative;
   }
 
-  &__input {
-    background: transparent;
-    border: none;
-    color: transparent;
-    position: absolute;
-    text-align: center;
-    top: 50%;
-
-    &:focus-visible {
-      @include mixins.axo-focus-ring;
-    }
-  }
-
   &__controls {
     align-items: center;
     display: flex;
@@ -158,9 +145,32 @@
     padding-block: 14px;
     padding-inline: 12px;
 
-    &__tool,
-    &__tool__button {
+    &__tool {
       margin-inline-end: 14px;
+    }
+
+    &__icon-button {
+      @include mixins.button-reset;
+
+      & {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        margin-block: -6px;
+        margin-inline: -6px 8px;
+        border-radius: 4px;
+      }
+
+      &:focus-visible {
+        @include mixins.axo-focus-ring;
+      }
+    }
+
+    // Separate from the button so the icon's mask doesn't clip the focus ring
+    &__icon-button-icon {
+      display: block;
     }
 
     &__button {
@@ -173,13 +183,6 @@
         }
       }
 
-      @include mixins.button-reset;
-      & {
-        margin-block: 0;
-        margin-inline: 8px;
-        padding: 8px;
-      }
-
       &--bg {
         @include icon('v2/text-effect-on-24.svg');
       }
@@ -189,39 +192,21 @@
       &--bg-none {
         @include icon('v2/text-effect-off-24.svg');
       }
-      &--font-regular__button {
+      &--font-regular {
         @include icon('v3/font/font-regular-compact.svg');
       }
-      &--font-bold__button {
+      &--font-bold {
         @include icon('v3/font/font-bold-compact.svg');
       }
-      &--font-serif__button {
+      &--font-serif {
         @include icon('v3/font/font-serif-compact.svg');
       }
-      &--font-script__button {
+      &--font-script {
         @include icon('v3/font/font-script-compact.svg');
       }
-      &--font-condensed__button {
+      &--font-condensed {
         @include icon('v3/font/font-condensed-compact.svg');
       }
-    }
-  }
-
-  &__icon {
-    &--font-regular {
-      @include svg('v3/font/font-regular-compact.svg');
-    }
-    &--font-bold {
-      @include svg('v3/font/font-bold-compact.svg');
-    }
-    &--font-serif {
-      @include svg('v3/font/font-serif-compact.svg');
-    }
-    &--font-script {
-      @include svg('v3/font/font-script-compact.svg');
-    }
-    &--font-condensed {
-      @include svg('v3/font/font-condensed-compact.svg');
     }
   }
 
@@ -244,18 +229,11 @@
   &__popper {
     background: variables.$color-gray-80;
     border-radius: 10px;
-    margin-bottom: 18px;
     padding: 8px;
     width: 144px;
 
     &__arrow {
-      border-inline-start: 14px solid transparent;
-      border-inline-end: 14px solid transparent;
-      border-top: 14px solid variables.$color-gray-80;
-      @include mixins.position-absolute-center-x;
-      bottom: -14px;
-      height: 0;
-      width: 0;
+      fill: variables.$color-gray-80;
     }
   }
 
@@ -267,7 +245,7 @@
     width: 360px;
   }
 
-  &__link-preview-input__container {
+  &__link-preview-input.Input__container {
     margin-top: 0;
   }
 
@@ -288,41 +266,6 @@
     margin-bottom: 8px;
   }
 
-  &__link-preview {
-    background: variables.$color-black-alpha-40;
-    border-radius: 16px;
-    display: flex;
-    padding: 14px;
-    width: 100%;
-
-    &__image {
-      border-radius: 8px;
-      height: 76px;
-      width: 76px;
-    }
-
-    &__meta {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      margin-inline-start: 14px;
-    }
-
-    &__title {
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      @include mixins.font-body-1-bold;
-      color: variables.$color-white;
-      display: -webkit-box;
-      overflow: hidden;
-    }
-
-    &__location {
-      @include mixins.font-subtitle;
-      color: variables.$color-white-alpha-60;
-    }
-  }
-
   &__link-preview-empty {
     align-items: center;
     color: variables.$color-gray-45;
@@ -339,11 +282,5 @@
         width: 20px;
       }
     }
-  }
-
-  &__emoji-button,
-  &__emoji-button::after {
-    height: 20px;
-    width: 20px;
   }
 }

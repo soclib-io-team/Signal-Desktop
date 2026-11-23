@@ -44,7 +44,6 @@ import {
   get as getUniversalExpireTimer,
   set as setUniversalExpireTimer,
 } from '../util/universalExpireTimer.preload.ts';
-import { ourProfileKeyService } from './ourProfileKey.std.ts';
 import {
   isDirectConversation,
   isGroupV1,
@@ -63,6 +62,7 @@ import {
   toUntaggedPni,
 } from '../types/ServiceId.std.ts';
 import { isAciString } from '../util/isAciString.std.ts';
+import { isSignalServiceId } from '../types/SignalConversation.std.ts';
 import * as Stickers from '../types/Stickers.preload.ts';
 import type {
   StoryDistributionWithMembersType,
@@ -87,7 +87,7 @@ import {
 } from '../util/callLinksRingrtc.node.ts';
 import { fromAdminKeyBytes, toAdminKeyBytes } from '../util/callLinks.std.ts';
 import { isOlderThan } from '../util/timestamp.std.ts';
-import { getMessageQueueTime } from '../util/getMessageQueueTime.dom.ts';
+import { getMessageQueueTime } from '../util/getMessageQueueTime.std.ts';
 import { callLinkRefreshJobQueue } from '../jobs/callLinkRefreshJobQueue.preload.ts';
 import {
   generateBackupsSubscriberData,
@@ -145,6 +145,10 @@ import { getOurAddress } from '../util/sendToGroup.preload.ts';
 import { QualifiedAddress } from '../types/QualifiedAddress.std.ts';
 import { callLinkCleanupService } from './expiring/callLinkCleanupService.preload.ts';
 import { defunctCallLinkCleanupService } from './expiring/defunctCallLinkCleanupService.preload.ts';
+import {
+  installFavoriteSticker,
+  uninstallFavoriteSticker,
+} from '../util/stickers.preload.ts';
 
 const { isEqual } = lodash;
 
@@ -351,6 +355,8 @@ export async function toContactRecord(
   const verified = conversation.get('verified');
   const nicknameGivenName = conversation.get('nicknameGivenName');
   const nicknameFamilyName = conversation.get('nicknameFamilyName');
+  const sharedGivenName = conversation.get('sharedGivenName');
+  const sharedFamilyName = conversation.get('sharedFamilyName');
   const hideStory = conversation.get('hideStory');
 
   const blockedServiceId = serviceId
@@ -384,6 +390,10 @@ export async function toContactRecord(
     profileKey: profileKey ? Bytes.fromBase64(profileKey) : null,
     givenName: conversation.get('profileName') || null,
     familyName: conversation.get('profileFamilyName') || null,
+    sharedName:
+      sharedGivenName || sharedFamilyName
+        ? { given: sharedGivenName || null, family: sharedFamilyName || null }
+        : null,
     nickname:
       nicknameGivenName || nicknameFamilyName
         ? {
@@ -825,9 +835,9 @@ export function toStoryDistributionListRecord(
   };
 }
 
-export function toStickerPackRecord(
+export function toInstalledStickerPackRecord(
   stickerPack: StickerPackInfoType
-): Proto.StickerPackRecord.Params {
+): Proto.InstalledStickerPackRecord.Params {
   const $unknown = fromStorageUnknownFields(stickerPack.storageUnknownFields);
 
   if (stickerPack.uninstalledAt !== undefined) {
@@ -845,6 +855,70 @@ export function toStickerPackRecord(
     packKey: Bytes.fromBase64(stickerPack.key),
     position: stickerPack.position ?? null,
     deletedAtTimestamp: null,
+    $unknown,
+  };
+}
+
+export function toFavoriteStickerPackRecord(
+  favoriteSticker: Stickers.FavoriteStickerType
+): Proto.FavoriteStickerRecord.Params {
+  const {
+    packId: packIdString,
+    packKey: packKeyString,
+    stickerId,
+    deletedAtTimestampMs,
+    favoritedAtTimestampMs,
+    storageUnknownFields,
+  } = favoriteSticker;
+  const packId = Bytes.fromHex(packIdString);
+  const $unknown = fromStorageUnknownFields(storageUnknownFields);
+
+  if (deletedAtTimestampMs !== undefined) {
+    return {
+      packId,
+      packKey: null,
+      stickerId,
+      favoritedAtTimestamp: null,
+      deletedAtTimestamp: BigInt(deletedAtTimestampMs),
+      $unknown,
+    };
+  }
+
+  return {
+    packId,
+    packKey: packKeyString ? Bytes.fromBase64(packKeyString) : null,
+    stickerId,
+    favoritedAtTimestamp: BigInt(favoritedAtTimestampMs ?? 0),
+    deletedAtTimestamp: null,
+    $unknown,
+  };
+}
+
+export function toHiddenStickerPackRecord(
+  hiddenPack: Stickers.HiddenStickerPackType
+): Proto.HiddenStickerPackRecord.Params {
+  const {
+    packId: packIdString,
+    packKey: packKeyString,
+    unhiddenAtTimestampMs,
+    storageUnknownFields,
+  } = hiddenPack;
+  const packId = Bytes.fromHex(packIdString);
+  const $unknown = fromStorageUnknownFields(storageUnknownFields);
+
+  if (unhiddenAtTimestampMs !== undefined) {
+    return {
+      packId,
+      packKey: null,
+      unhiddenAtTimestamp: BigInt(unhiddenAtTimestampMs),
+      $unknown,
+    };
+  }
+
+  return {
+    packId,
+    packKey: packKeyString ? Bytes.fromBase64(packKeyString) : null,
+    unhiddenAtTimestamp: BigInt(unhiddenAtTimestampMs ?? 0),
     $unknown,
   };
 }
@@ -1109,7 +1183,7 @@ type RecordClassObject = {
   [key: string]: any;
 };
 
-function areNicknamesEqual(
+function areNamesEqual(
   local: Proto.ContactRecord.Name.Params | undefined | null,
   remote: Proto.ContactRecord.Name.Params | undefined | null
 ): boolean {
@@ -1170,10 +1244,10 @@ function logRecordChanges(
       continue;
     }
 
-    if (key === 'nickname') {
-      const areEqual = areNicknamesEqual(localValue, remoteValue);
+    if (key === 'nickname' || key === 'sharedName') {
+      const areEqual = areNamesEqual(localValue, remoteValue);
       if (!areEqual) {
-        details.push('nickname');
+        details.push(key);
       }
       continue;
     }
@@ -1528,12 +1602,22 @@ export async function mergeContactRecord(
     return { shouldDrop: true, details: ['our own uuid'] };
   }
 
+  // Release notes chat state is synced via AccountRecord, not ContactRecord
+  if (isSignalServiceId(serviceId)) {
+    return { shouldDrop: true, details: ['signal release notes aci'] };
+  }
+
   const { conversation } = window.ConversationController.maybeMergeContacts({
     aci,
     e164,
     pni,
     fromPniSignature: pniSignatureVerified,
     reason: 'mergeContactRecord',
+    // If we create a contact from scratch, ensure we know it came from storage service
+    additionalInitialProps: {
+      storageID,
+      storageVersion,
+    },
   });
 
   // We're going to ignore this; it's likely a PNI-only contact we've already merged
@@ -1645,6 +1729,8 @@ export async function mergeContactRecord(
   conversation.set({
     nicknameGivenName: dropNull(contactRecord.nickname?.given || null),
     nicknameFamilyName: dropNull(contactRecord.nickname?.family || null),
+    sharedGivenName: dropNull(contactRecord.sharedName?.given || null),
+    sharedFamilyName: dropNull(contactRecord.sharedName?.family || null),
     note: dropNull(contactRecord.note),
   });
 
@@ -1870,7 +1956,7 @@ export async function mergeAccountRecord(
       itemStorage.get('preferredReactionEmoji') || [];
     if (!isEqual(localPreferredReactionEmoji, rawPreferredReactionEmoji)) {
       log.warn(
-        'storageService: remote and local preferredReactionEmoji do not match',
+        'mergeAccountRecord: remote and local preferredReactionEmoji do not match',
         localPreferredReactionEmoji.length,
         rawPreferredReactionEmoji.length
       );
@@ -1903,7 +1989,7 @@ export async function mergeAccountRecord(
     default:
       assertDev(
         false,
-        `storageService.mergeAccountRecord: Got an unexpected phone number sharing mode: ${phoneNumberSharingMode}. Falling back to default`
+        `mergeAccountRecord: Got an unexpected phone number sharing mode: ${phoneNumberSharingMode}. Falling back to default`
       );
       phoneNumberSharingModeToStore = PhoneNumberSharingMode.Everybody;
       break;
@@ -1923,13 +2009,6 @@ export async function mergeAccountRecord(
     drop(keyTransparency.onKnownIdentifierChange('phoneNumberDiscoverability'));
   }
   await itemStorage.put('phoneNumberDiscoverability', discoverability);
-
-  if (profileKey && profileKey.byteLength > 0) {
-    // Access key is part of Key Transparency request and changing it must
-    // delay self monitoring.
-    drop(keyTransparency.onKnownIdentifierChange('accessKey'));
-    drop(ourProfileKeyService.set(profileKey));
-  }
 
   if (pinnedConversations) {
     const modelPinnedConversations =
@@ -1980,9 +2059,7 @@ export async function mergeAccountRecord(
             !Bytes.isNotEmpty(contact.serviceIdBinary) &&
             !contact.e164
           ) {
-            log.error(
-              'storageService.mergeAccountRecord: No serviceId or e164 on contact'
-            );
+            log.error('mergeAccountRecord: No serviceId or e164 on contact');
             return undefined;
           }
           convo = window.ConversationController.lookupOrCreate({
@@ -1992,7 +2069,7 @@ export async function mergeAccountRecord(
               'AccountRecord.pin.serviceId'
             ),
             e164: contact.e164,
-            reason: 'storageService.mergeAccountRecord',
+            reason: 'mergeAccountRecord',
           });
         } else if (releaseNotes) {
           convo = signalConversation;
@@ -2005,15 +2082,11 @@ export async function mergeAccountRecord(
 
           convo = window.ConversationController.get(groupId);
         } else {
-          log.error(
-            'storageService.mergeAccountRecord: Invalid identifier received'
-          );
+          log.error('mergeAccountRecord: Invalid identifier received');
         }
 
         if (!convo) {
-          log.error(
-            'storageService.mergeAccountRecord: missing conversation id.'
-          );
+          log.error('mergeAccountRecord: missing conversation id.');
           return undefined;
         }
 
@@ -2229,7 +2302,7 @@ export async function mergeAccountRecord(
   );
   if (previousSyncDisabled !== notificationProfileSyncDisabled) {
     log.info(
-      `process(${storageVersion}): Account just flipped from notificationProfileSyncDisabled=${previousSyncDisabled} to ${notificationProfileSyncDisabled}`
+      `mergeAccountRecord(${storageVersion}): Account just flipped from notificationProfileSyncDisabled=${previousSyncDisabled} to ${notificationProfileSyncDisabled}`
     );
     // oxlint-disable-next-line typescript/await-thenable
     await window.reduxActions.notificationProfiles.setIsSyncEnabled(
@@ -2283,12 +2356,52 @@ export async function mergeAccountRecord(
   const oldStorageID = ourConversation.get('storageID');
   const oldStorageVersion = ourConversation.get('storageVersion');
 
+  let needsStorageServiceSync = false;
+  let needsProfileFetch = false;
+
+  if (
+    !window.ConversationController.areWePrimaryDevice() &&
+    profileKey &&
+    profileKey.byteLength > 0
+  ) {
+    const keyChanged = await ourConversation.setProfileKey(
+      Bytes.toBase64(profileKey),
+      { viaStorageServiceSync: true, reason: 'mergeAccountRecord' }
+    );
+
+    if (keyChanged) {
+      // Access key is part of Key Transparency request and changing it must
+      // delay self monitoring.
+      drop(keyTransparency.onKnownIdentifierChange('accessKey'));
+    }
+
+    needsProfileFetch ||= keyChanged;
+  }
+  if (
+    window.ConversationController.areWePrimaryDevice() &&
+    profileKey &&
+    profileKey.byteLength > 0
+  ) {
+    const ourProfileKeyBase64 = ourConversation.get('profileKey');
+    const incomingProfileKeyBase64 = Bytes.toBase64(profileKey);
+
+    if (
+      ourProfileKeyBase64 &&
+      ourProfileKeyBase64 !== incomingProfileKeyBase64
+    ) {
+      log.warn(
+        'mergeAccountRecord: We are primary, and AccountRecord profileKey does not match.'
+      );
+      needsStorageServiceSync = true;
+    }
+  }
+
   ourConversation.set({
     isArchived: noteToSelfArchived,
     markedUnread: noteToSelfMarkedUnread,
     storageID,
     storageVersion,
-    needsStorageServiceSync: false,
+    needsStorageServiceSync,
   });
 
   await ourConversation.updateUsername(dropNull(username || null), {
@@ -2296,20 +2409,12 @@ export async function mergeAccountRecord(
     fromStorageService: true,
   });
 
-  let needsProfileFetch = false;
-  if (profileKey && profileKey.byteLength > 0) {
-    needsProfileFetch = await ourConversation.setProfileKey(
-      Bytes.toBase64(profileKey),
-      { viaStorageServiceSync: true, reason: 'mergeAccountRecord' }
-    );
-
-    const avatarUrl = dropNull(accountRecord.avatarUrlPath || null);
-    await ourConversation.setAndMaybeFetchProfileAvatar({
-      avatarUrl,
-      decryptionKey: profileKey,
-    });
-    await itemStorage.put('avatarUrl', avatarUrl);
-  }
+  const avatarUrl = dropNull(accountRecord.avatarUrlPath || null);
+  await ourConversation.setAndMaybeFetchProfileAvatar({
+    avatarUrl,
+    decryptionKey: profileKey,
+  });
+  await itemStorage.put('avatarUrl', avatarUrl);
 
   applyAvatarColor(ourConversation, accountRecord.avatarColor);
 
@@ -2524,17 +2629,19 @@ export async function mergeStoryDistributionListRecord(
   };
 }
 
-export async function mergeStickerPackRecord(
+export async function mergeInstalledStickerPackRecord(
   storageID: string,
   storageVersion: number,
-  stickerPackRecord: Proto.StickerPackRecord
+  stickerPackRecord: Proto.InstalledStickerPackRecord
 ): Promise<MergeResultType> {
   const redactedStorageID = redactExtendedStorageID({
     storageID,
     storageVersion,
   });
   if (!stickerPackRecord.packId || Bytes.isEmpty(stickerPackRecord.packId)) {
-    throw new Error(`No stickerPackRecord identifier for ${redactedStorageID}`);
+    throw new Error(
+      `No installedStickerPackRecord identifier for ${redactedStorageID}`
+    );
   }
 
   const id = Bytes.toHex(stickerPackRecord.packId);
@@ -2544,7 +2651,7 @@ export async function mergeStickerPackRecord(
   const details = logRecordChanges(
     localStickerPack == null
       ? undefined
-      : toStickerPackRecord(localStickerPack),
+      : toInstalledStickerPackRecord(localStickerPack),
     stickerPackRecord
   );
 
@@ -2574,7 +2681,9 @@ export async function mergeStickerPackRecord(
       !stickerPackRecord.packKey ||
       Bytes.isEmpty(stickerPackRecord.packKey)
     ) {
-      throw new Error(`No stickerPackRecord key for ${redactedStorageID}`);
+      throw new Error(
+        `No installedStickerPackRecord key for ${redactedStorageID}`
+      );
     }
 
     stickerPack = {
@@ -2668,6 +2777,267 @@ export async function mergeStickerPackRecord(
   const shouldDrop =
     remoteDeletedAtTimestamp > 0 &&
     isOlderThan(remoteDeletedAtTimestamp, getMessageQueueTime());
+
+  return {
+    details,
+    oldStorageID,
+    oldStorageVersion,
+    shouldDrop,
+  };
+}
+
+export async function mergeFavoriteStickerRecord(
+  storageID: string,
+  storageVersion: number,
+  storageRecord: Proto.FavoriteStickerRecord
+): Promise<MergeResultType> {
+  const redactedStorageID = redactExtendedStorageID({
+    storageID,
+    storageVersion,
+  });
+  const {
+    packId: packIdRaw,
+    packKey: packKeyRaw,
+    stickerId,
+    deletedAtTimestamp: deletedAtTimestampRaw,
+    favoritedAtTimestamp: favoritedAtTimestampRaw,
+  } = storageRecord;
+  if (!packIdRaw || Bytes.isEmpty(packIdRaw)) {
+    throw new Error(`No favoriteStickerRecord packId for ${redactedStorageID}`);
+  }
+
+  const packId = Bytes.toHex(packIdRaw);
+  const remoteDeletedAtTimestamp = toNumber(deletedAtTimestampRaw);
+  const remoteFavoritedAtTimestamp = toNumber(favoritedAtTimestampRaw);
+
+  const localFavoriteSticker = await DataReader.getFavoriteSticker({
+    packId,
+    stickerId,
+  });
+  const oldStorageID = localFavoriteSticker?.storageID;
+  const oldStorageVersion = localFavoriteSticker?.storageVersion;
+  const wasDeletedLocally = Boolean(localFavoriteSticker?.deletedAtTimestampMs);
+
+  const details = logRecordChanges(
+    localFavoriteSticker == null
+      ? undefined
+      : toFavoriteStickerPackRecord(localFavoriteSticker),
+    storageRecord
+  );
+
+  const storageUnknownFields =
+    toStorageUnknownFields(storageRecord.$unknown) ?? undefined;
+  const needsToClearUnknownFields =
+    !storageRecord.$unknown && localFavoriteSticker?.storageUnknownFields;
+  if (needsToClearUnknownFields) {
+    details.push('clearing unknown fields');
+  }
+
+  const isDeleted = remoteDeletedAtTimestamp > 0;
+  const shouldDrop =
+    isDeleted && isOlderThan(remoteDeletedAtTimestamp, getMessageQueueTime());
+
+  details.push(
+    `wasDeletedLocally=${wasDeletedLocally}`,
+    `isDeleted=${isDeleted}`
+  );
+
+  let favoriteSticker: Stickers.FavoriteStickerType | null;
+  if (shouldDrop) {
+    // Tombstone has aged out, so we can delete it.
+    favoriteSticker = null;
+    if (localFavoriteSticker) {
+      await DataWriter.deleteFavoriteSticker({ packId, stickerId });
+    }
+  } else {
+    if (isDeleted) {
+      // Save tombstone
+      favoriteSticker = {
+        packId,
+        packKey: undefined,
+        stickerId,
+        deletedAtTimestampMs: remoteDeletedAtTimestamp,
+        favoritedAtTimestampMs: undefined,
+        status: 'deleted',
+        storageID,
+        storageVersion,
+        storageUnknownFields,
+        storageNeedsSync: false,
+      };
+    } else {
+      // Save current favorite
+      if (!packKeyRaw || Bytes.isEmpty(packKeyRaw)) {
+        throw new Error(
+          `No favoriteSticker packKey for installed favorite ${redactedStorageID}`
+        );
+      }
+
+      const packKey = Bytes.toBase64(packKeyRaw);
+
+      const localStatus = localFavoriteSticker?.status;
+      let status: Stickers.FavoriteStickerStatusType;
+      if (localStatus === 'installed') {
+        status = 'installed';
+      } else {
+        status = 'known';
+      }
+
+      favoriteSticker = {
+        packId,
+        packKey,
+        stickerId,
+        deletedAtTimestampMs: undefined,
+        favoritedAtTimestampMs: remoteFavoritedAtTimestamp,
+        status,
+        storageID,
+        storageVersion,
+        storageUnknownFields,
+        storageNeedsSync: false,
+      };
+    }
+
+    if (localFavoriteSticker) {
+      await DataWriter.updateFavoriteSticker(favoriteSticker);
+    } else {
+      await DataWriter.createFavoriteSticker(favoriteSticker);
+    }
+  }
+
+  if (isDeleted || shouldDrop) {
+    if (localFavoriteSticker && localFavoriteSticker.status !== 'deleted') {
+      drop(uninstallFavoriteSticker({ packId, stickerId }));
+    }
+  } else if (favoriteSticker) {
+    if (localFavoriteSticker?.status !== 'installed') {
+      drop(installFavoriteSticker(favoriteSticker, 'storageService'));
+    } else if (
+      localFavoriteSticker.favoritedAtTimestampMs !==
+      favoriteSticker.favoritedAtTimestampMs
+    ) {
+      window.reduxActions.stickers.reloadFavoriteStickers();
+    }
+  }
+
+  return {
+    details,
+    oldStorageID,
+    oldStorageVersion,
+    shouldDrop,
+  };
+}
+
+export async function mergeHiddenStickerPackRecord(
+  storageID: string,
+  storageVersion: number,
+  storageRecord: Proto.HiddenStickerPackRecord
+): Promise<MergeResultType> {
+  const redactedStorageID = redactExtendedStorageID({
+    storageID,
+    storageVersion,
+  });
+  const {
+    packId: packIdRaw,
+    packKey: packKeyRaw,
+    unhiddenAtTimestamp: unhiddenAtTimestampRaw,
+  } = storageRecord;
+  if (!packIdRaw || Bytes.isEmpty(packIdRaw)) {
+    throw new Error(
+      `No hiddenStickerPackRecord packId for ${redactedStorageID}`
+    );
+  }
+
+  const packId = Bytes.toHex(packIdRaw);
+  const remoteUnhiddenAtTimestamp = toNumber(unhiddenAtTimestampRaw);
+
+  const localHiddenPack = await DataReader.getHiddenStickerPack(packId);
+  const oldStorageID = localHiddenPack?.storageID;
+  const oldStorageVersion = localHiddenPack?.storageVersion;
+  const wasDeletedLocally = Boolean(localHiddenPack?.unhiddenAtTimestampMs);
+
+  const details = logRecordChanges(
+    localHiddenPack == null
+      ? undefined
+      : toHiddenStickerPackRecord(localHiddenPack),
+    storageRecord
+  );
+
+  const storageUnknownFields =
+    toStorageUnknownFields(storageRecord.$unknown) ?? undefined;
+  const needsToClearUnknownFields =
+    !storageRecord.$unknown && localHiddenPack?.storageUnknownFields;
+  if (needsToClearUnknownFields) {
+    details.push('clearing unknown fields');
+  }
+
+  const isDeleted = remoteUnhiddenAtTimestamp > 0;
+  const shouldDrop =
+    isDeleted && isOlderThan(remoteUnhiddenAtTimestamp, getMessageQueueTime());
+
+  details.push(
+    `wasDeletedLocally=${wasDeletedLocally}`,
+    `isDeleted=${isDeleted}`
+  );
+
+  let hiddenPack: Stickers.HiddenStickerPackType | null;
+  if (shouldDrop) {
+    // Tombstone has aged out, so we can delete it.
+    hiddenPack = null;
+    if (localHiddenPack) {
+      await DataWriter.deleteHiddenStickerPack(packId);
+    }
+  } else {
+    if (isDeleted) {
+      // Save tombstone
+      hiddenPack = {
+        packId,
+        packKey: undefined,
+        unhiddenAtTimestampMs: remoteUnhiddenAtTimestamp,
+        storageID,
+        storageVersion,
+        storageUnknownFields,
+        storageNeedsSync: false,
+      };
+    } else {
+      // Save active hidden pack
+      if (!packKeyRaw || Bytes.isEmpty(packKeyRaw)) {
+        throw new Error(
+          `No hiddenStickerPack packKey for active hidden pack ${redactedStorageID}`
+        );
+      }
+
+      const packKey = Bytes.toBase64(packKeyRaw);
+
+      hiddenPack = {
+        packId,
+        packKey,
+        unhiddenAtTimestampMs: undefined,
+        storageID,
+        storageVersion,
+        storageUnknownFields,
+        storageNeedsSync: false,
+      };
+    }
+
+    if (localHiddenPack) {
+      await DataWriter.updateHiddenStickerPack(hiddenPack);
+    } else {
+      await DataWriter.createHiddenStickerPack(hiddenPack);
+    }
+  }
+
+  const isPackHiddenLocally = Boolean(
+    localHiddenPack && !localHiddenPack.unhiddenAtTimestampMs
+  );
+  if (isDeleted || shouldDrop) {
+    // Unhiding a pack
+    if (isPackHiddenLocally) {
+      window.reduxActions.stickers.removeHiddenStickerPack(packId);
+    }
+  } else if (hiddenPack) {
+    if (!isPackHiddenLocally) {
+      window.reduxActions.stickers.addHiddenStickerPack(packId);
+    }
+  }
 
   return {
     details,

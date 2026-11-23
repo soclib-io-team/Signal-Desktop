@@ -68,6 +68,10 @@ function getCacheKey(
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
+export function clearDateTimeFormatterCache(): void {
+  formatterCache.clear();
+}
+
 export function getDateTimeFormatter(
   options: Intl.DateTimeFormatOptions
 ): Intl.DateTimeFormat {
@@ -266,6 +270,16 @@ export function formatDate(
   return formatTimestamp(timestamp, {
     day: 'numeric',
     month: 'short',
+    year: 'numeric',
+  });
+}
+
+export function formatDateLong(rawTimestamp: RawTimestamp): string {
+  const timestamp = rawTimestamp.valueOf();
+
+  return formatTimestamp(timestamp, {
+    day: 'numeric',
+    month: 'numeric',
     year: 'numeric',
   });
 }

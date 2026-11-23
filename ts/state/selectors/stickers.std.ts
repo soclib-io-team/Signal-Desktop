@@ -5,7 +5,7 @@ import lodash, { type Dictionary } from 'lodash';
 import { createSelector } from 'reselect';
 
 import type {
-  RecentStickerType,
+  StickerReferenceType,
   StickerManagerTabType,
 } from '../../types/Stickers.preload.ts';
 import {
@@ -113,6 +113,48 @@ const getRecents = createSelector(
   (stickers: StickersStateType) => stickers.recentStickers
 );
 
+export const getFavorites = createSelector(
+  getStickers,
+  (stickers: StickersStateType) => stickers.favoriteStickers
+);
+
+type FavoritesLookupType = Record<string, Record<number, boolean>>;
+
+const getFavoritesLookup = createSelector(
+  getFavorites,
+  (favorites: ReadonlyArray<StickerReferenceType>): FavoritesLookupType => {
+    const packIdsToStickerIds: FavoritesLookupType = {};
+    for (const { packId, stickerId } of favorites) {
+      if (!packIdsToStickerIds[packId]) {
+        packIdsToStickerIds[packId] = {};
+      }
+      packIdsToStickerIds[packId][stickerId] = true;
+    }
+    return packIdsToStickerIds;
+  }
+);
+
+export const getIsFavoriteStickerSelector = createSelector(
+  getFavoritesLookup,
+  (
+    selector: FavoritesLookupType
+  ): ((stickerRef: StickerReferenceType | undefined) => boolean) => {
+    return (stickerRef: StickerReferenceType | undefined) => {
+      if (!stickerRef) {
+        return false;
+      }
+
+      const { packId, stickerId } = stickerRef;
+      return Boolean(selector[packId]?.[stickerId]);
+    };
+  }
+);
+
+const getHiddenPackIds = createSelector(
+  getStickers,
+  (stickers: StickersStateType) => stickers.hiddenPackIds
+);
+
 export const getBlessedPacks = createSelector(
   getStickers,
   (stickers: StickersStateType) => stickers.blessedPacks
@@ -122,11 +164,26 @@ export const getRecentStickers = createSelector(
   getRecents,
   getPacks,
   (
-    recents: ReadonlyArray<RecentStickerType>,
+    recents: ReadonlyArray<StickerReferenceType>,
     packs: Dictionary<StickerPackDBType>
   ) => {
     return compact(
       recents.map(({ packId, stickerId }) => {
+        return getSticker(packs, packId, stickerId);
+      })
+    );
+  }
+);
+
+export const getInstalledFavoriteStickers = createSelector(
+  getFavorites,
+  getPacks,
+  (
+    favorites: ReadonlyArray<StickerReferenceType>,
+    packs: Dictionary<StickerPackDBType>
+  ) => {
+    return compact(
+      favorites.map(({ packId, stickerId }) => {
         return getSticker(packs, packId, stickerId);
       })
     );
@@ -154,17 +211,21 @@ export const getInstalledStickerPacks = createSelector(
 export const getReceivedStickerPacks = createSelector(
   getPacks,
   getBlessedPacks,
+  getHiddenPackIds,
   (
     packs: Dictionary<StickerPackDBType>,
-    blessedPacks: Dictionary<boolean>
+    blessedPacks: Dictionary<boolean>,
+    hiddenPackIds: ReadonlyArray<string>
   ): Array<StickerPackType> => {
+    const hiddenPacksSet = new Set<string>(hiddenPackIds);
     return filterAndTransformPacks(
       packs,
       pack =>
         (pack.status === 'downloaded' ||
           pack.status === 'pending' ||
           pack.status === 'installed') &&
-        !blessedPacks[pack.id],
+        !blessedPacks[pack.id] &&
+        !hiddenPacksSet.has(pack.id),
       pack => pack.createdAt,
       blessedPacks
     );

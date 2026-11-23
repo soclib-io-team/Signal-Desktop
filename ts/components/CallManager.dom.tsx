@@ -97,7 +97,7 @@ export type CallingImageDataCache = Map<number, ImageData>;
 export type PropsType = {
   activeCall?: ActiveCallType;
   activeNotificationProfile: NotificationProfileType | undefined;
-  availableCameras: Array<MediaDeviceInfo>;
+  availableCameras: ReadonlyArray<MediaDeviceInfo>;
   callLink: CallLinkType | undefined;
   cancelCall: (_: CancelCallType) => void;
   changeCallView: (mode: CallViewMode) => void;
@@ -156,11 +156,12 @@ export type PropsType = {
   switchToPresentationView: () => void;
   switchFromPresentationView: () => void;
   hangUpActiveCall: (reason: string) => void;
+  logBookmark?: () => void;
   togglePip: () => void;
   toggleCallLinkPendingParticipantModal: (contactId: string) => void;
-  toggleScreenRecordingPermissionsDialog: () => unknown;
+  toggleScreenRecordingPermissionsDialog: (open: boolean) => void;
   toggleSelfViewExpanded: () => unknown;
-  toggleSettings: () => void;
+  toggleSettings: (open: boolean) => void;
   pauseVoiceNotePlayer: () => void;
 };
 
@@ -199,6 +200,7 @@ function ActiveCallManager({
   getIsSharingPhoneNumberWithEverybody,
   getGroupCallVideoFrameSource,
   getPresentingSources,
+  logBookmark,
   me,
   openSystemPreferencesAction,
   renderCallingParticipantMenu,
@@ -246,20 +248,8 @@ function ActiveCallManager({
     // pause any voice note playback
     pauseVoiceNotePlayer();
 
-    startCall({
-      callMode: activeCall.callMode,
-      conversationId: conversation.id,
-      hasLocalAudio,
-      hasLocalVideo,
-    });
-  }, [
-    startCall,
-    activeCall.callMode,
-    conversation.id,
-    hasLocalAudio,
-    hasLocalVideo,
-    pauseVoiceNotePlayer,
-  ]);
+    startCall({ conversationId: conversation.id });
+  }, [startCall, conversation.id, pauseVoiceNotePlayer]);
 
   // For caching screenshare frames which update slowly, between Pip and CallScreen.
   const imageDataCache = useRef<CallingImageDataCache>(new Map());
@@ -487,6 +477,7 @@ function ActiveCallManager({
         i18n={i18n}
         imageDataCache={imageDataCache}
         isCallLinkAdmin={isCallLinkAdmin}
+        logBookmark={logBookmark}
         me={me}
         openSystemPreferencesAction={openSystemPreferencesAction}
         renderCallingParticipantMenu={renderCallingParticipantMenu}
@@ -512,14 +503,15 @@ function ActiveCallManager({
         toggleSelfViewExpanded={toggleSelfViewExpanded}
         toggleSettings={toggleSettings}
       />
-      {presentingSourcesAvailable && presentingSourcesAvailable.length ? (
-        <CallingSelectPresentingSourcesModal
-          i18n={i18n}
-          presentingSourcesAvailable={presentingSourcesAvailable}
-          selectPresentingSource={selectPresentingSource}
-          cancelPresenting={cancelPresenting}
-        />
-      ) : null}
+      {presentingSourcesAvailable &&
+        presentingSourcesAvailable.length !== 0 && (
+          <CallingSelectPresentingSourcesModal
+            i18n={i18n}
+            sources={presentingSourcesAvailable}
+            onSourceSelect={selectPresentingSource}
+            onCancel={cancelPresenting}
+          />
+        )}
       {settingsDialogOpen && renderDeviceSelection()}
       {showParticipantsList &&
         (activeCall.callMode === CallMode.Adhoc && callLink ? (
@@ -573,6 +565,7 @@ export function CallManager({
   i18n,
   isOnline,
   getIsSharingPhoneNumberWithEverybody,
+  logBookmark,
   me,
   notifyForCall,
   openSystemPreferencesAction,
@@ -691,6 +684,7 @@ export function CallManager({
           getIsSharingPhoneNumberWithEverybody={
             getIsSharingPhoneNumberWithEverybody
           }
+          logBookmark={logBookmark}
           me={me}
           openSystemPreferencesAction={openSystemPreferencesAction}
           pauseVoiceNotePlayer={pauseVoiceNotePlayer}

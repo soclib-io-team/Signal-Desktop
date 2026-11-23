@@ -4,7 +4,7 @@
 import type { AttachmentBackfillResponseSyncEvent } from '../../textsecure/messageReceiverEvents.std.ts';
 import { MessageSender } from '../../textsecure/SendMessage.preload.ts';
 import { createLogger } from '../../logging/log.std.ts';
-import type { ReadonlyMessageAttributesType } from '../../model-types.d.ts';
+import type { ReadonlyMessageAttributesType } from '../../model-types.std.ts';
 import type { AttachmentType } from '../../types/Attachment.std.ts';
 import {
   isDownloading,
@@ -20,9 +20,7 @@ import { APPLICATION_OCTET_STREAM } from '../../types/MIME.std.ts';
 import {
   getConversationIdentifier,
   getAddressableMessage,
-  getConversationFromTarget,
-  getMessageQueryFromTarget,
-  findMatchingMessage,
+  findMessageFromTarget,
 } from '../../util/syncIdentifiers.preload.ts';
 import { strictAssert } from '../../util/assert.std.ts';
 import { drop } from '../../util/drop.std.ts';
@@ -39,10 +37,11 @@ import { MessageModel } from '../../models/messages.preload.ts';
 import { getMessageById } from '../../messages/getMessageById.preload.ts';
 import { addAttachmentToMessage } from '../../messageModifiers/AttachmentDownloads.preload.ts';
 import { SignalService as Proto } from '../../protobuf/index.std.ts';
-import * as RemoteConfig from '../../RemoteConfig.dom.ts';
+import * as RemoteConfig from '../../RemoteConfig.std.ts';
 import { isTestOrMockEnvironment } from '../../environment.std.ts';
 import { BackfillFailureModalKind } from '../../components/BackfillFailureModal.dom.tsx';
 import { markAttachmentAsErrored } from '../../util/attachments/markAttachmentAsErrored.std.ts';
+import { isSignalConversation } from '../../util/isSignalConversation.dom.ts';
 
 const log = createLogger('attachmentBackfill');
 
@@ -82,6 +81,16 @@ export class AttachmentBackfill {
       return;
     }
 
+    const convo = window.ConversationController.get(message.conversationId);
+    strictAssert(convo != null, 'Missing message conversation');
+
+    if (isSignalConversation(convo.attributes)) {
+      log.info(
+        'attachmentBackfill: Signal conversation; not sending sync request'
+      );
+      return;
+    }
+
     const existingTimer = this.#pendingRequests.get(message.id);
     if (existingTimer != null) {
       return;
@@ -91,9 +100,6 @@ export class AttachmentBackfill {
     if (addr == null) {
       throw new Error('No address for message');
     }
-
-    const convo = window.ConversationController.get(message.conversationId);
-    strictAssert(convo != null, 'Missing message conversation');
 
     this.#pendingRequests.set(
       message.id,
@@ -125,16 +131,7 @@ export class AttachmentBackfill {
       AttachmentData: { Status },
     } = Proto.SyncMessage.AttachmentBackfillResponse;
 
-    const { targetMessage, targetConversation } = response;
-
-    const convo = getConversationFromTarget(targetConversation);
-    if (convo == null) {
-      log.error(`${logId}: conversation not found`);
-      return;
-    }
-
-    const query = getMessageQueryFromTarget(targetMessage);
-    const attributes = await findMatchingMessage(convo.id, query);
+    const attributes = await findMessageFromTarget(response);
     if (attributes == null) {
       log.error(`${logId}: message not found`);
       return;
@@ -296,6 +293,7 @@ export class AttachmentBackfill {
 
           changeCount += 1;
           updatedAttachments[index] = markAttachmentAsErrored(
+            // @ts-expect-error - broken after renaming model-types
             existing,
             'backfill-terminal-error'
           );

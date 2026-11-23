@@ -8,6 +8,7 @@ import {
   useEffect,
   useMemo,
   useLayoutEffect,
+  type FocusEvent,
   type RefObject,
   type JSX,
 } from 'react';
@@ -20,7 +21,6 @@ import { missingCaseError } from '../util/missingCaseError.std.ts';
 import { isGroupOrAdhocActiveCall } from '../util/isGroupOrAdhocCall.std.ts';
 import { useActivateSpeakerViewOnPresenting } from '../hooks/useActivateSpeakerViewOnPresenting.std.ts';
 import { CallMode } from '../types/CallDisposition.std.ts';
-import { TooltipPlacement } from './Tooltip.dom.tsx';
 import { CallingButton, CallingButtonType } from './CallingButton.dom.tsx';
 import { CallingPipRemoteVideo } from './CallingPipRemoteVideo.dom.tsx';
 import { CallBackgroundBlur } from './CallBackgroundBlur.dom.tsx';
@@ -34,7 +34,7 @@ import type { SetRendererCanvasType } from '../state/ducks/calling.preload.ts';
 import type { CallingImageDataCache } from './CallManager.dom.tsx';
 import type { ConversationType } from '../state/ducks/conversations.preload.ts';
 import { Avatar, AvatarSize } from './Avatar.dom.tsx';
-import { AvatarColors } from '../types/Colors.std.ts';
+import { AvatarColors } from '../types/Avatar.std.ts';
 import type { SetLocalPreviewContainerType } from '../services/calling.preload.ts';
 import { usePreviousDeprecated } from '../hooks/usePrevious.std.ts';
 import type { SizeCallbackType } from '../calling/VideoSupport.preload.ts';
@@ -399,11 +399,26 @@ export function CallingPip({
     setControlsHover(false);
   }, [setControlsHover]);
 
+  const [focusWithin, setFocusWithin] = useState(false);
+  const onFocus = useCallback(() => {
+    setFocusWithin(true);
+    setShowControls(true);
+  }, []);
+  const onBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
+    if (
+      event.relatedTarget instanceof Node &&
+      event.currentTarget.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    setFocusWithin(false);
+  }, []);
+
   useEffect(() => {
     if (!showControls) {
       return;
     }
-    if (controlsHover) {
+    if (controlsHover || focusWithin) {
       return;
     }
 
@@ -411,7 +426,7 @@ export function CallingPip({
       setShowControls(false);
     }, 2000);
     return clearTimeout.bind(null, timer);
-  }, [showControls, controlsHover, setShowControls]);
+  }, [showControls, controlsHover, focusWithin, setShowControls]);
 
   const localVideoClassName = activeCall.presentingSource
     ? 'module-calling-pip__video--local-presenting'
@@ -535,7 +550,7 @@ export function CallingPip({
           </>
         ) : (
           <CallBackgroundBlur avatarUrl={me.avatarUrl}>
-            <div className="module-calling-pip__video--avatar">
+            <div>
               <Avatar
                 avatarPlaceholderGradient={me.avatarPlaceholderGradient}
                 avatarUrl={me.avatarUrl}
@@ -573,11 +588,17 @@ export function CallingPip({
   }
 
   return (
-    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       className="module-calling-pip"
+      role="region"
+      aria-label={i18n('icu:CallingPip__RegionLabel', {
+        conversationTitle: activeCall.conversation.title,
+      })}
       onMouseEnter={onMouseEnter}
       onMouseMove={onMouseMove}
+      onFocus={onFocus}
+      onBlur={onBlur}
       onMouseDown={ev => {
         const node = videoContainerRef.current;
         if (!node) {
@@ -647,7 +668,6 @@ export function CallingPip({
           onMouseEnter={onControlsMouseEnter}
           onMouseLeave={onControlsMouseLeave}
           onClick={togglePip}
-          tooltipDirection={TooltipPlacement.Top}
         />
       </div>
       {raisedHandsCount || callJoinRequests ? (
@@ -695,7 +715,6 @@ export function CallingPip({
             onMouseEnter={onControlsMouseEnter}
             onMouseLeave={onControlsMouseLeave}
             onClick={toggleVideo}
-            tooltipDirection={TooltipPlacement.Top}
           />
         </div>
         <div className="module-calling-pip__actions__button module-calling-pip__actions__middle-button">
@@ -705,7 +724,6 @@ export function CallingPip({
             onMouseEnter={onControlsMouseEnter}
             onMouseLeave={onControlsMouseLeave}
             onClick={toggleAudio}
-            tooltipDirection={TooltipPlacement.Top}
           />
         </div>
         <div className="module-calling-pip__actions__button">
@@ -715,7 +733,6 @@ export function CallingPip({
             onMouseEnter={onControlsMouseEnter}
             onMouseLeave={onControlsMouseLeave}
             onClick={hangUp}
-            tooltipDirection={TooltipPlacement.Top}
           />
         </div>
         <div className="module-calling-pip__actions__spacer" />

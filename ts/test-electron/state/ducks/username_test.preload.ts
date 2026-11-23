@@ -17,7 +17,7 @@ import {
   UsernameReservationError,
 } from '../../../state/ducks/usernameEnums.std.ts';
 import { actions } from '../../../state/ducks/username.preload.ts';
-import { ToastType } from '../../../types/Toast.dom.tsx';
+import { ToastType } from '../../../types/Toast.std.ts';
 import { noopAction } from '../../../state/ducks/noop.std.ts';
 import { reducer } from '../../../state/reducer.preload.ts';
 import {
@@ -111,6 +111,7 @@ describe('electron/state/ducks/username', () => {
     it('should dispatch correct actions after delay', async () => {
       const clock = sandbox.useFakeTimers({
         now: 0,
+        toFake: ['setTimeout', 'clearTimeout'],
       });
 
       const doReserveUsername = sinon.stub().resolves(DEFAULT_RESERVATION);
@@ -120,7 +121,7 @@ describe('electron/state/ducks/username', () => {
         nickname: 'test',
         doReserveUsername,
         delay: 1000,
-      })(dispatch, () => emptyState, null);
+      })(dispatch, () => emptyState);
 
       await clock.tickAsync(1000);
       assert.strictEqual(clock.now, 1000);
@@ -291,7 +292,7 @@ describe('electron/state/ducks/username', () => {
 
       actions.confirmUsername({
         doConfirmUsername,
-      })(dispatch, () => stateWithReservation, null);
+      })(dispatch, () => stateWithReservation);
 
       sinon.assert.calledOnce(dispatch);
       sinon.assert.calledWith(
@@ -409,7 +410,7 @@ describe('electron/state/ducks/username', () => {
       actions.deleteUsername({
         doDeleteUsername,
         username: 'test',
-      })(dispatch, () => emptyState, null);
+      })(dispatch, () => emptyState);
 
       sinon.assert.calledOnce(dispatch);
       sinon.assert.calledWith(
@@ -429,7 +430,7 @@ describe('electron/state/ducks/username', () => {
       actions.deleteUsername({
         doDeleteUsername,
         username: 'test',
-      })(dispatch, () => emptyState, null);
+      })(dispatch, () => emptyState);
 
       await clock.runToLastAsync();
 

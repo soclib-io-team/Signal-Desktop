@@ -11,7 +11,7 @@ import { singleProtoJobQueue } from '../jobs/singleProtoJobQueue.preload.ts';
 import { strictAssert } from '../util/assert.std.ts';
 import { SECOND } from '../util/durations/index.std.ts';
 import { sleep } from '../util/sleep.std.ts';
-import { getMinNickname, getMaxNickname } from '../util/Username.dom.ts';
+import { getMinNickname, getMaxNickname } from '../util/Username.std.ts';
 import { bytesToUuid, uuidToBytes } from '../util/uuidToBytes.std.ts';
 import type { UsernameReservationType } from '../types/Username.std.ts';
 import {
@@ -33,7 +33,6 @@ import {
 } from '../textsecure/WebAPI.preload.ts';
 import type { ResolveUsernameByLinkOptionsType } from '../textsecure/WebAPI.preload.ts';
 import { HTTPError } from '../types/HTTPError.std.ts';
-import { findRetryAfterTimeFromError } from '../jobs/helpers/findRetryAfterTimeFromError.std.ts';
 import * as Bytes from '../Bytes.std.ts';
 import { runStorageServiceUploadJob } from './storage.preload.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
@@ -276,11 +275,8 @@ export async function confirmUsername(
       const newLink = usernames.createUsernameLink(username);
       ({ entropy } = newLink);
 
-      const proof = usernames.generateProof(username);
-
       ({ usernameLinkHandle: serverIdString } = await doConfirmUsername({
-        hash,
-        proof,
+        username,
         encryptedUsername: newLink.encryptedUsername,
         abortSignal,
       }));
@@ -295,19 +291,6 @@ export async function confirmUsername(
     await itemStorage.remove('usernameCorrupted');
     await itemStorage.remove('usernameLinkCorrupted');
   } catch (error) {
-    if (error instanceof HTTPError) {
-      if (error.code === 413 || error.code === 429) {
-        const time = findRetryAfterTimeFromError(error);
-        log.warn(`confirmUsername: got ${error.code}, waiting ${time}ms`);
-        await sleep(time, abortSignal);
-
-        return confirmUsername(reservation, abortSignal);
-      }
-
-      if (error.code === 409 || error.code === 410) {
-        return ConfirmUsernameResult.ConflictOrGone;
-      }
-    }
     if (error instanceof LibSignalErrorBase) {
       if (error.is(ErrorCode.RateLimitedError)) {
         const time = error.retryAfterSecs * SECOND;
@@ -315,6 +298,13 @@ export async function confirmUsername(
         await sleep(time, abortSignal);
 
         return confirmUsername(reservation, abortSignal);
+      }
+
+      if (
+        error.is(ErrorCode.UsernameReservationNotFound) ||
+        error.is(ErrorCode.UsernameNotAvailable)
+      ) {
+        return ConfirmUsernameResult.ConflictOrGone;
       }
 
       if (error.is(ErrorCode.UsernameNotSet)) {

@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import lodash from 'lodash';
+import { v4 as generateUuid } from 'uuid';
 import { SearchInput } from './SearchInput.dom.tsx';
 import { filterAndSortConversations } from '../util/filterAndSortConversations.std.ts';
 import type { ConversationType } from '../state/ducks/conversations.preload.ts';
@@ -19,13 +20,17 @@ import {
   EditMyStoryPrivacy,
   Page as StoriesSettingsPage,
 } from './StoriesSettingsModal.dom.tsx';
-import type { StoryDistributionListWithMembersDataType } from '../types/Stories.std.ts';
+import type {
+  StoryDistributionListWithMembersDataType,
+  StoryDraftAttachmentType,
+} from '../types/Stories.std.ts';
+import type { AttachmentType } from '../types/Attachment.std.ts';
 import type { StoryDistributionIdString } from '../types/StoryDistributionId.std.ts';
 import type { ServiceIdString } from '../types/ServiceId.std.ts';
+import { TEXT_ATTACHMENT } from '../types/MIME.std.ts';
 import { Avatar, AvatarSize } from './Avatar.dom.tsx';
-import { Button, ButtonSize, ButtonVariant } from './Button.dom.tsx';
+import { Button, ButtonVariant } from './Button.dom.tsx';
 import { Checkbox } from './Checkbox.dom.tsx';
-import { ContextMenu } from './ContextMenu.dom.tsx';
 import {
   MY_STORY_ID,
   getStoryDistributionListName,
@@ -35,22 +40,24 @@ import { PagedModal, ModalPage } from './Modal.dom.tsx';
 import { StoryDistributionListName } from './StoryDistributionListName.dom.tsx';
 import { isNotNil } from '../util/isNotNil.std.ts';
 import { StoryImage } from './StoryImage.dom.tsx';
-import type { AttachmentType } from '../types/Attachment.std.ts';
 import { useConfirmDiscard } from '../hooks/useConfirmDiscard.dom.tsx';
 import { getStoryBackground } from '../util/getStoryBackground.std.ts';
 import {
-  makeObjectUrl,
-  revokeObjectUrl,
-} from '../types/VisualAttachment.dom.ts';
+  getLocalAttachmentUrl,
+  AttachmentDisposition,
+} from '../util/getLocalAttachmentUrl.std.ts';
 import { UserText } from './UserText.dom.tsx';
 import { Theme } from '../util/theme.std.ts';
 import { strictAssert } from '../util/assert.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
+import { AxoButton } from '../axo/AxoButton.dom.tsx';
+import { AxoContextMenu } from '../axo/menus/AxoContextMenu.dom.tsx';
+import { AxoDropdownMenu } from '../axo/menus/AxoDropdownMenu.dom.tsx';
 
 const { noop, sortBy } = lodash;
 
 export type PropsType = {
-  draftAttachment: AttachmentType;
+  draftAttachment: StoryDraftAttachmentType;
   candidateConversations: Array<ConversationType>;
   distributionLists: Array<StoryDistributionListWithMembersDataType>;
   getPreferredBadge: PreferredBadgeSelectorType;
@@ -285,24 +292,12 @@ export function SendStoryModal({
     selectedNames = selectedStoryNames.join(', ');
   }
 
-  const [objectUrl, setObjectUrl] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    let url: undefined | string;
-
-    if (draftAttachment.url) {
-      // oxlint-disable-next-line react/set-state-in-effect
-      setObjectUrl(draftAttachment.url);
-    } else if (draftAttachment.data) {
-      url = makeObjectUrl(draftAttachment.data, draftAttachment.contentType);
-      setObjectUrl(url);
-    }
-    return () => {
-      if (url) {
-        revokeObjectUrl(url);
-      }
-    };
-  }, [setObjectUrl, draftAttachment]);
+  let url: string | undefined;
+  if (draftAttachment.type === 'media' && !draftAttachment.attachment.pending) {
+    url = getLocalAttachmentUrl(draftAttachment.attachment, {
+      disposition: AttachmentDisposition.Draft,
+    });
+  }
 
   const modalCommonProps: Pick<ModalPropsType, 'hasXButton' | 'i18n'> = {
     hasXButton: true,
@@ -530,7 +525,7 @@ export function SendStoryModal({
       <ModalPage
         modalName="SendStoryModal__choose-groups"
         title={i18n('icu:SendStoryModal__choose-groups')}
-        moduleClassName="SendStoryModal"
+        className="SendStoryModal"
         modalFooter={footer}
         onClose={handleClose}
         {...modalCommonProps}
@@ -539,7 +534,6 @@ export function SendStoryModal({
           disabled={groupConversations.length === 0}
           i18n={i18n}
           placeholder={i18n('icu:contactSearchPlaceholder')}
-          moduleClassName="StoriesSettingsModal__search"
           onChange={event => {
             setSearchTerm(event.target.value);
           }}
@@ -551,7 +545,7 @@ export function SendStoryModal({
               checked={chosenGroupIds.has(group.id)}
               key={group.id}
               label={group.title}
-              moduleClassName="SendStoryModal__distribution-list"
+              className="SendStoryModal__distribution-list"
               name="SendStoryModal__distribution-list"
               onChange={(value: boolean) => {
                 if (group.announcementsOnly && !group.areWeAdmin) {
@@ -630,10 +624,20 @@ export function SendStoryModal({
       </>
     );
 
-    const attachment = {
-      ...draftAttachment,
-      url: objectUrl,
-    };
+    let attachment: AttachmentType;
+    if (draftAttachment.type === 'media') {
+      attachment = {
+        ...draftAttachment.attachment,
+        url,
+      };
+    } else {
+      attachment = {
+        contentType: TEXT_ATTACHMENT,
+        textAttachment: draftAttachment.attachment,
+        size: draftAttachment.attachment.text?.length || 0,
+        clientUuid: generateUuid(),
+      };
+    }
 
     // my stories always first, the rest sorted by recency
     const fullList = sortBy(
@@ -658,7 +662,7 @@ export function SendStoryModal({
           checked={selectedListIds.has(list.id)}
           key={list.id}
           label={getStoryDistributionListName(i18n, list.id, list.name)}
-          moduleClassName="SendStoryModal__distribution-list"
+          className="SendStoryModal__distribution-list"
           name="SendStoryModal__distribution-list"
           onChange={(value: boolean) => {
             if (
@@ -688,93 +692,83 @@ export function SendStoryModal({
           }}
         >
           {({ id, checkboxNode }) => (
-            <ContextMenu
-              i18n={i18n}
-              menuOptions={
-                list.id === MY_STORY_ID
-                  ? [
-                      {
-                        label: i18n('icu:StoriesSettings__context-menu'),
-                        icon: 'SendStoryModal__icon--delete',
-                        onClick: () => setListIdToEdit(list.id),
-                      },
-                    ]
-                  : [
-                      {
-                        label: i18n('icu:StoriesSettings__context-menu'),
-                        icon: 'SendStoryModal__icon--settings',
-                        onClick: () => setListIdToEdit(list.id),
-                      },
-                      {
-                        label: i18n('icu:SendStoryModal__delete-story'),
-                        icon: 'SendStoryModal__icon--delete',
-                        onClick: () => setConfirmDeleteList(list),
-                      },
-                    ]
-              }
-              moduleClassName="SendStoryModal__distribution-list-context"
-              onClick={noop}
-              popperOptions={{
-                placement: 'bottom',
-                strategy: 'absolute',
-              }}
-              theme={theme === ThemeType.dark ? Theme.Dark : Theme.Light}
-            >
-              <label
-                className="SendStoryModal__distribution-list__label"
-                htmlFor={id}
-              >
-                {list.id === MY_STORY_ID ? (
-                  <Avatar
-                    avatarUrl={me.avatarUrl}
-                    badge={undefined}
-                    color={me.color}
-                    conversationType={me.type}
-                    i18n={i18n}
-                    size={AvatarSize.THIRTY_TWO}
-                    storyRing={undefined}
-                    title={me.title}
-                  />
-                ) : (
-                  <span className="StoriesSettingsModal__list__avatar--custom" />
-                )}
-
-                <div className="SendStoryModal__distribution-list__info">
-                  <div className="SendStoryModal__distribution-list__name">
-                    <StoryDistributionListName
-                      i18n={i18n}
-                      id={list.id}
-                      name={list.name}
-                    />
-                  </div>
-
-                  <div className="SendStoryModal__distribution-list__description">
-                    {hasFirstStoryPostExperience && list.id === MY_STORY_ID ? (
-                      i18n('icu:SendStoryModal__choose-who-can-view')
+            <AxoContextMenu.Root>
+              <AxoContextMenu.Trigger>
+                <div className="SendStoryModal__distribution-list-context">
+                  <label
+                    className="SendStoryModal__distribution-list__label"
+                    htmlFor={id}
+                  >
+                    {list.id === MY_STORY_ID ? (
+                      <Avatar
+                        avatarUrl={me.avatarUrl}
+                        badge={undefined}
+                        color={me.color}
+                        conversationType={me.type}
+                        i18n={i18n}
+                        size={AvatarSize.THIRTY_TWO}
+                        storyRing={undefined}
+                        title={me.title}
+                      />
                     ) : (
-                      <>
-                        <span className="SendStoryModal__rtl-span">
-                          {list.id === MY_STORY_ID
-                            ? getI18nForMyStory(list, i18n)
-                            : i18n('icu:SendStoryModal__custom-story')}
-                        </span>
-                        <span className="SendStoryModal__rtl-span">
-                          &nbsp;&middot;&nbsp;
-                        </span>
-                        <span className="SendStoryModal__rtl-span">
-                          {list.isBlockList && list.members.length > 0
-                            ? i18n('icu:SendStoryModal__excluded', {
-                                count: list.members.length,
-                              })
-                            : getListViewers(list, i18n, signalConnections)}
-                        </span>
-                      </>
+                      <span className="StoriesSettingsModal__list__avatar--custom" />
                     )}
-                  </div>
+
+                    <div className="SendStoryModal__distribution-list__info">
+                      <div className="SendStoryModal__distribution-list__name">
+                        <StoryDistributionListName
+                          i18n={i18n}
+                          id={list.id}
+                          name={list.name}
+                        />
+                      </div>
+
+                      <div className="SendStoryModal__distribution-list__description">
+                        {hasFirstStoryPostExperience &&
+                        list.id === MY_STORY_ID ? (
+                          i18n('icu:SendStoryModal__choose-who-can-view')
+                        ) : (
+                          <>
+                            <span className="SendStoryModal__rtl-span">
+                              {list.id === MY_STORY_ID
+                                ? getI18nForMyStory(list, i18n)
+                                : i18n('icu:SendStoryModal__custom-story')}
+                            </span>
+                            <span className="SendStoryModal__rtl-span">
+                              &nbsp;&middot;&nbsp;
+                            </span>
+                            <span className="SendStoryModal__rtl-span">
+                              {list.isBlockList && list.members.length > 0
+                                ? i18n('icu:SendStoryModal__excluded', {
+                                    count: list.members.length,
+                                  })
+                                : getListViewers(list, i18n, signalConnections)}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                  {checkboxNode}
                 </div>
-              </label>
-              {checkboxNode}
-            </ContextMenu>
+              </AxoContextMenu.Trigger>
+              <AxoContextMenu.Content>
+                <AxoContextMenu.Item
+                  symbol="settings"
+                  onSelect={() => setListIdToEdit(list.id)}
+                >
+                  {i18n('icu:StoriesSettings__context-menu')}
+                </AxoContextMenu.Item>
+                {list.id !== MY_STORY_ID && (
+                  <AxoContextMenu.Item
+                    symbol="trash"
+                    onSelect={() => setConfirmDeleteList(list)}
+                  >
+                    {i18n('icu:SendStoryModal__delete-story')}
+                  </AxoContextMenu.Item>
+                )}
+              </AxoContextMenu.Content>
+            </AxoContextMenu.Root>
           )}
         </Checkbox>
       );
@@ -786,7 +780,7 @@ export function SendStoryModal({
           checked={selectedGroupIds.has(group.id)}
           key={group.id}
           label={group.title}
-          moduleClassName="SendStoryModal__distribution-list"
+          className="SendStoryModal__distribution-list"
           name="SendStoryModal__distribution-list"
           onChange={(value: boolean) => {
             if (!group.memberships) {
@@ -821,60 +815,56 @@ export function SendStoryModal({
           }}
         >
           {({ id, checkboxNode }) => (
-            <ContextMenu
-              i18n={i18n}
-              menuOptions={[
-                {
-                  label: i18n('icu:SendStoryModal__delete-story'),
-                  icon: 'SendStoryModal__icon--delete',
-                  onClick: () => setConfirmRemoveGroupId(group.id),
-                },
-              ]}
-              moduleClassName="SendStoryModal__distribution-list-context"
-              onClick={noop}
-              popperOptions={{
-                placement: 'bottom',
-                strategy: 'absolute',
-              }}
-              theme={theme === ThemeType.dark ? Theme.Dark : Theme.Light}
-            >
-              <label
-                className="SendStoryModal__distribution-list__label"
-                htmlFor={id}
-              >
-                <Avatar
-                  avatarUrl={group.avatarUrl}
-                  badge={undefined}
-                  color={group.color}
-                  conversationType={group.type}
-                  i18n={i18n}
-                  size={AvatarSize.THIRTY_TWO}
-                  storyRing={group.hasStories}
-                  title={group.title}
-                />
+            <AxoContextMenu.Root>
+              <AxoContextMenu.Trigger>
+                <div className="SendStoryModal__distribution-list-context">
+                  <label
+                    className="SendStoryModal__distribution-list__label"
+                    htmlFor={id}
+                  >
+                    <Avatar
+                      avatarUrl={group.avatarUrl}
+                      badge={undefined}
+                      color={group.color}
+                      conversationType={group.type}
+                      i18n={i18n}
+                      size={AvatarSize.THIRTY_TWO}
+                      storyRing={group.hasStories}
+                      title={group.title}
+                    />
 
-                <div className="SendStoryModal__distribution-list__info">
-                  <div className="SendStoryModal__distribution-list__name">
-                    <UserText text={group.title} />
-                  </div>
+                    <div className="SendStoryModal__distribution-list__info">
+                      <div className="SendStoryModal__distribution-list__name">
+                        <UserText text={group.title} />
+                      </div>
 
-                  <div className="SendStoryModal__distribution-list__description">
-                    <span className="SendStoryModal__rtl-span">
-                      {i18n('icu:SendStoryModal__group-story')}
-                    </span>
-                    <span className="SendStoryModal__rtl-span">
-                      &nbsp;&middot;&nbsp;
-                    </span>
-                    <span className="SendStoryModal__rtl-span">
-                      {i18n('icu:ConversationHero--members', {
-                        count: group.membersCount ?? 0,
-                      })}
-                    </span>
-                  </div>
+                      <div className="SendStoryModal__distribution-list__description">
+                        <span className="SendStoryModal__rtl-span">
+                          {i18n('icu:SendStoryModal__group-story')}
+                        </span>
+                        <span className="SendStoryModal__rtl-span">
+                          &nbsp;&middot;&nbsp;
+                        </span>
+                        <span className="SendStoryModal__rtl-span">
+                          {i18n('icu:ConversationHero--members', {
+                            count: group.membersCount ?? 0,
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </label>
+                  {checkboxNode}
                 </div>
-              </label>
-              {checkboxNode}
-            </ContextMenu>
+              </AxoContextMenu.Trigger>
+              <AxoContextMenu.Content>
+                <AxoContextMenu.Item
+                  symbol="trash"
+                  onSelect={() => setConfirmRemoveGroupId(group.id)}
+                >
+                  {i18n('icu:SendStoryModal__delete-story')}
+                </AxoContextMenu.Item>
+              </AxoContextMenu.Content>
+            </AxoContextMenu.Root>
           )}
         </Checkbox>
       );
@@ -884,7 +874,7 @@ export function SendStoryModal({
       <ModalPage
         modalName="SendStoryModal__title"
         title={i18n('icu:SendStoryModal__title')}
-        moduleClassName="SendStoryModal"
+        className="SendStoryModal"
         modalFooter={footer}
         onClose={handleClose}
         {...modalCommonProps}
@@ -899,7 +889,7 @@ export function SendStoryModal({
             queueStoryDownload={noop}
             storyId="story-id"
             label="label"
-            moduleClassName="SendStoryModal__story"
+            className="SendStoryModal__story"
             attachment={attachment}
             onMediaPlaybackStart={onMediaPlaybackStart}
           />
@@ -908,51 +898,38 @@ export function SendStoryModal({
           <div className="SendStoryModal__top-bar-title">
             {i18n('icu:stories')}
           </div>
-          <div className="SendStoryModal__top-bar-actions">
-            <ContextMenu
-              aria-label={i18n('icu:SendStoryModal__new')}
-              i18n={i18n}
-              menuOptions={[
-                {
-                  label: i18n('icu:SendStoryModal__new-custom--title'),
-                  description: i18n(
+          <div>
+            <AxoDropdownMenu.Root>
+              <AxoDropdownMenu.Trigger>
+                <AxoButton.Root
+                  variant="strong-secondary"
+                  size="sm"
+                  symbol="plus"
+                >
+                  {i18n('icu:SendStoryModal__new')}
+                </AxoButton.Root>
+              </AxoDropdownMenu.Trigger>
+              <AxoDropdownMenu.Content>
+                <AxoDropdownMenu.Item
+                  symbol="stories"
+                  description={i18n(
                     'icu:SendStoryModal__new-custom--description'
-                  ),
-                  icon: 'SendStoryModal__icon--custom',
-                  onClick: () => setPage(Page.ChooseViewers),
-                },
-                {
-                  label: i18n('icu:SendStoryModal__new-group--title'),
-                  description: i18n(
+                  )}
+                  onSelect={() => setPage(Page.ChooseViewers)}
+                >
+                  {i18n('icu:SendStoryModal__new-custom--title')}
+                </AxoDropdownMenu.Item>
+                <AxoDropdownMenu.Item
+                  symbol="group"
+                  description={i18n(
                     'icu:SendStoryModal__new-group--description'
-                  ),
-                  icon: 'SendStoryModal__icon--group',
-                  onClick: () => setPage(Page.ChooseGroups),
-                },
-              ]}
-              moduleClassName="SendStoryModal__new-story"
-              popperOptions={{
-                placement: 'bottom',
-                strategy: 'absolute',
-              }}
-              theme={theme === ThemeType.dark ? Theme.Dark : Theme.Light}
-            >
-              {({ onClick, onKeyDown, ref, menuNode }) => (
-                <div>
-                  <Button
-                    ref={ref}
-                    className="SendStoryModal__new-story__button"
-                    variant={ButtonVariant.Secondary}
-                    size={ButtonSize.Small}
-                    onClick={onClick}
-                    onKeyDown={onKeyDown}
-                  >
-                    {i18n('icu:SendStoryModal__new')}
-                  </Button>
-                  {menuNode}
-                </div>
-              )}
-            </ContextMenu>
+                  )}
+                  onSelect={() => setPage(Page.ChooseGroups)}
+                >
+                  {i18n('icu:SendStoryModal__new-group--title')}
+                </AxoDropdownMenu.Item>
+              </AxoDropdownMenu.Content>
+            </AxoDropdownMenu.Root>
           </div>
         </div>
         {fullList.map(listOrGroup =>
@@ -988,7 +965,7 @@ export function SendStoryModal({
         title={null}
         description={i18n('icu:SendStoryModal__announcements-only')}
       >
-        <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+        <AxoConfirmDialog.Ok />
       </AxoConfirmDialog.Root>
 
       <AxoConfirmDialog.Root

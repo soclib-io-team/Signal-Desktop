@@ -17,11 +17,11 @@ import { shouldNeverBeCalled } from '../util/shouldNeverBeCalled.std.ts';
 import { useTheme } from '../hooks/useTheme.dom.ts';
 import { isSameDay } from '../util/timestamp.std.ts';
 import { TimelineDateHeader } from './conversation/TimelineDateHeader.dom.tsx';
-import { AxoContextMenu } from '../axo/AxoContextMenu.dom.tsx';
+import { AxoContextMenu } from '../axo/menus/AxoContextMenu.dom.tsx';
 import { drop } from '../util/drop.std.ts';
-import type { AxoMenuBuilder } from '../axo/AxoMenuBuilder.dom.tsx';
+import type { AxoMenuBuilder } from '../axo/menus/AxoMenuBuilder.dom.tsx';
 import { strictAssert } from '../util/assert.std.ts';
-import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 
 const { noop } = lodash;
 
@@ -43,7 +43,6 @@ const MESSAGE_DEFAULT_PROPS = {
   canDeleteForEveryone: false,
   canRetryDeleteForEveryone: false,
   retryDeleteForEveryone: shouldNeverBeCalled,
-  checkForAccount: shouldNeverBeCalled,
   clearSelectedMessage: shouldNeverBeCalled,
   clearTargetedMessage: shouldNeverBeCalled,
   containerWidthBreakpoint: WidthBreakpoint.Medium,
@@ -80,7 +79,7 @@ const MESSAGE_DEFAULT_PROPS = {
   showLightboxForViewOnceMedia: shouldNeverBeCalled,
   showMediaNoLongerAvailableToast: shouldNeverBeCalled,
   showTapToViewNotAvailableModal: shouldNeverBeCalled,
-  startConversation: shouldNeverBeCalled,
+  startConversationWithSharedContact: shouldNeverBeCalled,
   textDirection: TextDirection.Default,
   viewStory: shouldNeverBeCalled,
 };
@@ -122,9 +121,13 @@ export function EditHistoryMessagesModal({
 
   return (
     <AxoDialog.Root open onOpenChange={closeEditHistoryModal}>
-      <AxoDialog.Content size="md" escape="cancel-is-noop">
-        <AxoDialog.Header>
-          <AxoDialog.Title screenReaderOnly>
+      <AxoDialog.Content
+        size="md"
+        escape="cancel-is-noop"
+        disableMissingAriaDescriptionWarning
+      >
+        <AxoDialog.Header floating>
+          <AxoDialog.Title>
             {i18n('icu:EditHistoryMessagesModal__title')}
           </AxoDialog.Title>
           <AxoDialog.Close />
@@ -132,6 +135,7 @@ export function EditHistoryMessagesModal({
         <AxoDialog.Body>
           <div ref={containerElementRef} className="EditHistoryMessagesModal">
             <TimelineDateHeader
+              noPaddingTop
               i18n={i18n}
               timestamp={currentMessage.timestamp}
             />

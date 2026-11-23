@@ -7,6 +7,7 @@ import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import lodash from 'lodash';
 import { release as osRelease, tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
+import { createHash } from 'node:crypto';
 
 import config from 'config';
 import { FAILSAFE_SCHEMA, load as loadYaml } from 'js-yaml';
@@ -134,7 +135,7 @@ const AUTO_RETRY_DELAY = durations.DAY;
 export abstract class Updater {
   protected fileName: string | undefined;
 
-  protected version: string | undefined;
+  protected version = app.getVersion();
 
   protected cachedDifferentialData: DifferentialDownloadDataType | undefined;
 
@@ -399,7 +400,22 @@ export abstract class Updater {
       let downloadResult: DownloadUpdateResultType | undefined;
 
       try {
-        downloadResult = await this.#downloadUpdate(updateInfo, mode);
+        strictAssert(
+          gte(this.version, oldVersion),
+          'New version must be >= old version'
+        );
+        if (oldVersion === this.version) {
+          strictAssert(
+            checkType === CheckType.AllowSameVersion ||
+              checkType === CheckType.ForceDownload,
+            'Same version might be only used with AllowSameVersion or ForceDownload'
+          );
+          downloadResult = await this.#useLocalInstaller(updateInfo);
+        }
+
+        if (downloadResult == null) {
+          downloadResult = await this.#downloadUpdate(updateInfo, mode);
+        }
       } catch (error) {
         // Restore state in case of download error
         this.version = oldVersion;
@@ -762,9 +778,11 @@ export abstract class Updater {
   }
 
   async #downloadUpdate(
-    { fileName, sha512, differentialData, size }: UpdateInformationType,
+    info: UpdateInformationType,
     mode: DownloadMode
   ): Promise<DownloadUpdateResultType | undefined> {
+    const { fileName, differentialData, size } = info;
+
     const baseUrl = getUpdatesBase();
     const updateFileUrl = `${baseUrl}/${fileName}`;
 
@@ -777,12 +795,13 @@ export abstract class Updater {
     const blockMapUrl = `${baseUrl}/${blockMapFileName}`;
 
     let cacheDir = await createUpdateCacheDirIfNeeded();
-    const targetUpdatePath = join(cacheDir, fileName);
+    const targetFileName = getCachedUpdateFileName(info);
+    const targetUpdatePath = join(cacheDir, targetFileName);
 
     const tempDir = await createTempDir();
 
-    const tempUpdatePath = join(tempDir, fileName);
-    const tempBlockMapPath = join(tempDir, blockMapFileName);
+    const tempUpdatePath = join(tempDir, targetFileName);
+    const tempBlockMapPath = join(tempDir, getBlockMapFileName(targetFileName));
 
     // If true - we will attempt to install from a temporary directory.
     let tempPathFailover = false;
@@ -821,32 +840,6 @@ export abstract class Updater {
       }
 
       let gotUpdate = false;
-      if (!gotUpdate && (await pathExists(targetUpdatePath))) {
-        const checkResult = await checkIntegrity(targetUpdatePath, sha512);
-        if (checkResult.ok) {
-          this.logger.info(
-            `downloadUpdate: Not downloading update ${updateFileUrl}, ` +
-              'local file has the same hash'
-          );
-
-          // Move file into downloads directory
-          try {
-            await gracefulRename(this.logger, targetUpdatePath, tempUpdatePath);
-            gotUpdate = true;
-          } catch (error) {
-            this.logger.error(
-              'downloadUpdate: failed to move already downloaded file',
-              Errors.toLogFormat(error)
-            );
-          }
-        } else {
-          this.logger.error(
-            'downloadUpdate: integrity check failure',
-            checkResult.error
-          );
-        }
-      }
-
       const isDifferentialEnabled =
         differentialData && mode !== DownloadMode.FullOnly;
       if (!gotUpdate && isDifferentialEnabled) {
@@ -952,6 +945,52 @@ export abstract class Updater {
         await deleteTempDir(this.logger, tempDir);
       }
     }
+  }
+
+  async #useLocalInstaller(
+    info: UpdateInformationType
+  ): Promise<DownloadUpdateResultType | undefined> {
+    const { fileName, sha512 } = info;
+    const cacheDir = await createUpdateCacheDirIfNeeded();
+    const updateFileName = getCachedUpdateFileName(info);
+
+    const legacyFilePath = join(cacheDir, fileName);
+    const updateFilePath = join(cacheDir, updateFileName);
+
+    validatePath(cacheDir, updateFilePath);
+    validatePath(cacheDir, legacyFilePath);
+
+    const signatureFileName = getSignatureFileName(fileName);
+    const baseUrl = getUpdatesBase();
+    const signatureUrl = `${baseUrl}/${signatureFileName}`;
+    this.logger.info(`downloadUpdate: Downloading signature ${signatureUrl}`);
+    const signature = Buffer.from(
+      await got(signatureUrl, await getGotOptions()).text(),
+      'hex'
+    );
+
+    for (const path of [updateFilePath, legacyFilePath]) {
+      // oxlint-disable-next-line no-await-in-loop
+      if (!(await pathExists(path))) {
+        continue;
+      }
+
+      // oxlint-disable-next-line no-await-in-loop
+      const checkResult = await checkIntegrity(path, sha512);
+      if (!checkResult.ok) {
+        throw new Error(
+          `Invalid digest for local installer: ${checkResult.error}`
+        );
+      }
+
+      return {
+        updateFilePath: path,
+        signature,
+      };
+    }
+
+    // No cached updater available
+    return undefined;
   }
 
   async #downloadAndReport(
@@ -1207,6 +1246,14 @@ export async function getTempDir(): Promise<string> {
 function getUpdateCacheDir() {
   // We only use tmpdir() when this code is run outside of an Electron app (as in: tests)
   return app ? getUpdateCachePath(app.getPath('userData')) : tmpdir();
+}
+
+function getCachedUpdateFileName({
+  fileName,
+  version,
+}: UpdateInformationType): string {
+  const id = createHash('sha256').update(version).digest('hex');
+  return `${id}${extname(fileName)}`;
 }
 
 export async function createUpdateCacheDirIfNeeded(): Promise<string> {

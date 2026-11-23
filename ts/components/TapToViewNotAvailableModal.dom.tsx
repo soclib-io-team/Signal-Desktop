@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { JSX } from 'react';
 import type { LocalizerType } from '../types/Util.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 export type TapToViewNotAvailableModalData = {
   type: TapToViewNotAvailableType;
@@ -39,7 +39,7 @@ export function TapToViewNotAvailableModal(
           : i18n('icu:TapToViewNotAvailableModal__body--error', parameters)
       }
     >
-      <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+      <AxoConfirmDialog.Ok />
     </AxoConfirmDialog.Root>
   );
 }

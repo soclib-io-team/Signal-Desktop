@@ -10,7 +10,7 @@ import {
   encryptProfile,
   encryptProfileItemWithPadding,
 } from '../Crypto.node.ts';
-import type { AvatarUpdateType } from '../types/Avatar.std.ts';
+import type { ProfileAvatarChange } from '../types/Avatar.std.ts';
 import {
   deriveProfileKeyCommitment,
   deriveProfileKeyVersion,
@@ -20,7 +20,7 @@ import { itemStorage } from '../textsecure/Storage.preload.ts';
 
 export async function encryptProfileData(
   conversation: ConversationType,
-  { oldAvatar, newAvatar }: AvatarUpdateType
+  avatarChange: ProfileAvatarChange
 ): Promise<[ProfileRequestDataType, Uint8Array<ArrayBuffer> | undefined]> {
   const {
     aboutEmoji,
@@ -66,11 +66,10 @@ export async function encryptProfileData(
     keyBuffer
   );
 
-  const encryptedAvatarData = newAvatar
-    ? encryptProfile(newAvatar, keyBuffer)
-    : undefined;
-
-  const sameAvatar = Bytes.areEqual(oldAvatar, newAvatar);
+  const encryptedAvatarData =
+    avatarChange.type === 'update'
+      ? encryptProfile(avatarChange.avatar, keyBuffer)
+      : undefined;
 
   const profileData = {
     version: deriveProfileKeyVersion(profileKey, serviceId),
@@ -81,8 +80,8 @@ export async function encryptProfileData(
       .filter(badge => 'isVisible' in badge && badge.isVisible)
       .map(({ id }) => id),
     paymentAddress: itemStorage.get('paymentAddress') || null,
-    avatar: Boolean(newAvatar),
-    sameAvatar,
+    avatar: avatarChange.type !== 'clear',
+    sameAvatar: avatarChange.type === 'unchanged',
     commitment: deriveProfileKeyCommitment(profileKey, serviceId),
     phoneNumberSharing: Bytes.toBase64(encryptedPhoneNumberSharing),
   };

@@ -15,6 +15,7 @@ import { drop } from '../../util/drop.std.ts';
 import type { LookupConversationWithoutServiceIdActionsType } from '../../util/lookupConversationWithoutServiceId.preload.ts';
 import { Spinner } from '../Spinner.dom.tsx';
 import { Button } from '../Button.dom.tsx';
+import { NavSidebarBackButton } from '../NavSidebar.dom.tsx';
 
 export type LeftPaneFindByUsernamePropsType = {
   searchTerm: string;
@@ -58,14 +59,13 @@ export class LeftPaneFindByUsernameHelper extends LeftPaneHelper<LeftPaneFindByU
 
     return (
       <div className="module-left-pane__header__contents">
-        <button
-          aria-label={backButtonLabel}
-          className="module-left-pane__header__contents__back-button"
-          disabled={this.#isFetching()}
-          onClick={this.getBackAction({ startComposing })}
-          title={backButtonLabel}
-          type="button"
-        />
+        <div className="module-left-pane__header__contents__back-button">
+          <NavSidebarBackButton
+            label={backButtonLabel}
+            disabled={this.#isFetching()}
+            onClick={this.getBackAction({ startComposing })}
+          />
+        </div>
         <div className="module-left-pane__header__contents__text">
           {i18n('icu:LeftPaneFindByHelper__title--findByUsername')}
         </div>
@@ -103,7 +103,7 @@ export class LeftPaneFindByUsernameHelper extends LeftPaneHelper<LeftPaneFindByU
         hasSearchIcon={false}
         disabled={this.#isFetching()}
         i18n={i18n}
-        moduleClassName="LeftPaneFindByUsernameHelper__search-input"
+        className="LeftPaneFindByUsernameHelper__search-input"
         onChange={onChangeComposeSearchTerm}
         placeholder={placeholder}
         ref={focusRef}

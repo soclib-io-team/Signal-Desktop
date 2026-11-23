@@ -6,7 +6,7 @@ import { missingCaseError } from '../util/missingCaseError.std.ts';
 import { donationErrorTypeSchema } from '../types/Donations.std.ts';
 import type { LocalizerType } from '../types/Util.std.ts';
 import type { DonationErrorType } from '../types/Donations.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 export type PropsType = Readonly<{
   i18n: LocalizerType;
@@ -67,7 +67,7 @@ export function DonationErrorModal(props: PropsType): JSX.Element {
       title={title}
       description={body}
     >
-      <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+      <AxoConfirmDialog.Ok />
     </AxoConfirmDialog.Root>
   );
 }

@@ -28,8 +28,9 @@ import type {
 
 import type { SmartContactRendererType } from '../../groupChange.std.ts';
 import { renderChange } from '../../groupChange.std.ts';
-import { AxoConfirmDialog } from '../../axo/AxoConfirmDialog.dom.tsx';
-import { AxoDialog } from '../../axo/AxoDialog.dom.tsx';
+import { AxoConfirmDialog } from '../../axo/dialogs/AxoConfirmDialog.dom.tsx';
+import { AxoDialog } from '../../axo/dialogs/AxoDialog.dom.tsx';
+import { tw } from '../../axo/tw.dom.tsx';
 
 const { get } = lodash;
 
@@ -215,7 +216,9 @@ function GroupV2Detail({
             </AxoDialog.Header>
             <AxoDialog.Body>
               <AxoDialog.Description>
-                <GroupDescriptionText text={detail.description} />
+                <div className={tw('text-primary')}>
+                  <GroupDescriptionText text={detail.description} />
+                </div>
               </AxoDialog.Description>
             </AxoDialog.Body>
           </AxoDialog.Content>

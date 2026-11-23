@@ -10,17 +10,15 @@ import {
   type MouseEvent,
 } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import classnames from 'classnames';
+import classNames from 'classnames';
 import { changeDpiBlob } from 'changedpi';
 import lodash from 'lodash';
 
 import { SignalService as Proto } from '../protobuf/index.std.ts';
-import type { SaveAttachmentActionCreatorType } from '../state/ducks/conversations.preload.ts';
 import { UsernameLinkState } from '../state/ducks/usernameEnums.std.ts';
-import { ToastType } from '../types/Toast.dom.tsx';
-import type { ShowToastAction } from '../state/ducks/toast.preload.ts';
+import { ToastType } from '../types/Toast.std.ts';
+import type { ShowToastAction } from '../state/ducks/toast.dom.ts';
 import type { LocalizerType } from '../types/Util.std.ts';
-import { IMAGE_PNG } from '../types/MIME.std.ts';
 import { strictAssert } from '../util/assert.std.ts';
 import { drop } from '../util/drop.std.ts';
 import { splitText } from '../util/splitText.std.ts';
@@ -29,7 +27,7 @@ import { Button, ButtonVariant } from './Button.dom.tsx';
 import { Spinner } from './Spinner.dom.tsx';
 import { BrandedQRCode } from './BrandedQRCode.dom.tsx';
 import { useConfirmDiscard } from '../hooks/useConfirmDiscard.dom.tsx';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 const { noop } = lodash;
 
@@ -43,7 +41,10 @@ export type PropsType = Readonly<{
 
   setUsernameLinkColor: (colorId: number) => void;
   resetUsernameLink: () => void;
-  saveAttachment: SaveAttachmentActionCreatorType;
+  saveAttachmentToDisk: (options: {
+    data: { type: 'bytes'; bytes: Iterable<Uint8Array<ArrayBuffer>> };
+    name: string;
+  }) => void;
   showToast: ShowToastAction;
   onBack: () => void;
 }>;
@@ -72,8 +73,6 @@ const COLOR_MAP: ReadonlyMap<number, ColorMapEntryType> = new Map([
   [ColorEnum.PINK, { fg: '#bb617b', bg: '#f77099', tint: '#fef1f5' }],
   [ColorEnum.PURPLE, { fg: '#7651c5', bg: '#a183d4', tint: '#f5f3fb' }],
 ]);
-
-const CLASS = 'UsernameLinkEditor';
 
 export const PRINT_WIDTH = 424;
 export const PRINT_HEIGHT = 576;
@@ -326,8 +325,6 @@ function UsernameLinkColorRadio({
   isSelected,
   onSelect,
 }: UsernameLinkColorRadioPropsType): JSX.Element {
-  const className = `${CLASS}__colors__radio`;
-
   const onClick = useCallback(
     (e: MouseEvent) => {
       e.preventDefault();
@@ -352,8 +349,8 @@ function UsernameLinkColorRadio({
   return (
     <button
       ref={onRef}
-      className={classnames(className, {
-        [`${className}--white-bg`]: isWhiteBackground,
+      className={classNames('UsernameLinkEditor__colors__radio', {
+        'UsernameLinkEditor__colors__radio--white-bg': isWhiteBackground,
       })}
       type="button"
       aria-label={i18n('icu:UsernameLinkModalBody__color__radio', {
@@ -383,13 +380,11 @@ function UsernameLinkColors({
   onSave,
   onCancel,
 }: UsernameLinkColorsPropsType): JSX.Element {
-  const className = `${CLASS}__colors`;
-
   const normalizedValue = value === ColorEnum.UNKNOWN ? ColorEnum.BLUE : value;
 
   return (
-    <div className={className}>
-      <div className={`${className}__grid`}>
+    <div>
+      <div className="UsernameLinkEditor__colors__grid">
         {[...COLOR_MAP.entries()].map(([colorId, { fg, bg }], index) => {
           return (
             <UsernameLinkColorRadio
@@ -433,7 +428,7 @@ export function UsernameLinkEditor({
 
   setUsernameLinkColor,
   resetUsernameLink,
-  saveAttachment,
+  saveAttachmentToDisk,
   showToast,
 
   onBack,
@@ -508,14 +503,12 @@ export function UsernameLinkEditor({
         return;
       }
 
-      saveAttachment({
-        data: pngData,
-        fileName: 'signal-username-qr-code.png',
-        contentType: IMAGE_PNG,
-        size: pngData.length,
+      saveAttachmentToDisk({
+        data: { type: 'bytes', bytes: [pngData] },
+        name: 'signal-username-qr-code.png',
       });
     },
-    [saveAttachment, pngData]
+    [saveAttachmentToDisk, pngData]
   );
 
   const onStartColorChange = useCallback((e: MouseEvent) => {
@@ -643,9 +636,9 @@ export function UsernameLinkEditor({
 
   const info = (
     <>
-      <div className={classnames(`${CLASS}__actions`)}>
+      <div className="UsernameLinkEditor__actions">
         <button
-          className={`${CLASS}__actions__save`}
+          className="UsernameLinkEditor__actions__save"
           type="button"
           disabled={!link || isResettingLink}
           onClick={onSave}
@@ -655,7 +648,7 @@ export function UsernameLinkEditor({
         </button>
 
         <button
-          className={`${CLASS}__actions__color`}
+          className="UsernameLinkEditor__actions__color"
           type="button"
           onClick={onStartColorChange}
         >
@@ -664,17 +657,17 @@ export function UsernameLinkEditor({
         </button>
       </div>
 
-      <div className={classnames(`${CLASS}__link`)}>
+      <div className="UsernameLinkEditor__link">
         <button
-          className={classnames(`${CLASS}__link__icon`)}
+          className="UsernameLinkEditor__link__icon"
           type="button"
           disabled={!link || isResettingLink}
           onClick={onCopyLink}
           aria-label={i18n('icu:UsernameLinkModalBody__copy')}
         />
         <div
-          className={classnames(`${CLASS}__link__text`, {
-            [`${CLASS}__link__text--resetting`]: isResettingLink,
+          className={classNames('UsernameLinkEditor__link__text', {
+            'UsernameLinkEditor__link__text--resetting': isResettingLink,
           })}
         >
           {isResettingLink
@@ -683,12 +676,12 @@ export function UsernameLinkEditor({
         </div>
       </div>
 
-      <div className={classnames(`${CLASS}__help`)}>
+      <div className="UsernameLinkEditor__help">
         {i18n('icu:UsernameLinkModalBody__help')}
       </div>
 
       <button
-        className={classnames(`${CLASS}__reset`)}
+        className="UsernameLinkEditor__reset"
         type="button"
         onClick={onClickReset}
       >
@@ -701,7 +694,7 @@ export function UsernameLinkEditor({
   if (isReady && link) {
     linkImage = (
       <svg
-        className={`${CLASS}__card__qr__blotches`}
+        className="UsernameLinkEditor__card__qr__blotches"
         viewBox="0 0 16 16"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -710,38 +703,40 @@ export function UsernameLinkEditor({
       </svg>
     );
   } else if (usernameLinkState === UsernameLinkState.Error) {
-    linkImage = <i className={`${CLASS}__card__qr__error-icon`} />;
+    linkImage = <i className="UsernameLinkEditor__card__qr__error-icon" />;
   } else {
     linkImage = (
       <Spinner
-        moduleClassName={`${CLASS}__card__qr__spinner`}
+        className="UsernameLinkEditor__card__qr__spinner"
         svgSize="small"
       />
     );
   }
 
   return (
-    <div className={`${CLASS}__container`}>
-      <div className={CLASS}>
+    <div className="UsernameLinkEditor__container">
+      <div className="UsernameLinkEditor">
         <div
-          className={classnames(`${CLASS}__card`, {
-            [`${CLASS}__card--shadow`]: isWhiteBackground,
+          className={classNames('UsernameLinkEditor__card', {
+            'UsernameLinkEditor__card--shadow': isWhiteBackground,
           })}
           ref={onCardRef}
         >
-          <div className={`${CLASS}__card__qr`}>{linkImage}</div>
-          <div className={`${CLASS}__card__username`}>
+          <div className="UsernameLinkEditor__card__qr">{linkImage}</div>
+          <div className="UsernameLinkEditor__card__username">
             {showColors ? (
-              <div className={`${CLASS}__card__username__text`}>{username}</div>
+              <div className="UsernameLinkEditor__card__username__text">
+                {username}
+              </div>
             ) : (
               <button
-                className={`${CLASS}__card__username__copy__button`}
+                className="UsernameLinkEditor__card__username__copy__button"
                 type="button"
                 onClick={onCopyUsername}
                 aria-label={i18n('icu:UsernameLinkModalBody__copy')}
               >
                 <i />
-                <div className={`${CLASS}__card__username__text`}>
+                <div className="UsernameLinkEditor__card__username__text">
                   {username}
                 </div>
               </button>
@@ -767,7 +762,7 @@ export function UsernameLinkEditor({
 
         <AxoConfirmDialog.Root
           open={showError}
-          onOpenChange={onCloseError}
+          onCancel={onCloseError}
           // @ts-expect-error ConfirmationDialog migration: Needs title
           title={null}
           description={i18n('icu:UsernameLinkModalBody__error__text')}
@@ -788,7 +783,7 @@ export function UsernameLinkEditor({
           title={null}
           description={i18n('icu:UsernameLinkModalBody__recovered__text')}
         >
-          <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+          <AxoConfirmDialog.Ok />
         </AxoConfirmDialog.Root>
 
         {showColors ? (

@@ -12,7 +12,7 @@ import type {
 } from '../state/ducks/conversations.preload.ts';
 import { strictAssert } from '../util/assert.std.ts';
 import { safeParsePartial } from '../util/schemas.std.ts';
-import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 import { tw } from '../axo/tw.dom.tsx';
 import { AxoList } from '../axo/items/AxoList.dom.tsx';
 import { AxoFieldList } from '../axo/items/AxoFieldList.dom.tsx';
@@ -123,15 +123,11 @@ export function EditNicknameAndNoteModal({
         </AxoDialog.Header>
         <AxoDialog.Body padding="sm">
           <AxoDialog.Description>
-            <p
-              className={tw(
-                'mb-3 text-center type-body-small text-pretty text-secondary'
-              )}
-            >
+            <p className={tw('mb-3 text-center text-balance')}>
               {i18n('icu:EditNicknameAndNoteModal__Description')}
             </p>
           </AxoDialog.Description>
-          <div className={tw('mb-6 flex justify-center')}>
+          <div className={tw('mb-3 flex justify-center')}>
             <Avatar
               {...conversation}
               conversationType={conversation.type}
@@ -217,7 +213,7 @@ export function EditNicknameAndNoteModal({
         </AxoDialog.Body>
         <AxoDialog.Footer>
           <AxoDialog.Actions>
-            <AxoDialog.Action variant="strong-secondary" onClick={onClose}>
+            <AxoDialog.Action variant="subtle-secondary" onClick={onClose}>
               {i18n('icu:cancel')}
             </AxoDialog.Action>
             <AxoDialog.Action

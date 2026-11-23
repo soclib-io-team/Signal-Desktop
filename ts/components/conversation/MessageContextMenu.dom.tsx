@@ -3,8 +3,8 @@
 
 import { useRef, type ReactNode, type JSX } from 'react';
 import type { LocalizerType } from '../../types/I18N.std.ts';
-import { AxoMenuBuilder } from '../../axo/AxoMenuBuilder.dom.tsx';
-import { isInternalFeaturesEnabled } from '../../util/isInternalFeaturesEnabled.dom.ts';
+import { AxoMenuBuilder } from '../../axo/menus/AxoMenuBuilder.dom.tsx';
+import { isInternalFeaturesEnabled } from '../../util/isInternalFeaturesEnabled.std.ts';
 
 type MessageContextMenuProps = Readonly<{
   i18n: LocalizerType;
@@ -16,6 +16,7 @@ type MessageContextMenuProps = Readonly<{
   onDownload: (() => void) | null;
   onEdit: (() => void) | null;
   onReplyToMessage: (() => void) | null;
+  onReplyPrivately: (() => void) | null;
   onReact: (() => void) | null;
   onEndPoll: (() => void) | null;
   onRetryMessageSend: (() => void) | null;
@@ -23,6 +24,8 @@ type MessageContextMenuProps = Readonly<{
   onCopy: (() => void) | null;
   onForward: (() => void) | null;
   onDeleteMessage: (() => void) | null;
+  onFavoriteSticker: (() => void) | null;
+  onUnfavoriteSticker: (() => void) | null;
   onPinMessage: (() => void) | null;
   onUnpinMessage: (() => void) | null;
   onMoreInfo: (() => void) | null;
@@ -39,7 +42,10 @@ export function MessageContextMenu({
   onDebugMessage,
   onDownload,
   onEdit,
+  onFavoriteSticker,
+  onUnfavoriteSticker,
   onReplyToMessage,
+  onReplyPrivately,
   onReact,
   onEndPoll,
   onMoreInfo,
@@ -86,12 +92,36 @@ export function MessageContextMenu({
                 {i18n('icu:MessageContextMenu__reply')}
               </AxoMenuBuilder.Item>
             )}
+            {onFavoriteSticker && (
+              <AxoMenuBuilder.Item symbol="star" onSelect={onFavoriteSticker}>
+                {i18n('icu:messageContextMenu__sticker--addFavorite')}
+              </AxoMenuBuilder.Item>
+            )}
+            {onUnfavoriteSticker && (
+              <AxoMenuBuilder.Item
+                symbol="star-slash"
+                onSelect={onUnfavoriteSticker}
+              >
+                {i18n('icu:messageContextMenu__sticker--removeFavorite')}
+              </AxoMenuBuilder.Item>
+            )}
             {onReact && (
               <AxoMenuBuilder.Item symbol="heart-plus" onSelect={onReact}>
                 {i18n('icu:MessageContextMenu__react')}
               </AxoMenuBuilder.Item>
             )}
           </>
+        )}
+        {onReplyPrivately && (
+          <AxoMenuBuilder.Item
+            symbol="person"
+            onSelect={() => {
+              shouldReturnFocusToTrigger.current = false;
+              onReplyPrivately();
+            }}
+          >
+            {i18n('icu:MessageContextMenu__reply-privately')}
+          </AxoMenuBuilder.Item>
         )}
         {onEndPoll && (
           <AxoMenuBuilder.Item symbol="stop-circle" onSelect={onEndPoll}>

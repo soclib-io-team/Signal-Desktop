@@ -17,7 +17,7 @@ import type {
   EditHistoryType,
   MessageAttributesType,
   QuotedMessageType,
-} from '../model-types.d.ts';
+} from '../model-types.std.ts';
 import * as Errors from '../types/errors.std.ts';
 import {
   isDownloading,
@@ -29,7 +29,10 @@ import {
   getUndownloadedAttachmentSignature,
 } from './Attachment.std.ts';
 import { AttachmentDownloadUrgency } from '../types/AttachmentDownload.std.ts';
-import { getMaximumAutoDownloadSize } from '../types/AttachmentSize.std.ts';
+import {
+  getMaximumAutoDownloadSize,
+  isAttachmentTooLarge,
+} from '../types/AttachmentSize.std.ts';
 import type { LinkPreviewType } from '../types/message/LinkPreviews.std.ts';
 import { strictAssert } from './assert.std.ts';
 import { isNotNil } from './isNotNil.std.ts';
@@ -50,7 +53,7 @@ import {
   itemStorage,
   DEFAULT_AUTO_DOWNLOAD_ATTACHMENT,
 } from '../textsecure/Storage.preload.ts';
-import * as RemoteConfig from '../RemoteConfig.dom.ts';
+import * as RemoteConfig from '../RemoteConfig.std.ts';
 
 const defaultLogger = createLogger('queueAttachmentDownloads');
 
@@ -112,8 +115,19 @@ export async function queueAttachmentDownloadsAndMaybeSaveMessage(
 
 function isAutoDownloadEnabled(
   attachment: Pick<AttachmentType, 'size'>,
-  disposition: keyof AutoDownloadAttachmentType
+  disposition: keyof AutoDownloadAttachmentType,
+  maxAutoDownloadCiphertextSize?: number
 ): boolean {
+  if (
+    maxAutoDownloadCiphertextSize != null &&
+    !isAttachmentTooLarge({
+      plaintextSize: attachment.size,
+      ciphertextLimit: maxAutoDownloadCiphertextSize,
+    })
+  ) {
+    return true;
+  }
+
   const autoDownloadAttachment = itemStorage.get(
     'auto-download-attachment',
     DEFAULT_AUTO_DOWNLOAD_ATTACHMENT
@@ -123,7 +137,12 @@ function isAutoDownloadEnabled(
     return false;
   }
 
-  if (attachment.size >= getMaximumAutoDownloadSize(RemoteConfig.getValue)) {
+  if (
+    isAttachmentTooLarge({
+      plaintextSize: attachment.size,
+      ciphertextLimit: getMaximumAutoDownloadSize(RemoteConfig.getValue),
+    })
+  ) {
     return false;
   }
 
@@ -373,26 +392,29 @@ export async function queueAttachmentDownloads(
     }
 
     if (!copiedSticker) {
-      if (
-        sticker.data &&
-        (isManualDownload || sticker.data.size < MAX_STICKER_AUTO_DOWNLOAD_SIZE)
-      ) {
-        if (shouldQueueAttachmentBasedOnSignature(sticker.data)) {
-          log.info(`${logId}: Queueing sticker download`);
-          count += 1;
-          await AttachmentDownloadManager.addJob({
-            attachment: sticker.data,
-            attachmentType: 'sticker',
-            isManualDownload,
-            messageId,
-            receivedAt: message.get('received_at'),
-            sentAt: message.get('sent_at'),
-            source,
-            urgency,
-          });
-        }
-      } else {
+      if (!sticker.data) {
         log.error(`${logId}: Sticker data was missing`);
+      } else if (
+        shouldQueueAttachmentBasedOnSignature(sticker.data) &&
+        (isManualDownload ||
+          isAutoDownloadEnabled(
+            sticker.data,
+            'photos',
+            MAX_STICKER_AUTO_DOWNLOAD_SIZE
+          ))
+      ) {
+        log.info(`${logId}: Queueing sticker download`);
+        count += 1;
+        await AttachmentDownloadManager.addJob({
+          attachment: sticker.data,
+          attachmentType: 'sticker',
+          isManualDownload,
+          messageId,
+          receivedAt: message.get('received_at'),
+          sentAt: message.get('sent_at'),
+          source,
+          urgency,
+        });
       }
     }
     const stickerRef = {
@@ -526,7 +548,7 @@ async function queueNormalAttachments({
 
   let count = 0;
   const nextAttachments = await Promise.all(
-    attachments.map(attachment => {
+    attachments.map(async attachment => {
       if (!attachment) {
         return attachment;
       }
@@ -575,7 +597,11 @@ async function queueNormalAttachments({
         } else if (isAudio(contentType)) {
           if (
             isVoiceMessage(attachment) &&
-            attachment.size < MAX_VOICE_MESSAGE_AUTO_DOWNLOAD_SIZE
+            isAutoDownloadEnabled(
+              attachment,
+              'audio',
+              MAX_VOICE_MESSAGE_AUTO_DOWNLOAD_SIZE
+            )
           ) {
             disposition = undefined;
           } else {

@@ -33,6 +33,18 @@ export namespace AxoRadioGroup {
 
   export type RootProps = Readonly<{
     /**
+     * Label for the radio group as a whole.
+     * Note: The label should be for all options, not the currently selected one.
+     */
+    label?: string | null;
+
+    /**
+     * Reference an element that labels the radio group.
+     * Note: The label should be for all options, not the currently selected one.
+     */
+    labelledby?: string | null;
+
+    /**
      * The controlled value of the radio item to check.
      * Should be used in conjunction with `onValueChange`.
      */
@@ -76,6 +88,8 @@ export namespace AxoRadioGroup {
         onValueChange={props.onValueChange}
         disabled={props.disabled}
         className={tw('flex flex-col')}
+        aria-label={props.label ?? undefined}
+        aria-labelledby={props.labelledby ?? undefined}
       >
         {props.children}
       </RadioGroup.Root>
@@ -114,14 +128,16 @@ export namespace AxoRadioGroup {
         value={props.value}
         disabled={props.disabled}
       >
-        <div
+        <button
+          type="button"
           className={tw(
-            'flex gap-3 rounded-xs py-2.5 focus-visible:axo-focus-ring'
+            'group/axo-radio-item',
+            'flex gap-3 rounded-xs py-2.5 text-start focus-visible:axo-focus-ring'
           )}
         >
           <AxoBaseRadioGroup.Indicator />
           {props.children}
-        </div>
+        </button>
       </AxoBaseRadioGroup.Item>
     );
   });
@@ -146,7 +162,12 @@ export namespace AxoRadioGroup {
   export const Label: FC<LabelProps> = memo(props => {
     return (
       <AxoBaseRadioGroup.Label asChild>
-        <span className={tw('truncate type-body-large text-primary')}>
+        <span
+          className={tw(
+            'truncate type-body-large text-primary',
+            'group-data-disabled/axo-radio-item:text-disabled'
+          )}
+        >
           {props.children}
         </span>
       </AxoBaseRadioGroup.Label>

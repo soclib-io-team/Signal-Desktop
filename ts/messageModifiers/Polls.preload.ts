@@ -5,7 +5,7 @@ import type { AciString } from '../types/ServiceId.std.ts';
 import type {
   MessageAttributesType,
   ReadonlyMessageAttributesType,
-} from '../model-types.d.ts';
+} from '../model-types.std.ts';
 import type { MessagePollVoteType } from '../types/Polls.dom.ts';
 import { PollTerminateSendStatus } from '../types/Polls.dom.ts';
 import { MessageModel } from '../models/messages.preload.ts';
@@ -54,6 +54,7 @@ export type PollTerminateAttributesType = {
   source: PollSource;
   targetTimestamp: number;
   timestamp: number;
+  receivedAtCounter: number;
   receivedAtDate: number;
   expireTimer: DurationInSeconds | undefined;
   expirationStartTimestamp: number | undefined;
@@ -592,6 +593,8 @@ export async function handlePollTerminate(
     pollSource: terminate.source,
     terminatorId: terminate.fromConversationId,
     timestamp: terminate.timestamp,
+    receivedAtCounter: terminate.receivedAtCounter,
+    receivedAtDate: terminate.receivedAtDate,
     isMeTerminating: isMe(author.attributes),
     expireTimer: terminate.expireTimer,
     expirationStartTimestamp: terminate.expirationStartTimestamp,

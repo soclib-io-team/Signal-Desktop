@@ -201,9 +201,7 @@ describe('backups', function (this: Mocha.Suite) {
       await conversationStack
         .getByRole('button', { name: 'Chat color' })
         .click();
-      await conversationStack
-        .locator('.ChatColorPicker__bubble--infrared')
-        .click();
+      await conversationStack.getByRole('option', { name: 'infrared' }).click();
 
       const backButton = conversationStack.locator(
         '.ConversationPanel__header__back-button'
@@ -293,7 +291,7 @@ describe('backups', function (this: Mocha.Suite) {
 
       const [catMessage] = await app.getMessagesBySentAt(catTimestamp);
       const [image] = catMessage?.attachments ?? [];
-      strictAssert(image.plaintextHash, 'plaintextHash was calculated');
+      strictAssert(image?.plaintextHash, 'plaintextHash was calculated');
       strictAssert(image.digest, 'digest was calculated at download time');
       strictAssert(
         ciphertextCat.digest,
@@ -315,6 +313,10 @@ describe('backups', function (this: Mocha.Suite) {
 
         debug('Waiting for messages to pinned contact to come through');
         await pinnedElem.click();
+        await window
+          .locator('.ConversationPanel')
+          .locator('.module-message', { hasText: 'cat photo' })
+          .waitFor();
 
         const contactElem = leftPane.locator(
           `[data-testid="${friend.device.aci}"] >> "respond 4"`
@@ -336,7 +338,8 @@ describe('backups', function (this: Mocha.Suite) {
         debug('Going into the conversation');
         await contactElem.click();
         await window
-          .locator('.ConversationView .module-message >> "respond 4"')
+          .locator('.ConversationPanel')
+          .locator('.module-message', { hasText: 'respond 4' })
           .waitFor();
 
         debug('Waiting for conversation to be marked read');
@@ -346,16 +349,23 @@ describe('backups', function (this: Mocha.Suite) {
         await window.getByTestId('NavTabsItem--Stories').click();
 
         debug('Opening story privacy');
-        await window.locator('.StoriesTab__MoreActionsIcon').click();
+        await window
+          .locator('.NavSidebar__HeaderActions')
+          .getByRole('button', { name: 'More actions' })
+          .click();
         await window.getByRole('menuitem', { name: 'Story Privacy' }).click();
+
+        const dialog = window.getByRole('dialog', { name: 'Story privacy' });
+        await dialog.waitFor();
         await expect(
-          window.locator('.StoriesSettingsModal__overlay')
+          window.locator('.StoriesSettingsModal .module-modal-host__overlay')
         ).toHaveCSS('opacity', '1');
 
         await snapshot('story privacy');
 
         debug('Closing story privacy dialog');
-        await window.locator('.module-Modal__close-button').click();
+        await dialog.getByRole('button', { name: 'Close' }).click();
+        await dialog.waitFor({ state: 'detached' });
 
         debug('Switching to settings tab');
         await window.getByRole('tab', { name: 'Settings' }).click();
@@ -403,12 +413,12 @@ describe('backups', function (this: Mocha.Suite) {
       const [image] = catMessage?.attachments ?? [];
       if (!bootstrapLinkParams.localBackup) {
         strictAssert(
-          image.digest,
+          image?.digest,
           'digest was calculated after download from media tier'
         );
         assert.strictEqual(image.digest, toBase64(ciphertextCat.digest));
       }
-      assert.strictEqual(image.plaintextHash, catPlaintextHash);
+      assert.strictEqual(image?.plaintextHash, catPlaintextHash);
     }
 
     await comparator(app);

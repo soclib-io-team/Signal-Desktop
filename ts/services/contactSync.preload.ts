@@ -16,7 +16,7 @@ import {
   getAttachmentFromBackupTier,
 } from '../textsecure/WebAPI.preload.ts';
 import * as Errors from '../types/errors.std.ts';
-import type { ValidateConversationType } from '../model-types.d.ts';
+import type { ValidateConversationType } from '../model-types.std.ts';
 import type { ConversationModel } from '../models/conversations.preload.ts';
 import { validateConversation } from '../util/validateConversation.dom.ts';
 import {
@@ -37,6 +37,7 @@ import { AttachmentVariant } from '../types/Attachment.std.ts';
 import { MediaTier } from '../types/AttachmentDownload.std.ts';
 import { waitForOnline } from '../util/waitForOnline.dom.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
+import { INITIAL_EXPIRE_TIMER_VERSION } from '../util/expirationTimer.std.ts';
 
 const { noop } = lodash;
 
@@ -90,7 +91,7 @@ async function updateConversationFromContactSync(
       //   setting this will make 'isSetByOther' check true.
       source: window.ConversationController.getOurConversationIdOrThrow(),
       receivedAt: receivedAtCounter,
-      version: details.expireTimerVersion ?? 1,
+      version: details.expireTimerVersion ?? INITIAL_EXPIRE_TIMER_VERSION,
       fromSync: true,
       isInitialSync,
       reason: `contact sync (sent=${sentAt})`,

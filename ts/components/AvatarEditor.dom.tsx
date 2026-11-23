@@ -4,8 +4,8 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import lodash from 'lodash';
 
-import type { AvatarColorType } from '../types/Colors.std.ts';
 import type {
+  AvatarColorType,
   AvatarDataType,
   DeleteAvatarFromDiskActionType,
   ReplaceAvatarActionType,
@@ -23,7 +23,7 @@ import { createAvatarData } from '../util/createAvatarData.std.ts';
 import { isSameAvatarData } from '../util/isSameAvatarData.std.ts';
 import { missingCaseError } from '../util/missingCaseError.std.ts';
 import { useConfirmDiscard } from '../hooks/useConfirmDiscard.dom.tsx';
-import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 
 const { isEqual } = lodash;
 
@@ -360,7 +360,7 @@ export function AvatarEditor({
   }
 
   return (
-    <div className="AvatarEditor">
+    <div>
       {confirmDiscardModal}
       {content}
     </div>

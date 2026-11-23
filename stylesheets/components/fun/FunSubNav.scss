@@ -192,6 +192,10 @@ $image-radius: $button-radius - $image-margin;
   }
 }
 
+.FunSubNav__ListBoxItem__ButtonIndicator--Hidden {
+  visibility: hidden;
+}
+
 .FunSubNav__ListBoxItem__ButtonIcon {
   position: relative;
   z-index: 1;
@@ -237,6 +241,9 @@ $image-radius: $button-radius - $image-margin;
   @include icon('../images/icons/v3/emoji/emoji-flag.svg');
 }
 /* Stickers */
+.FunSubNav__Icon--Favorites {
+  @include icon('../images/icons/v3/star/star.svg');
+}
 .FunSubNav__Icon--Plus {
   @include icon('../images/icons/v3/plus/plus-circle.svg');
 }

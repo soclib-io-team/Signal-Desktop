@@ -47,7 +47,7 @@ function $chatListItem(page: Page, id: string) {
 }
 
 function $callListItem(page: Page, title: string) {
-  return $navSidebar(page).locator('.CallsList__Item', { hasText: title });
+  return $navSidebar(page).locator('.CallsList__ItemTile', { hasText: title });
 }
 
 function $unreadBadge(page: Page, id: string) {
@@ -612,7 +612,11 @@ describe('calling/callHistoryExpiration', function (this: Mocha.Suite) {
       await expect($youStartedCall(page)).toBeVisible();
 
       debug('leaving call');
-      await page.getByRole('button', { name: 'Leave call' }).click();
+      const pip = page.getByRole('region', { name: /^Call with / });
+      const leaveCall = pip.getByRole('button', { name: 'Leave call' });
+      // Focus reveals the PiP's controls, which are clipped until shown
+      await leaveCall.focus();
+      await leaveCall.press('Enter');
 
       debug('waiting for message to expire');
       await delay(EXPIRE_TIMER_MS);

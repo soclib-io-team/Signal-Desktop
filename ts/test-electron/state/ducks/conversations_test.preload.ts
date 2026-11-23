@@ -50,7 +50,7 @@ import {
   defaultChooseGroupMembersComposerState,
   defaultSetGroupMetadataComposerState,
 } from '../../../test-helpers/defaultComposerStates.std.ts';
-import { updateRemoteConfig } from '../../../test-helpers/RemoteConfigStub.dom.ts';
+import { updateRemoteConfig } from '../../../test-helpers/RemoteConfigStub.std.ts';
 import type { ShowSendAnywayDialogActionType } from '../../../state/ducks/globalModals.preload.ts';
 import { SHOW_SEND_ANYWAY_DIALOG } from '../../../state/ducks/globalModals.preload.ts';
 import type { StoryDistributionListsActionType } from '../../../state/ducks/storyDistributionLists.preload.ts';
@@ -61,10 +61,9 @@ import {
   VIEWERS_CHANGED,
 } from '../../../state/ducks/storyDistributionLists.preload.ts';
 import { MY_STORY_ID } from '../../../types/Stories.std.ts';
-import type { ReadonlyMessageAttributesType } from '../../../model-types.d.ts';
+import type { ReadonlyMessageAttributesType } from '../../../model-types.std.ts';
 import { strictAssert } from '../../../util/assert.std.ts';
 import { getConversationCallMode } from '../../../util/getConversationCallMode.std.ts';
-import { itemStorage } from '../../../textsecure/Storage.preload.ts';
 import {
   generateAci,
   getAciFromPrefix,
@@ -491,7 +490,7 @@ describe('both/state/ducks/conversations', () => {
         await showConversation({
           conversationId: 'abc123',
           messageId: 'xyz987',
-        })(dispatch, getEmptyRootState, null);
+        })(dispatch, getEmptyRootState);
         const action = dispatch
           .getCalls()
           .map(call => call.args[0])
@@ -509,7 +508,7 @@ describe('both/state/ducks/conversations', () => {
           await showConversation({
             conversationId: 'fake-conversation-id',
             switchToAssociatedView: true,
-          })(dispatch, getEmptyRootState, null);
+          })(dispatch, getEmptyRootState);
           action = dispatch
             .getCalls()
             .map(call => call.args[0])
@@ -713,14 +712,10 @@ describe('both/state/ducks/conversations', () => {
       it('immediately dispatches a CREATE_GROUP_PENDING action, which puts the composer in a loading state', () => {
         const dispatch = sinon.spy();
 
-        createGroup()(
-          dispatch,
-          () => ({
-            ...getEmptyRootState(),
-            conversations: conversationsState,
-          }),
-          null
-        );
+        void createGroup()(dispatch, () => ({
+          ...getEmptyRootState(),
+          conversations: conversationsState,
+        }));
 
         sinon.assert.calledOnce(dispatch);
         sinon.assert.calledWith(dispatch, { type: 'CREATE_GROUP_PENDING' });
@@ -737,14 +732,10 @@ describe('both/state/ducks/conversations', () => {
       });
 
       it('calls groups.createGroupV2', async () => {
-        await createGroup(createGroupStub)(
-          sinon.spy(),
-          () => ({
-            ...getEmptyRootState(),
-            conversations: conversationsState,
-          }),
-          null
-        );
+        await createGroup(createGroupStub)(sinon.spy(), () => ({
+          ...getEmptyRootState(),
+          conversations: conversationsState,
+        }));
 
         sinon.assert.calledOnce(createGroupStub);
         sinon.assert.calledWith(createGroupStub, {
@@ -757,20 +748,16 @@ describe('both/state/ducks/conversations', () => {
       });
 
       it("trims the group's title before calling groups.createGroupV2", async () => {
-        await createGroup(createGroupStub)(
-          sinon.spy(),
-          () => ({
-            ...getEmptyRootState(),
-            conversations: {
-              ...conversationsState,
-              composer: {
-                ...conversationsState.composer,
-                groupName: '  To  Trim \t',
-              },
+        await createGroup(createGroupStub)(sinon.spy(), () => ({
+          ...getEmptyRootState(),
+          conversations: {
+            ...conversationsState,
+            composer: {
+              ...conversationsState.composer,
+              groupName: '  To  Trim \t',
             },
-          }),
-          null
-        );
+          },
+        }));
 
         sinon.assert.calledWith(
           createGroupStub,
@@ -788,8 +775,7 @@ describe('both/state/ducks/conversations', () => {
           () => ({
             ...getEmptyRootState(),
             conversations: conversationsState,
-          }),
-          null
+          })
         );
 
         const pendingAction = dispatch.getCall(0).args[0];
@@ -820,8 +806,7 @@ describe('both/state/ducks/conversations', () => {
           () => ({
             ...getEmptyRootState(),
             conversations: conversationsState,
-          }),
-          null
+          })
         );
 
         await createGroupPromise;
@@ -847,28 +832,18 @@ describe('both/state/ducks/conversations', () => {
 
         const dispatch = sinon.spy();
 
-        await createGroup(createGroupStub)(
-          dispatch,
-          () => ({
-            ...getEmptyRootState(),
-            conversations: conversationsState,
-          }),
-          null
-        );
+        await createGroup(createGroupStub)(dispatch, () => ({
+          ...getEmptyRootState(),
+          conversations: conversationsState,
+        }));
 
         sinon.assert.calledWith(dispatch, {
           type: 'CREATE_GROUP_FULFILLED',
           payload: { invitedServiceIds: [abc] },
         });
 
-        sinon.assert.calledWith(dispatch, {
-          type: TARGETED_CONVERSATION_CHANGED,
-          payload: {
-            conversationId: '9876',
-            messageId: undefined,
-            switchToAssociatedView: true,
-          },
-        });
+        sinon.assert.calledThrice(dispatch);
+        assert.isFunction(dispatch.getCall(2).args[0]);
 
         const fulfilledAction = dispatch.getCall(1).args[0];
         const result = reducer(conversationsState, fulfilledAction);
@@ -1055,14 +1030,10 @@ describe('both/state/ducks/conversations', () => {
       ): CancelVerificationDataByConversationActionType {
         const dispatch = sinon.spy();
 
-        cancelConversationVerification(timestamp)(
-          dispatch,
-          () => ({
-            ...getEmptyRootState(),
-            conversations: conversationsState,
-          }),
-          null
-        );
+        cancelConversationVerification(timestamp)(dispatch, () => ({
+          ...getEmptyRootState(),
+          conversations: conversationsState,
+        }));
 
         return dispatch.getCall(0).args[0];
       }
@@ -1550,6 +1521,14 @@ describe('both/state/ducks/conversations', () => {
           title: 'Pre-join group!',
           memberCount: 4,
           approvalRequired: false,
+          groupId: 'group-id',
+          masterKey: 'master-key',
+          secretParams: 'secret-params',
+          publicParams: 'public-params',
+          inviteLinkPassword: 'invite-link-password',
+          revision: null,
+          remoteAvatarUrl: null,
+          localAvatar: null,
         };
         const stateWithData = reducer(
           startState,
@@ -1931,14 +1910,10 @@ describe('both/state/ducks/conversations', () => {
       ): ToggleConversationInChooseMembersActionType {
         const dispatch = sinon.spy();
 
-        toggleConversationInChooseMembers(id)(
-          dispatch,
-          () => ({
-            ...getEmptyRootState(),
-            conversations: conversationsState,
-          }),
-          null
-        );
+        toggleConversationInChooseMembers(id)(dispatch, () => ({
+          ...getEmptyRootState(),
+          conversations: conversationsState,
+        }));
 
         return dispatch.getCall(0).args[0];
       }
@@ -2171,21 +2146,21 @@ describe('both/state/ducks/conversations', () => {
     describe('COLORS_CHANGED', () => {
       const abc = getDefaultConversationWithServiceId({
         id: 'abc',
-        conversationColor: 'wintergreen',
+        bubbleColor: { bubbleColorPreset: 'wintergreen' },
       });
       const def = getDefaultConversationWithServiceId({
         id: 'def',
-        conversationColor: 'infrared',
+        bubbleColor: { bubbleColorPreset: 'infrared' },
       });
       const ghi = getDefaultConversation({
         id: 'ghi',
         e164: 'ghi',
-        conversationColor: 'ember',
+        bubbleColor: { bubbleColorPreset: 'ember' },
       });
       const jkl = getDefaultConversation({
         id: 'jkl',
         groupId: 'jkl',
-        conversationColor: 'plum',
+        bubbleColor: { bubbleColorPreset: 'plum' },
       });
       const getState = () => ({
         ...getEmptyRootState(),
@@ -2212,29 +2187,24 @@ describe('both/state/ducks/conversations', () => {
 
       it('resetAllChatColors', async () => {
         const dispatch = sinon.spy();
-        await resetAllChatColors()(dispatch, getState, null);
+        await resetAllChatColors()(dispatch, getState);
 
         const [action] = dispatch.getCall(0).args;
         const nextState = reducer(getState().conversations, action);
 
         sinon.assert.calledOnce(dispatch);
-        assert.isUndefined(nextState.conversationLookup.abc?.conversationColor);
-        assert.isUndefined(nextState.conversationLookup.def?.conversationColor);
-        assert.isUndefined(nextState.conversationLookup.ghi?.conversationColor);
-        assert.isUndefined(nextState.conversationLookup.jkl?.conversationColor);
+        assert.isUndefined(nextState.conversationLookup.abc?.bubbleColor);
+        assert.isUndefined(nextState.conversationLookup.def?.bubbleColor);
+        assert.isUndefined(nextState.conversationLookup.ghi?.bubbleColor);
+        assert.isUndefined(nextState.conversationLookup.jkl?.bubbleColor);
         assert.isUndefined(
-          nextState.conversationsByServiceId[abc.serviceId]?.conversationColor
+          nextState.conversationsByServiceId[abc.serviceId]?.bubbleColor
         );
         assert.isUndefined(
-          nextState.conversationsByServiceId[def.serviceId]?.conversationColor
+          nextState.conversationsByServiceId[def.serviceId]?.bubbleColor
         );
-        assert.isUndefined(
-          nextState.conversationsByE164.ghi?.conversationColor
-        );
-        assert.isUndefined(
-          nextState.conversationsByGroupId.jkl?.conversationColor
-        );
-        await itemStorage.remove('defaultConversationColor');
+        assert.isUndefined(nextState.conversationsByE164.ghi?.bubbleColor);
+        assert.isUndefined(nextState.conversationsByGroupId.jkl?.bubbleColor);
       });
     });
 

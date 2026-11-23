@@ -18,18 +18,14 @@ import {
   getSafeConversationWithSameTitle,
   getConversationByServiceIdSelector,
 } from './conversations.dom.ts';
-import { getAccountSelector } from './accounts.std.ts';
 import {
-  getRegionCode,
   getUserConversationId,
   getUserNumber,
   getUserACI,
   getUserPNI,
 } from './user.std.ts';
-import {
-  getDefaultConversationColor,
-  getHasMediaBackups,
-} from './items.dom.ts';
+import { getHasMediaBackups } from './items.dom.ts';
+import { getBubbleColorResolver } from './chatColors.std.ts';
 import { getActiveCall, getCallSelector } from './calling.std.ts';
 import {
   getPropsForBubble,
@@ -46,8 +42,10 @@ import {
 } from '../../util/groupMemberNameCollisions.std.ts';
 import type { ConversationType } from '../ducks/conversations.preload.ts';
 import { missingCaseError } from '../../util/missingCaseError.std.ts';
-import { getGroupMemberships } from '../../util/getGroupMemberships.dom.ts';
-import type { ContactNameColorType } from '../../types/Colors.std.ts';
+import { getGroupMemberships } from '../../util/getGroupMemberships.std.ts';
+import type { ContactNameColorType } from '../../types/ContactNameColor.std.ts';
+import { getResolveSharedContactSelector } from './sharedContact.dom.ts';
+import { getIsFavoriteStickerSelector } from './stickers.std.ts';
 
 // A no-op lookup for non-story-reply items. Only story replies should take a
 // dependency on the stories slice
@@ -71,7 +69,7 @@ const getTimelineItem = (
 
   const targetedMessage = getTargetedMessage(state);
   const conversationSelector = getConversationSelector(state);
-  const regionCode = getRegionCode(state);
+  const resolveSharedContact = getResolveSharedContactSelector(state);
   const ourNumber = getUserNumber(state);
   const ourAci = getUserACI(state);
   const ourPni = getUserPNI(state);
@@ -79,22 +77,22 @@ const getTimelineItem = (
   const callSelector = getCallSelector(state);
   const callHistorySelector = getCallHistorySelector(state);
   const activeCall = getActiveCall(state);
-  const accountSelector = getAccountSelector(state);
   const pinnedMessagesMessageIds = getPinnedMessagesMessageIds(state);
   const selectedMessageIds = getSelectedMessageIds(state);
-  const defaultConversationColor = getDefaultConversationColor(state);
+  const bubbleColorResolver = getBubbleColorResolver(state);
   const hasMediaBackups = getHasMediaBackups(state);
   const getStoryReplyAttachment = message.storyReplyContext
     ? getStoryReplyAttachmentSelector(state)
     : noStoryReplyAttachment;
+  const getIsFavoriteSticker = getIsFavoriteStickerSelector(state);
 
   return getPropsForBubble(message, {
     conversationSelector,
+    resolveSharedContact,
     ourConversationId,
     ourNumber,
     ourAci,
     ourPni,
-    regionCode,
     targetedMessageId: targetedMessage?.id ?? null,
     targetedMessageCounter: targetedMessage?.counter ?? null,
     targetedMessageSource: targetedMessage?.source ?? null,
@@ -102,11 +100,11 @@ const getTimelineItem = (
     callSelector,
     callHistorySelector,
     activeCall,
-    accountSelector,
     pinnedMessagesMessageIds,
     selectedMessageIds,
-    defaultConversationColor,
+    bubbleColorResolver,
     hasMediaBackups,
+    getIsFavoriteSticker,
     getStoryReplyAttachment,
   });
 };

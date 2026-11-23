@@ -24,12 +24,12 @@ import {
   donationErrorTypeSchema,
   donationStateSchema,
 } from '../types/Donations.std.ts';
-import type { AvatarColorType } from '../types/Colors.std.ts';
-import { Button, ButtonSize, ButtonVariant } from './Button.dom.tsx';
-import { Modal } from './Modal.dom.tsx';
-import { Spinner } from './Spinner.dom.tsx';
-import type { AnyToast } from '../types/Toast.dom.tsx';
-import { ToastType } from '../types/Toast.dom.tsx';
+import type {
+  AvatarColorType,
+  AvatarUpdateOptionsType,
+} from '../types/Avatar.std.ts';
+import type { AnyToast } from '../types/Toast.std.ts';
+import { ToastType } from '../types/Toast.std.ts';
 import { createLogger } from '../logging/log.std.ts';
 import { toLogFormat } from '../types/errors.std.ts';
 import { I18n } from './I18n.dom.tsx';
@@ -48,11 +48,11 @@ import { DonationVerificationModal } from './DonationVerificationModal.dom.tsx';
 import { DonationProgressModal } from './DonationProgressModal.dom.tsx';
 import { DonationStillProcessingModal } from './DonationStillProcessingModal.dom.tsx';
 import { DonationThanksModal } from './DonationThanksModal.dom.tsx';
+import type { ApplyDonationBadgeArgs } from './DonationThanksModal.dom.tsx';
 import type {
   ConversationType,
   ProfileDataType,
 } from '../state/ducks/conversations.preload.ts';
-import type { AvatarUpdateOptionsType } from '../types/Avatar.std.ts';
 import { drop } from '../util/drop.std.ts';
 import { DonationsOfflineTooltip } from './conversation/DonationsOfflineTooltip.dom.tsx';
 import { getInProgressDonation } from '../util/donations.dom.ts';
@@ -60,6 +60,7 @@ import { AxoButton } from '../axo/AxoButton.dom.tsx';
 import { tw } from '../axo/tw.dom.tsx';
 import { BadgeImage } from './BadgeImage.dom.tsx';
 import { SpinnerV2 } from './SpinnerV2.dom.tsx';
+import { DonationsReceiptDetailsDialog } from './DonationsReceiptDetailsDialog.dom.tsx';
 
 const { groupBy, sortBy } = lodash;
 
@@ -86,7 +87,7 @@ export type PropsDataType = {
   donationReceipts: ReadonlyArray<DonationReceipt>;
   theme: ThemeType;
   saveAttachmentToDisk: (options: {
-    data: Uint8Array<ArrayBuffer>;
+    data: { type: 'bytes'; bytes: Iterable<Uint8Array<ArrayBuffer>> };
     name: string;
     baseDir?: string | undefined;
   }) => Promise<{ fullPath: string; name: string } | null>;
@@ -105,11 +106,7 @@ export type PropsDataType = {
 };
 
 type PropsActionType = {
-  applyDonationBadge: (args: {
-    badge: BadgeType | undefined;
-    applyBadge: boolean;
-    onComplete: (error?: Error) => void;
-  }) => void;
+  applyDonationBadge: (args: ApplyDonationBadgeArgs) => void;
   clearWorkflow: () => void;
   resumeWorkflow: () => void;
   setSettingsLocation: (settingsLocation: SettingsLocation) => void;
@@ -240,16 +237,14 @@ function DonationsHome({
   const hasReceipts = donationReceipts.length > 0;
 
   const donateButton = (
-    <span className={tw('mb-8')}>
-      <AxoButton.Root
-        variant={isOnline ? 'strong-primary' : 'strong-secondary'}
-        size="lg"
-        disabled={!isOnline}
-        onClick={handleDonateButtonClicked}
-      >
-        {i18n('icu:PreferencesDonations__donate-button')}
-      </AxoButton.Root>
-    </span>
+    <AxoButton.Root
+      variant={isOnline ? 'strong-primary' : 'strong-secondary'}
+      size="lg"
+      disabled={!isOnline}
+      onClick={handleDonateButtonClicked}
+    >
+      {i18n('icu:PreferencesDonations__donate-button')}
+    </AxoButton.Root>
   );
 
   return (
@@ -263,13 +258,15 @@ function DonationsHome({
 
       {renderDonationHero()}
 
-      {isOnline ? (
-        donateButton
-      ) : (
-        <DonationsOfflineTooltip i18n={i18n}>
-          {donateButton}
-        </DonationsOfflineTooltip>
-      )}
+      <span className={tw('mb-8')}>
+        {isOnline ? (
+          donateButton
+        ) : (
+          <DonationsOfflineTooltip i18n={i18n}>
+            {donateButton}
+          </DonationsOfflineTooltip>
+        )}
+      </span>
 
       <hr className="PreferencesDonations__separator" />
 
@@ -356,7 +353,7 @@ function PreferencesReceiptList({
   donationBadge: BadgeType | undefined;
   donationReceipts: ReadonlyArray<DonationReceipt>;
   saveAttachmentToDisk: (options: {
-    data: Uint8Array<ArrayBuffer>;
+    data: { type: 'bytes'; bytes: Iterable<Uint8Array<ArrayBuffer>> };
     name: string;
     baseDir?: string | undefined;
   }) => Promise<{ fullPath: string; name: string } | null>;
@@ -401,7 +398,7 @@ function PreferencesReceiptList({
 
       const result = await saveAttachmentToDisk({
         name: `Signal_Receipt_${new Date(selectedReceipt.timestamp).toISOString().split('T')[0]}.png`,
-        data: new Uint8Array(buffer),
+        data: { type: 'bytes', bytes: [new Uint8Array(buffer)] },
       });
 
       if (result) {
@@ -428,6 +425,10 @@ function PreferencesReceiptList({
     showToast,
   ]);
 
+  const handleCloseReceiptDetails = useCallback(() => {
+    setSelectedReceipt(null);
+  }, []);
+
   const dateFormatter = getDateTimeFormatter({
     month: 'short',
     day: 'numeric',
@@ -435,7 +436,7 @@ function PreferencesReceiptList({
   });
 
   return (
-    <div className="PreferencesDonations PreferencesDonations--receiptList">
+    <div className="PreferencesDonations">
       {hasReceipts ? (
         <>
           <div className="PreferencesDonations--receiptList__info">
@@ -502,61 +503,13 @@ function PreferencesReceiptList({
       )}
 
       {selectedReceipt && (
-        <Modal
+        <DonationsReceiptDetailsDialog
           i18n={i18n}
-          modalName="ReceiptDetailsModal"
-          moduleClassName="PreferencesDonations__ReceiptModal"
-          hasXButton
-          padded={false}
-          onClose={() => setSelectedReceipt(null)}
-          modalFooter={
-            <Button
-              variant={ButtonVariant.Primary}
-              size={ButtonSize.Small}
-              onClick={handleDownloadReceipt}
-              disabled={isDownloading}
-            >
-              {isDownloading ? (
-                <Spinner size="24px" svgSize="small" />
-              ) : (
-                i18n('icu:PreferencesDonations__ReceiptModal--download')
-              )}
-            </Button>
-          }
-        >
-          <div className="PreferencesDonations__ReceiptModal__content">
-            <div className="PreferencesDonations__ReceiptModal__logo-container">
-              <div className="PreferencesDonations__ReceiptModal__logo" />
-            </div>
-            <div className="PreferencesDonations__ReceiptModal__amount">
-              {toHumanCurrencyString({
-                amount: getHumanDonationAmount(selectedReceipt),
-                currency: selectedReceipt.currencyType,
-              })}
-            </div>
-            <hr className="PreferencesDonations__ReceiptModal__separator" />
-            <div className="PreferencesDonations__ReceiptModal__details">
-              <div className="PreferencesDonations__ReceiptModal__detail-item">
-                <div className="PreferencesDonations__ReceiptModal__detail-label">
-                  {i18n('icu:PreferencesDonations__ReceiptModal--type-label')}
-                </div>
-                <div className="PreferencesDonations__ReceiptModal__detail-value">
-                  {i18n('icu:DonationReceipt__type-value--one-time')}
-                </div>
-              </div>
-              <div className="PreferencesDonations__ReceiptModal__detail-item">
-                <div className="PreferencesDonations__ReceiptModal__detail-label">
-                  {i18n(
-                    'icu:PreferencesDonations__ReceiptModal--date-paid-label'
-                  )}
-                </div>
-                <div className="PreferencesDonations__ReceiptModal__detail-value">
-                  {dateFormatter.format(new Date(selectedReceipt.timestamp))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </Modal>
+          receipt={selectedReceipt}
+          downloading={isDownloading}
+          onDownload={handleDownloadReceipt}
+          onClose={handleCloseReceiptDetails}
+        />
       )}
     </div>
   );
@@ -700,10 +653,10 @@ export function PreferencesDonations({
     dialog = (
       <DonationThanksModal
         i18n={i18n}
-        badge={donationBadge}
+        badge={donationBadge ?? null}
         applyDonationBadge={applyDonationBadge}
-        onClose={(error?: Error) => {
-          if (error) {
+        onClose={(error: Error | null) => {
+          if (error != null) {
             log.error('Badge application failed:', error.message);
             updateLastError(
               donationErrorTypeSchema.enum.BadgeApplicationFailed

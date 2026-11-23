@@ -4,8 +4,8 @@
 import { memo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { StoryViewer } from '../../components/StoryViewer.dom.tsx';
-import { ToastType } from '../../types/Toast.dom.tsx';
-import { useToastActions } from '../ducks/toast.preload.ts';
+import { ToastType } from '../../types/Toast.std.ts';
+import { useToastActions } from '../ducks/toast.dom.ts';
 import { getConversationSelector } from '../selectors/conversations.dom.ts';
 import {
   getEmojiSkinToneDefault,
@@ -94,7 +94,7 @@ export const SmartStoryViewer = memo(function SmartStoryViewer() {
 
   const handleGoToConversation = useCallback(
     (senderId: string) => {
-      showConversation({ conversationId: senderId });
+      void showConversation({ conversationId: senderId });
     },
     [showConversation]
   );
@@ -102,7 +102,7 @@ export const SmartStoryViewer = memo(function SmartStoryViewer() {
   const handleReactToStory = useCallback(
     async (emoji: Emoji.Variant, story: StoryViewType) => {
       const { messageId } = story;
-      reactToStory(emoji, messageId);
+      void reactToStory(emoji, messageId);
     },
     [reactToStory]
   );
@@ -115,7 +115,7 @@ export const SmartStoryViewer = memo(function SmartStoryViewer() {
     ) => {
       const conversationId = storyInfo?.conversationStory?.conversationId;
       strictAssert(conversationId != null, 'conversationId is required');
-      replyToStory(conversationId, message, bodyRanges, timestamp, story);
+      void replyToStory(conversationId, message, bodyRanges, timestamp, story);
     },
     [storyInfo, replyToStory]
   );

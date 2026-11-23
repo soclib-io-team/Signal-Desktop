@@ -152,6 +152,7 @@ const ZK_PARAMS: ZKParams = JSON.parse(
 );
 
 const DEFAULT_API_TIMEOUT = 60000;
+const DEFAULT_STORAGE_STATE_TIMEOUT = 5000;
 
 initLogger(
   SignalClientLogLevel.Info,
@@ -334,6 +335,7 @@ export class Server extends BaseServer {
   private async waitForStorageManifest(
     aci: AciString,
     afterVersion?: bigint,
+    timeout?: number,
   ): Promise<void> {
     let queue = this.manifestQueueByAci.get(aci);
     if (!queue) {
@@ -343,7 +345,7 @@ export class Server extends BaseServer {
 
     let version: bigint;
     do {
-      version = await queue.shift();
+      version = await queue.shift(timeout);
     } while (afterVersion !== undefined && version <= afterVersion);
   }
 
@@ -390,6 +392,7 @@ export class Server extends BaseServer {
       password: password ?? generateDevicePassword(),
       registrationId,
       pniRegistrationId,
+      unidentifiedAccessKey: undefined,
     });
 
     const primary = new PrimaryDevice(device, {
@@ -428,6 +431,7 @@ export class Server extends BaseServer {
       pniRegistrationId,
       password: devicePassword,
       authCredentialSalt: randomBytes(16),
+      unidentifiedAccessKey: undefined,
     });
 
     const { aci } = device;
@@ -485,8 +489,8 @@ export class Server extends BaseServer {
       send: this.send.bind(this),
       getSenderCertificate: this.getSenderCertificate.bind(this, device),
       getDeviceByServiceId: this.getDeviceByServiceId.bind(this),
-      issueExpiringProfileKeyCredential:
-        this.issueExpiringProfileKeyCredential.bind(this),
+      getProfileKeyPresentation: this.getProfileKeyPresentation.bind(this),
+      setProfile: this.setProfile.bind(this),
       getGroup: this.getGroup.bind(this),
       createGroup: this.createGroup.bind(this),
       modifyGroup: this.modifyGroup.bind(this),
@@ -508,6 +512,7 @@ export class Server extends BaseServer {
       primary: primary.device,
       registrationId,
       pniRegistrationId: primary.device.pni ? pniRegistrationId : undefined,
+      unidentifiedAccessKey: undefined,
     });
 
     for (const serviceIdKind of [ServiceIdKind.ACI, ServiceIdKind.PNI]) {
@@ -549,11 +554,8 @@ export class Server extends BaseServer {
     this.unregisteredServiceIds.delete(serviceId);
   }
 
-  public respondToChallengesWith(code = 413, data?: unknown): void {
-    this.responseForChallenges = {
-      code,
-      data,
-    };
+  public respondToChallengesWith(response: ChallengeResponse): void {
+    this.responseForChallenges = response;
   }
 
   public stopRespondingToChallenges(): void {
@@ -566,6 +568,13 @@ export class Server extends BaseServer {
 
   public rateLimit({ source, target }: RateLimitOptions): void {
     this.rateLimitCountByPair.set(`${source}:${target}`, 0);
+  }
+
+  public getRateLimitCount({
+    source,
+    target,
+  }: RateLimitOptions): number | undefined {
+    return this.rateLimitCountByPair.get(`${source}:${target}`);
   }
 
   public stopRateLimiting({
@@ -862,15 +871,20 @@ export class Server extends BaseServer {
       return;
     }
 
-    debug('updateDeviceKeys: got keys for', device.debugId, serviceIdKind);
+    // One-time pre-keys and Kyber pre-keys can arrive in separate requests
+    if (
+      (await device.getPreKeyCount(serviceIdKind)) === 0 ||
+      (await device.getKyberPreKeyCount(serviceIdKind)) === 0
+    ) {
+      return;
+    }
 
     const { seenServiceIdKinds, promiseQueue } = resultQueue;
+    if (seenServiceIdKinds.has(serviceIdKind)) {
+      return;
+    }
 
-    assert(
-      !seenServiceIdKinds.has(serviceIdKind),
-      `Duplicate service id kind ${serviceIdKind} ` +
-        `for device: ${device.debugId}`,
-    );
+    debug('updateDeviceKeys: got keys for', device.debugId, serviceIdKind);
     seenServiceIdKinds.add(serviceIdKind);
     if (
       !seenServiceIdKinds.has(ServiceIdKind.ACI) ||
@@ -1039,30 +1053,36 @@ export class Server extends BaseServer {
     predicate,
     storageKey,
     recordIkm,
+    timeout = DEFAULT_STORAGE_STATE_TIMEOUT,
   }: {
     aci: AciString;
     after?: StorageState;
     // Note: predicate runs on the current state, not on previous intermediate states
-    predicate?: (state: StorageState) => boolean;
+    predicate: (state: StorageState) => boolean;
     storageKey: Buffer<ArrayBuffer>;
     recordIkm?: Buffer<ArrayBuffer>;
+    timeout?: number;
   }): Promise<StorageState> {
     let afterVersion = after?.version;
+    const deadline = Date.now() + timeout;
 
     while (true) {
       debug(
-        'waiting for storage manifest for aci=%s after version=%d predicate=%s',
+        'waiting for storage manifest for aci=%s after version=%d',
         aci,
         afterVersion,
-        predicate !== undefined,
       );
 
-      await this.waitForStorageManifest(aci, afterVersion);
+      await this.waitForStorageManifest(
+        aci,
+        afterVersion,
+        deadline - Date.now(),
+      );
 
       const state = await this.getStorageState({ aci, storageKey, recordIkm });
       assert(state, 'Missing storage state');
 
-      if (predicate !== undefined && !predicate(state)) {
+      if (!predicate(state)) {
         debug(
           'storage manifest for aci=%s version=%d did not match predicate',
           aci,

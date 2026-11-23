@@ -37,9 +37,9 @@ import type { SmartDraftGifMessageSendModalProps } from '../state/smart/DraftGif
 import { CriticalIdlePrimaryDeviceModal } from './CriticalIdlePrimaryDeviceModal.dom.tsx';
 import { LowDiskSpaceBackupImportModal } from './LowDiskSpaceBackupImportModal.dom.tsx';
 import { KeyTransparencyOnboardingDialog } from './KeyTransparencyOnboardingDialog.dom.tsx';
-import { isUsernameValid } from '../util/Username.dom.ts';
+import { isUsernameValid } from '../util/Username.std.ts';
 import type { PinMessageDialogData } from '../state/smart/PinMessageDialog.preload.tsx';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 import type { ErrorModalDataProps } from './ErrorModal.dom.tsx';
 
 // NOTE: All types should be required for this component so that the smart
@@ -182,6 +182,9 @@ export type PropsType = {
   // TerminateGroupFailedModal
   terminateGroupFailedModal: { conversationId: string } | null;
   renderTerminateGroupFailedModal: () => JSX.Element | null;
+  // GroupV2JoinDialog
+  groupV2JoinDialogOpen: boolean;
+  renderGroupV2JoinDialog: () => JSX.Element;
   // PinChangeModal
   isPinChangeModalVisible: boolean;
   renderPinChangeModal: () => JSX.Element | null;
@@ -321,6 +324,9 @@ export function GlobalModalContainer({
   // TerminateGroupFailedModal
   terminateGroupFailedModal,
   renderTerminateGroupFailedModal,
+  // GroupV2JoinDialog
+  groupV2JoinDialogOpen,
+  renderGroupV2JoinDialog,
 }: PropsType): JSX.Element | null {
   // We want the following dialogs to show in this order:
   // 0. Stateful multi-modal workflows
@@ -354,6 +360,10 @@ export function GlobalModalContainer({
   // Safety Number
   if (hasSafetyNumberChangeModal || safetyNumberChangedBlockingData) {
     return renderSendAnywayDialog();
+  }
+
+  if (groupV2JoinDialogOpen) {
+    return renderGroupV2JoinDialog();
   }
 
   // Forward Modal
@@ -538,7 +548,7 @@ export function GlobalModalContainer({
         title={null}
         description={content}
       >
-        <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+        <AxoConfirmDialog.Ok />
       </AxoConfirmDialog.Root>
     );
   }

@@ -32,10 +32,6 @@ import {
   getSendOptions,
   getSendOptionsForRecipients,
 } from '../../util/getSendOptions.preload.ts';
-import {
-  loadPreviewData,
-  loadAttachmentData,
-} from '../../util/migrations.preload.ts';
 import { handleMessageSend } from '../../util/handleMessageSend.preload.ts';
 import { handleMultipleSendErrors } from './handleMultipleSendErrors.std.ts';
 import { isGroupV2, isMe } from '../../util/whatTypeOfConversation.dom.ts';
@@ -43,6 +39,7 @@ import { ourProfileKeyService } from '../../services/ourProfileKey.std.ts';
 import { challengeHandler } from '../../services/challengeHandler.preload.ts';
 import { sendContentMessageToGroup } from '../../util/sendToGroup.preload.ts';
 import { distributionListToSendTarget } from '../../util/distributionListToSendTarget.preload.ts';
+import { transcodeAttachment } from '../../util/transcodeAttachment.preload.ts';
 import { uploadAttachment } from '../../util/uploadAttachment.preload.ts';
 import { SendMessageChallengeError } from '../../textsecure/Errors.std.ts';
 import type { OutgoingTextAttachmentType } from '../../textsecure/SendMessage.preload.ts';
@@ -52,7 +49,6 @@ import {
   saveErrorsOnMessage,
 } from '../../test-node/util/messageFailures.preload.ts';
 import { send } from '../../messages/send.preload.ts';
-import { strictAssert } from '../../util/assert.std.ts';
 
 const { isEqual } = lodash;
 
@@ -168,24 +164,25 @@ export async function sendStory(
           preview: undefined,
         };
       } else {
-        const previewData = await loadPreviewData([localAttachment.preview]);
-        const hydratedPreview = previewData[0];
-        strictAssert(hydratedPreview, 'Missing hydratedPreview');
-
         textAttachment = {
           ...localAttachment,
           preview: {
-            ...hydratedPreview,
+            ...localAttachment.preview,
             image:
-              hydratedPreview.image &&
-              (await uploadAttachment(hydratedPreview.image)),
+              localAttachment.preview.image &&
+              (await uploadAttachment(localAttachment.preview.image)),
           },
         };
       }
     } else {
-      const hydratedAttachment = await loadAttachmentData(attachment);
+      const transcoded = await transcodeAttachment({
+        log,
+        attachment,
+        message: originalMessage,
+        targetTimestamp: timestamp,
+      });
 
-      fileAttachment = await uploadAttachment(hydratedAttachment);
+      fileAttachment = await uploadAttachment(transcoded);
     }
 
     const groupV2 = isGroupV2(conversation.attributes)

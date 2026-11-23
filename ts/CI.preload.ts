@@ -21,10 +21,12 @@ import { BackupLevel } from './services/backups/types.std.ts';
 import { fromHex } from './Bytes.std.ts';
 
 import type { IPCResponse as ChallengeResponseType } from './challenge.dom.ts';
-import type { MessageAttributesType } from './model-types.d.ts';
+import type { MessageAttributesType } from './model-types.std.ts';
 import type { SocketStatuses } from './textsecure/SocketManager.preload.ts';
 import type { RestoreResponseType } from './textsecure/WebAPI.preload.ts';
 import { runStorageServiceSyncJob } from './services/storage.preload.ts';
+import { storageJobQueue } from './util/JobQueue.std.ts';
+import { drop } from './util/drop.std.ts';
 
 const log = createLogger('CI');
 
@@ -35,6 +37,9 @@ export type CIType = {
   getConversationId: (address: string | null) => string | null;
   createNotificationToken: (address: string) => string | undefined;
   getMessagesBySentAt: (
+    sentAt: number
+  ) => Promise<ReadonlyArray<MessageAttributesType>>;
+  getMessagesInDBBySentAt: (
     sentAt: number
   ) => Promise<ReadonlyArray<MessageAttributesType>>;
   getPendingEventCount: (event: string) => number;
@@ -66,6 +71,8 @@ export type CIType = {
   saveSVR2RestoreResponse: (response: RestoreResponseType) => void;
   getSVR2RestoreResponse: () => RestoreResponseType | undefined;
   fetchManifestForPrimary: () => void;
+  pauseStorageService: () => Promise<void>;
+  resumeStorageService: () => void;
 };
 
 export type GetCIOptionsType = Readonly<{
@@ -170,13 +177,17 @@ export function getCI({
   }
 
   async function getMessagesBySentAt(sentAt: number) {
-    const messages = await ipcInvoke<ReadonlyArray<MessageAttributesType>>(
+    const messages = await getMessagesInDBBySentAt(sentAt);
+    return messages.map(
+      m => window.MessageCache.register(new MessageModel(m)).attributes
+    );
+  }
+
+  async function getMessagesInDBBySentAt(sentAt: number) {
+    return ipcInvoke<ReadonlyArray<MessageAttributesType>>(
       AccessType.Read,
       'getMessagesBySentAt',
       [sentAt]
-    );
-    return messages.map(
-      m => window.MessageCache.register(new MessageModel(m)).attributes
     );
   }
 
@@ -230,7 +241,7 @@ export function getCI({
 
   async function uploadBackup() {
     await itemStorage.put('backupTier', BackupLevel.Paid);
-    await backupsService.upload();
+    await backupsService._upload();
     await AttachmentBackupManager.waitForIdle();
 
     // Remove the disclaimer from conversation hero for screenshot backup test
@@ -305,11 +316,44 @@ export function getCI({
     runStorageServiceSyncJob({ reason: 'fetchManifestForPrimary' });
   }
 
+  let resumePausedStorageService: (() => void) | undefined;
+  async function pauseStorageService(): Promise<void> {
+    strictAssert(
+      resumePausedStorageService == null,
+      'pauseStorageService: already paused'
+    );
+
+    const { promise: paused, resolve: onPaused } = explodePromise<void>();
+    const { promise: resumed, resolve: onResumed } = explodePromise<void>();
+    resumePausedStorageService = onResumed;
+
+    drop(
+      storageJobQueue(async () => {
+        log.info('pauseStorageService: paused');
+        onPaused();
+        await resumed;
+        log.info('pauseStorageService: resumed');
+      }, 'CI pause')
+    );
+
+    await paused;
+  }
+
+  function resumeStorageService(): void {
+    strictAssert(
+      resumePausedStorageService != null,
+      'resumeStorageService: not paused'
+    );
+    resumePausedStorageService();
+    resumePausedStorageService = undefined;
+  }
+
   return {
     deviceName,
     getConversationId,
     createNotificationToken,
     getMessagesBySentAt,
+    getMessagesInDBBySentAt,
     getSocketStatus,
     handleEvent,
     setProvisioningURL,
@@ -333,5 +377,7 @@ export function getCI({
     saveSVR2RestoreResponse,
     getSVR2RestoreResponse,
     fetchManifestForPrimary,
+    pauseStorageService,
+    resumeStorageService,
   };
 }

@@ -18,8 +18,11 @@ import {
   createStrictContext,
   useStrictContext,
 } from './_internal/StrictContext.dom.tsx';
-import { isTestOrMockEnvironment } from '../environment.std.ts';
-import { forwardExtraPropsForRadix } from './_internal/props.dom.tsx';
+import { useAxoEnv } from './_internal/AxoEnv.dom.tsx';
+import {
+  concatIds,
+  forwardExtraPropsForRadix,
+} from './_internal/props.dom.tsx';
 
 /**
  * Makes an arbitrary region clickable as a single accessible button, while
@@ -216,6 +219,11 @@ export namespace AriaClickable {
      * ```
      */
     labelledby?: string;
+    /**
+     * Reference the elements that describe the clickable root (like a
+     * description), so they're read when the trigger is focused.
+     */
+    describedby?: string;
 
     disabled?: boolean;
 
@@ -233,8 +241,10 @@ export namespace AriaClickable {
    *   before any <AriaClickable.SubWidget>.
    */
   export const HiddenTrigger: FC<HiddenTriggerProps> = memo(props => {
-    const { ref, label, labelledby, disabled, onClick, ...rest } = props;
+    const { ref, label, labelledby, describedby, disabled, onClick, ...rest } =
+      props;
 
+    const env = useAxoEnv();
     const innerRef = useRef<HTMLButtonElement>(null);
     const onTriggerStateUpdate = useStrictContext(TriggerStateUpdateContext);
 
@@ -289,7 +299,7 @@ export namespace AriaClickable {
     }, []);
 
     useEffect(() => {
-      if (isTestOrMockEnvironment()) {
+      if (env === 'test') {
         assert(
           computeAccessibleName(assert(innerRef.current)) !== '',
           'AriaClickable.HiddenTrigger child must have an accessible name'
@@ -309,6 +319,14 @@ export namespace AriaClickable {
       [disabled, onClick]
     );
 
+    // Keep any `aria-describedby` from a parent with `asChild` (like a
+    // tooltip trigger)
+    const parentProps: Readonly<{ 'aria-describedby'?: string }> = rest;
+    const ariaDescribedBy = concatIds(
+      describedby,
+      parentProps['aria-describedby']
+    );
+
     return (
       <button
         ref={mergeRefs(ref, innerRef)}
@@ -319,6 +337,7 @@ export namespace AriaClickable {
         onClick={handleClick}
         className={tw('absolute inset-0 z-10', 'focus-visible:outline-none')}
         {...forwardExtraPropsForRadix(rest)}
+        aria-describedby={ariaDescribedBy ?? undefined}
       />
     );
   });

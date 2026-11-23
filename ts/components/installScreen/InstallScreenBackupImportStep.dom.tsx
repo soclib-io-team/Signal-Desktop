@@ -4,7 +4,7 @@
 import { useState, useCallback, type JSX } from 'react';
 
 import type { LocalizerType } from '../../types/Util.std.ts';
-import type { UpdatesStateType } from '../../state/ducks/updates.preload.ts';
+import type { UpdatesStateType } from '../../state/ducks/updates.dom.ts';
 import {
   InstallScreenBackupStep,
   InstallScreenBackupError,
@@ -18,7 +18,7 @@ import { missingCaseError } from '../../util/missingCaseError.std.ts';
 import { SYNCING_MESSAGES_SECURITY_URL } from '../../types/support.std.ts';
 import { I18n } from '../I18n.dom.tsx';
 import { InstallScreenUpdateDialog } from './InstallScreenUpdateDialog.dom.tsx';
-import { AxoConfirmDialog } from '../../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 // We can't always use destructuring assignment because of the complexity of this props
 //   type.
@@ -107,7 +107,7 @@ export function InstallScreenBackupImportStep(props: PropsType): JSX.Element {
       errorElem = (
         <AxoConfirmDialog.Root
           open
-          onOpenChange={confirmCancel}
+          onCancel={confirmCancel}
           title={i18n('icu:BackupImportScreen__error__title')}
           description={i18n('icu:BackupImportScreen__error__body')}
         >
@@ -120,7 +120,6 @@ export function InstallScreenBackupImportStep(props: PropsType): JSX.Element {
           >
             {i18n('icu:BackupImportScreen__error__confirm')}
           </AxoConfirmDialog.Action>
-          .
         </AxoConfirmDialog.Root>
       );
     }

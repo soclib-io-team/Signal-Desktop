@@ -1,7 +1,7 @@
 // Copyright 2026 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { FC, MouseEvent, ReactNode, Ref } from 'react';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useId } from 'react';
 import { AxoSymbol } from './AxoSymbol.dom.tsx';
 import { tw } from './tw.dom.tsx';
 import { FlexWrapDetector } from './_internal/FlexWrapDetector.dom.tsx';
@@ -75,6 +75,7 @@ export namespace AxoStackedButton {
       ...rest
     } = props;
     const intl = useAxoIntl();
+    const pendingId = useId();
 
     const handleClick = useCallback(
       (event: MouseEvent<HTMLButtonElement>) => {
@@ -102,7 +103,8 @@ export namespace AxoStackedButton {
             'focus-visible:outline-none'
           )}
           aria-disabled={(pending || disabled) ?? undefined}
-          aria-label={pending ? intl.get('AxoButton.Pending') : undefined}
+          aria-busy={pending ?? undefined}
+          aria-describedby={pending ? pendingId : undefined}
           onClick={handleClick}
           {...forwardExtraPropsForRadix(rest)}
         >
@@ -138,6 +140,12 @@ export namespace AxoStackedButton {
             {label}
           </span>
         </button>
+        {pending && (
+          // Describes the button without replacing its visible label
+          <span id={pendingId} className={tw('sr-only')}>
+            {intl.get('AxoButton.Pending')}
+          </span>
+        )}
       </span>
     );
   });
@@ -165,7 +173,7 @@ export namespace AxoStackedButton {
    */
   export const Row: FC<RowProps> = memo(props => {
     return (
-      <FlexWrapDetector>
+      <FlexWrapDetector.Root>
         <div
           className={tw(
             // Position items
@@ -182,7 +190,7 @@ export namespace AxoStackedButton {
         >
           {props.children}
         </div>
-      </FlexWrapDetector>
+      </FlexWrapDetector.Root>
     );
   });
 
@@ -196,7 +204,11 @@ export namespace AxoStackedButton {
   /** @internal */
   const Spinner: FC = memo(() => {
     return (
-      <span className={tw('absolute inset-0 flex items-center justify-center')}>
+      // The pending state is announced with `aria-describedby` instead
+      <span
+        aria-hidden
+        className={tw('absolute inset-0 flex items-center justify-center')}
+      >
         <AxoBaseSpinner.Root
           size={18}
           weight="regular"

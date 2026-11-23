@@ -80,10 +80,13 @@ export function AttachmentList<
     return null;
   }
 
-  const allVisualAttachments = areAllAttachmentsVisual(attachmentsForUI);
+  const allVisualAttachments = areAllAttachmentsVisual(
+    attachmentsForUI,
+    'transcodable'
+  );
 
   return (
-    <div className="module-attachments">
+    <div>
       {onClose && attachments.length > 1 ? (
         <div className="module-attachments__header">
           <button
@@ -108,7 +111,7 @@ export function AttachmentList<
             index;
 
           const isImage = isImageAttachment(forUI);
-          const isVideo = isVideoAttachment(forUI);
+          const isVideo = isVideoAttachment(forUI, 'transcodable');
           const closeAttachment = () => onCloseAttachment(attachment);
 
           if (

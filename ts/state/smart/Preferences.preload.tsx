@@ -5,21 +5,22 @@ import { requestConnection } from '../../vanguard/connection.preload.ts';
 import type { ConnectionAction } from '../../vanguard/types.std.ts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { v4 as generateGuid } from 'uuid';
 
-import type { AudioDevice } from '@signalapp/ringrtc';
+import type { AudioDeviceList } from '@signalapp/ringrtc';
 import type { MutableRefObject, JSX } from 'react';
 
 import { useItemsActions } from '../ducks/items.preload.ts';
+import { useChatColorsActions } from '../ducks/chatColors.preload.ts';
+import { useAccountActions } from '../ducks/account.preload.ts';
 import { useConversationsActions } from '../ducks/conversations.preload.ts';
 import {
-  getConversationSelector,
   getConversationsWithCustomColorSelector,
   getMe,
   getOtherTabsUnreadCount,
 } from '../selectors/conversations.dom.ts';
 import {
   getBackupKey,
-  getCustomColors,
   getGlobalNotifyWhileMuted,
   getGlobalShowUnreadReminders,
   getHasRegistrationLock,
@@ -37,8 +38,8 @@ import {
   onHasStoriesDisabledChange,
   setPhoneNumberDiscoverability,
 } from '../../textsecure/WebAPI.preload.ts';
-import { DEFAULT_CONVERSATION_COLOR } from '../../types/Colors.std.ts';
-import { SIGNAL_ACI } from '../../types/SignalConversation.std.ts';
+import { getCustomChatColors } from '../selectors/chatColors.std.ts';
+import { getDefaultBubbleColor } from '../selectors/account.std.ts';
 import { saveAttachmentToDisk } from '../../util/migrations.preload.ts';
 import { format } from '../../types/PhoneNumber.std.ts';
 import {
@@ -49,7 +50,7 @@ import {
   getUserNumber,
 } from '../selectors/user.std.ts';
 import { renderClearingDataView } from '../../shims/renderClearingDataView.preload.tsx';
-import OS from '../../util/os/osPreload.preload.ts';
+import OS from '../../util/os/osPreload.sandbox.ts';
 import { themeChanged } from '../../shims/themeChanged.dom.ts';
 import * as Settings from '../../types/Settings.std.ts';
 import * as universalExpireTimerUtil from '../../util/universalExpireTimer.preload.ts';
@@ -71,9 +72,9 @@ import { getConversation } from '../../util/getConversation.preload.ts';
 import { waitForEvent } from '../../shims/events.dom.ts';
 import { DAY } from '../../util/durations/index.std.ts';
 import { sendSyncRequests } from '../../textsecure/syncRequests.preload.ts';
-import { SmartUpdateDialog } from './UpdateDialog.preload.tsx';
+import { SmartUpdateDialog } from './UpdateDialog.dom.tsx';
 import { Preferences } from '../../components/Preferences.dom.tsx';
-import { useUpdatesActions } from '../ducks/updates.preload.ts';
+import { useUpdatesActions } from '../ducks/updates.dom.ts';
 import { getUpdateDialogType } from '../selectors/updates.std.ts';
 import { getHasAnyFailedStorySends } from '../selectors/stories.preload.ts';
 import {
@@ -85,18 +86,19 @@ import { SmartProfileEditor } from './ProfileEditor.preload.tsx';
 import { useNavActions } from '../ducks/nav.std.ts';
 import { NavTab } from '../../types/Nav.std.ts';
 import { renderToastManagerWithoutMegaphone } from './ToastManager.preload.tsx';
-import { useToastActions } from '../ducks/toast.preload.ts';
+import { useToastActions } from '../ducks/toast.dom.ts';
 import { DataReader, DataWriter } from '../../sql/Client.preload.ts';
 import { deleteAllMyStories } from '../../util/deleteAllMyStories.preload.ts';
 import { SmartPreferencesDonations } from './PreferencesDonations.preload.tsx';
 import { useDonationsActions } from '../ducks/donations.preload.ts';
 import { generateDonationReceiptBlob } from '../../util/generateDonationReceipt.dom.ts';
 import { backupLevelFromNumber } from '../../services/backups/types.std.ts';
-import { getMessageQueueTime } from '../../util/getMessageQueueTime.dom.ts';
+import { getMessageQueueTime } from '../../util/getMessageQueueTime.std.ts';
 import { useBackupActions } from '../ducks/backups.preload.ts';
 import { isFeaturedEnabledSelector } from '../../util/isFeatureEnabled.dom.ts';
 import { SmartPreferencesChatFoldersPage } from './PreferencesChatFoldersPage.preload.tsx';
 import { SmartPreferencesEditChatFolderPage } from './PreferencesEditChatFolderPage.preload.tsx';
+import { SmartPreferencesLinkedDevicesPage } from './PreferencesLinkedDevicesPage.preload.tsx';
 import {
   getCurrentChatFoldersCount,
   getHasAnyCurrentCustomChatFolders,
@@ -105,39 +107,48 @@ import {
   SmartNotificationProfilesCreateFlow,
   SmartNotificationProfilesHome,
 } from './PreferencesNotificationProfiles.preload.tsx';
-import { isLocalBackupsEnabled } from '../../util/isLocalBackupsEnabled.dom.ts';
 import { getBackupKeyHash } from '../../services/backups/crypto.preload.ts';
 import { Emoji } from '../../axo/emoji.std.ts';
 import { AppProvider } from '../../windows/AppProvider.dom.tsx';
 import { useMegaphonesActions } from '../ducks/megaphones.preload.ts';
 import { DialogType } from '../../types/Dialogs.std.ts';
-import { promptOSAuth } from '../../util/promptOSAuth.preload.ts';
+import { getDefaultAudioPreference } from '../../types/Calling.std.ts';
+import { promptOSAuth } from '../../util/promptOSAuth.sandbox.ts';
 import {
   pauseBackupMediaDownload,
   resumeBackupMediaDownload,
   cancelBackupMediaDownload,
 } from '../../util/backupMediaDownload.preload.ts';
+import {
+  STORAGE_KEY_DEFAULTS,
+  type ZoomFactorType,
+} from '../../types/StorageKeys.std.ts';
+import { pinReminderService } from '../../services/pinReminder.preload.ts';
+import { useGlobalModalActions } from '../ducks/globalModals.preload.ts';
+import { maybeUpdateRegistrationLock } from '../../util/registrationLock.preload.ts';
+import { disableSignalPin } from '../../util/disableSignalPin.preload.ts';
+import { getEmptyAudioDeviceList } from '../../types/Calling.std.ts';
+import {
+  getBlockedContacts,
+  getBlockedGroups,
+} from '../selectors/blocked.dom.ts';
+import { registrationJobQueue } from '../../jobs/registrationJobQueue.preload.ts';
 
 import type { SettingsLocation } from '../../types/Nav.std.ts';
 import type { StorageAccessType } from '../../types/Storage.d.ts';
 import type { NotifyWhileMutedKey } from '../../util/notifyWhileMuted.std.ts';
 import { NOTIFY_WHILE_MUTED_FIELDS } from '../../util/notifyWhileMuted.std.ts';
-import type { ThemeType } from '../../util/preload.preload.ts';
+import type { ThemeType } from '../../util/preload.sandbox.ts';
 import type { WidthBreakpoint } from '../../components/_util.std.ts';
 import type { StateType } from '../reducer.preload.ts';
 import { DonationsErrorBoundary } from '../../components/DonationsErrorBoundary.dom.tsx';
+import {
+  SmartPreferencesBlocked,
+  type SmartPreferencesBlockedProps,
+} from './PreferencesBlocked.preload.tsx';
 import type { SmartPreferencesChatFoldersPageProps } from './PreferencesChatFoldersPage.preload.tsx';
 import type { SmartPreferencesEditChatFolderPageProps } from './PreferencesEditChatFolderPage.preload.tsx';
 import type { ExternalProps as SmartNotificationProfilesProps } from './PreferencesNotificationProfiles.preload.tsx';
-import {
-  STORAGE_KEY_DEFAULTS,
-  type ZoomFactorType,
-} from '../../types/StorageKeys.std.ts';
-import type { BlockedConversation } from '../../components/Preferences.dom.tsx';
-import { pinReminderService } from '../../services/pinReminder.preload.ts';
-import { useGlobalModalActions } from '../ducks/globalModals.preload.ts';
-import { maybeUpdateRegistrationLock } from '../../util/registrationLock.preload.ts';
-import { disableSignalPin } from '../../util/disableSignalPin.preload.ts';
 
 const RESETTABLE_GLOBAL_NOTIFICATION_ITEMS = [
   ...Object.values(NOTIFY_WHILE_MUTED_FIELDS),
@@ -150,6 +161,12 @@ function renderUpdateDialog(
   return <SmartUpdateDialog {...props} disableDismiss />;
 }
 
+function renderPreferencesBlockedPage(
+  props: SmartPreferencesBlockedProps
+): JSX.Element {
+  return <SmartPreferencesBlocked {...props} />;
+}
+
 function renderPreferencesChatFoldersPage(
   props: SmartPreferencesChatFoldersPageProps
 ): JSX.Element {
@@ -160,6 +177,10 @@ function renderPreferencesEditChatFolderPage(
   props: SmartPreferencesEditChatFolderPageProps
 ): JSX.Element {
   return <SmartPreferencesEditChatFolderPage {...props} />;
+}
+
+function renderPreferencesLinkedDevicesPage() {
+  return <SmartPreferencesLinkedDevicesPage />;
 }
 
 function renderNotificationProfilesHome(
@@ -231,18 +252,16 @@ async function forceKeyTransparencyCheck(): Promise<void> {
 
 export function SmartPreferences(): JSX.Element | null {
   const {
-    addCustomColor,
-    editCustomColor,
     putItem,
-    removeCustomColor,
-    resetDefaultChatColor,
     savePreferredLeftPaneWidth,
     setEmojiSkinToneDefault: onEmojiSkinToneDefaultChange,
-    setGlobalDefaultConversationColor,
     toggleNavTabsCollapse,
   } = useItemsActions();
+  const { addCustomColor, editCustomColor, removeCustomColor } =
+    useChatColorsActions();
+  const { resetDefaultChatColor, setGlobalDefaultBubbleColor } =
+    useAccountActions();
   const {
-    removeCustomColorOnConversations,
     resetAllChatColors,
     resetAllNotificationSettings: resetAllPerChatNotificationSettings,
   } = useConversationsActions();
@@ -257,7 +276,8 @@ export function SmartPreferences(): JSX.Element | null {
   // Selectors
 
   const currentLocation = useSelector(getSelectedLocation);
-  const customColors = useSelector(getCustomColors) ?? {};
+  const customChatColors = useSelector(getCustomChatColors);
+  const defaultBubbleColor = useSelector(getDefaultBubbleColor);
   const getConversationsWithCustomColor = useSelector(
     getConversationsWithCustomColorSelector
   );
@@ -279,7 +299,6 @@ export function SmartPreferences(): JSX.Element | null {
     (state: StateType) => state.donations.receipts
   );
   const weArePrimaryDevice = useSelector(getAreWePrimaryDevice);
-  const conversationSelector = useSelector(getConversationSelector);
 
   const shouldShowUpdateDialog = dialogType !== DialogType.None;
   const badge = getPreferredBadge(me.badges);
@@ -296,6 +315,9 @@ export function SmartPreferences(): JSX.Element | null {
     }
     return getBackupKeyHash(backupKey);
   }, [backupKey]);
+
+  const blockedContactCount = useSelector(getBlockedContacts).length;
+  const blockedGroupCount = useSelector(getBlockedGroups).length;
 
   // The weird ones
 
@@ -340,7 +362,6 @@ export function SmartPreferences(): JSX.Element | null {
   // Context - these don't change per startup
 
   const version = window.SignalContext.getVersion();
-  const availableLocales = window.SignalContext.getI18nAvailableLocales();
   const resolvedLocale = window.SignalContext.getI18nLocale();
   const preferredSystemLocales =
     window.SignalContext.getPreferredSystemLocales();
@@ -361,7 +382,8 @@ export function SmartPreferences(): JSX.Element | null {
 
   // Textsecure - user can change number and change this device's name
 
-  const phoneNumber = format(useSelector(getUserNumber) ?? '', {});
+  const e164 = useSelector(getUserNumber);
+  const phoneNumber = format(e164 ?? '', {});
   const isSyncSupported = !weArePrimaryDevice;
 
   const [deviceName, setDeviceName] = useState(
@@ -389,14 +411,17 @@ export function SmartPreferences(): JSX.Element | null {
 
   // The select boxes for devices are disabled while these arrays have zero length
   const [availableCameras, setAvailableCameras] = useState<
-    Array<MediaDeviceInfo>
+    ReadonlyArray<MediaDeviceInfo>
   >([]);
-  const [availableMicrophones, setAvailableMicrophones] = useState<
-    Array<AudioDevice>
-  >([]);
-  const [availableSpeakers, setAvailableSpeakers] = useState<
-    Array<AudioDevice>
-  >([]);
+  const [availableMicrophones, setAvailableMicrophones] =
+    useState<AudioDeviceList>(() => {
+      return getEmptyAudioDeviceList(OS.isWindows());
+    });
+  const [availableSpeakers, setAvailableSpeakers] = useState<AudioDeviceList>(
+    () => {
+      return getEmptyAudioDeviceList(OS.isWindows());
+    }
+  );
 
   useEffect(() => {
     let canceled = false;
@@ -611,49 +636,6 @@ export function SmartPreferences(): JSX.Element | null {
     attachmentDownloadManagerIdled,
     backupMediaDownloadPaused,
   } = items;
-  const defaultConversationColor =
-    items.defaultConversationColor || DEFAULT_CONVERSATION_COLOR;
-
-  const blockedContacts: Array<BlockedConversation> = useMemo(() => {
-    const result = new Map<string, BlockedConversation>();
-
-    (items['blocked-uuids'] ?? []).forEach(item => {
-      const conversation = conversationSelector(item.serviceId);
-      result.set(conversation.id, {
-        conversation,
-        blockedAt: item.blockedAt,
-      });
-    });
-    (items.blocked ?? []).forEach(item => {
-      const conversation = conversationSelector(item.e164);
-      if (!result.has(conversation.id)) {
-        result.set(conversation.id, {
-          conversation,
-          blockedAt: item.blockedAt,
-        });
-      }
-    });
-
-    if (items.releaseNotesChatBlocked) {
-      const conversation = conversationSelector(SIGNAL_ACI);
-      result.set(conversation.id, {
-        conversation,
-        blockedAt: undefined /* TODO */,
-      });
-    }
-
-    return Array.from(result.values());
-  }, [items, conversationSelector]);
-  const blockedGroups: Array<BlockedConversation> = useMemo(() => {
-    const result: Array<BlockedConversation> = [];
-    (items['blocked-groups'] ?? []).forEach(item => {
-      result.push({
-        conversation: conversationSelector(item.groupId),
-        blockedAt: item.blockedAt,
-      });
-    });
-    return result;
-  }, [items, conversationSelector]);
 
   const emojiSkinToneDefault =
     items.emojiSkinToneDefault ?? Emoji.SkinTone.None;
@@ -663,10 +645,6 @@ export function SmartPreferences(): JSX.Element | null {
     Settings.isContentProtectionSupported(OS);
   const isContentProtectionNeeded = Settings.isContentProtectionNeeded(OS);
 
-  const backupLocalBackupsEnabled = isLocalBackupsEnabled({
-    currentVersion: version,
-    remoteConfig: items.remoteConfig,
-  });
   const backupFreeMediaDays = getMessageQueueTime(items.remoteConfig) / DAY;
 
   const isKeyTransparencyAvailable = isFeaturedEnabledSelector({
@@ -686,7 +664,7 @@ export function SmartPreferences(): JSX.Element | null {
     const value =
       (items[key] as StorageAccessType[K] | undefined) ?? defaultValue;
     const setter = (newValue: StorageAccessType[K]) => {
-      putItem(key, newValue);
+      void putItem(key, newValue);
       callback?.(newValue);
     };
 
@@ -728,6 +706,15 @@ export function SmartPreferences(): JSX.Element | null {
     createItemsAccess('sealedSenderIndicators', false, () => {
       const account = window.ConversationController.getOurConversationOrThrow();
       account.captureChange('sealedSenderIndicators');
+    });
+  const [hasAllowSealedSenderFromAnyone, onAllowSealedSenderFromAnyoneChange] =
+    createItemsAccess('allowSealedSenderFromAnyone', false, () => {
+      drop(
+        registrationJobQueue.add({
+          type: 'UpdateAccountAttributes',
+          id: generateGuid(),
+        })
+      );
     });
 
   const [autoDownloadAttachment, onAutoDownloadAttachmentChange] =
@@ -817,7 +804,7 @@ export function SmartPreferences(): JSX.Element | null {
   );
   const hasNotifications = notificationContent !== 'off';
   const onNotificationsChange = (value: boolean) => {
-    putItem(
+    void putItem(
       'notification-setting',
       value ? STORAGE_KEY_DEFAULTS['notification-setting'] : 'off'
     );
@@ -829,14 +816,14 @@ export function SmartPreferences(): JSX.Element | null {
     value: boolean
   ) => {
     const itemKey = NOTIFY_WHILE_MUTED_FIELDS[key];
-    putItem(itemKey, value);
+    void putItem(itemKey, value);
     const account = window.ConversationController.getOurConversationOrThrow();
     account.captureChange(itemKey);
   };
 
   const hasUnreadReminders = useSelector(getGlobalShowUnreadReminders);
   const onUnreadRemindersChange = (value: boolean) => {
-    putItem('showUnreadReminders', value);
+    void putItem('showUnreadReminders', value);
     const account = window.ConversationController.getOurConversationOrThrow();
     account.captureChange('showUnreadReminders');
   };
@@ -925,11 +912,11 @@ export function SmartPreferences(): JSX.Element | null {
   );
   const [selectedMicrophone, onSelectedMicrophoneChange] = createItemsAccess(
     'preferred-audio-input-device',
-    undefined
+    getDefaultAudioPreference(OS.isWindows())
   );
   const [selectedSpeaker, onSelectedSpeakerChange] = createItemsAccess(
     'preferred-audio-output-device',
-    undefined
+    getDefaultAudioPreference(OS.isWindows())
   );
 
   const [sentMediaQualitySetting, onSentMediaQualityChange] = createItemsAccess(
@@ -964,6 +951,7 @@ export function SmartPreferences(): JSX.Element | null {
       // information.
       await writeProfile(getConversation(account), {
         keepAvatar: true,
+        reupload: false,
       });
     }
   );
@@ -1029,7 +1017,7 @@ export function SmartPreferences(): JSX.Element | null {
     });
     await saveAttachmentToDisk({
       name: 'Signal_AccountKeys.pdf',
-      data,
+      data: { type: 'bytes', bytes: [data] },
     });
   }, [me.serviceId, backupKey]);
 
@@ -1040,7 +1028,7 @@ export function SmartPreferences(): JSX.Element | null {
   const settingsLocation = currentLocation.details;
 
   const setSettingsLocation = (location: SettingsLocation) => {
-    changeLocation({
+    void changeLocation({
       tab: NavTab.Settings,
       details: location,
     });
@@ -1055,7 +1043,6 @@ export function SmartPreferences(): JSX.Element | null {
         addCustomColor={addCustomColor}
         autoDownloadAttachment={autoDownloadAttachment}
         availableCameras={availableCameras}
-        availableLocales={availableLocales}
         availableMicrophones={availableMicrophones}
         availableSpeakers={availableSpeakers}
         backupTier={backupLevelFromNumber(backupTier)}
@@ -1069,18 +1056,18 @@ export function SmartPreferences(): JSX.Element | null {
           isPaused: Boolean(backupMediaDownloadPaused),
           isIdle: Boolean(attachmentDownloadManagerIdled),
         }}
-        backupLocalBackupsEnabled={backupLocalBackupsEnabled}
         badge={badge}
-        blockedContacts={blockedContacts}
-        blockedGroups={blockedGroups}
+        blockedContactCount={blockedContactCount}
+        blockedGroupCount={blockedGroupCount}
         currentChatFoldersCount={currentChatFoldersCount}
         cloudBackupStatus={cloudBackupStatus}
-        customColors={customColors}
-        defaultConversationColor={defaultConversationColor}
+        customChatColors={customChatColors}
+        defaultBubbleColor={defaultBubbleColor}
         deviceName={deviceName}
         disableLocalBackups={backupsService.disableLocalBackups}
         disableSignalPin={disableSignalPin}
         emojiSkinToneDefault={emojiSkinToneDefault}
+        e164={e164}
         phoneNumber={phoneNumber}
         doDeleteAllData={doDeleteAllData}
         editCustomColor={editCustomColor}
@@ -1091,7 +1078,7 @@ export function SmartPreferences(): JSX.Element | null {
         getMessageSampleForSchemaVersion={
           DataReader.getMessageSampleForSchemaVersion
         }
-        getPreferredBadge={getPreferredBadge}
+        hasAllowSealedSenderFromAnyone={hasAllowSealedSenderFromAnyone}
         hasAnyCurrentCustomChatFolders={hasAnyCurrentCustomChatFolders}
         hasAudioNotifications={hasAudioNotifications}
         hasAutoConvertEmoji={hasAutoConvertEmoji}
@@ -1151,6 +1138,9 @@ export function SmartPreferences(): JSX.Element | null {
         navTabsCollapsed={navTabsCollapsed}
         notificationContent={notificationContent}
         notifyWhileMuted={notifyWhileMuted}
+        onAllowSealedSenderFromAnyoneChange={
+          onAllowSealedSenderFromAnyoneChange
+        }
         onAudioNotificationsChange={onAudioNotificationsChange}
         onAutoConvertEmojiChange={onAutoConvertEmojiChange}
         onAutoDownloadAttachmentChange={onAutoDownloadAttachmentChange}
@@ -1215,7 +1205,6 @@ export function SmartPreferences(): JSX.Element | null {
         preferredWidthFromStorage={preferredWidthFromStorage}
         refreshCloudBackupStatus={refreshCloudBackupStatus}
         refreshBackupSubscriptionStatus={refreshBackupSubscriptionStatus}
-        removeCustomColorOnConversations={removeCustomColorOnConversations}
         removeCustomColor={removeCustomColor}
         renderDonationsPane={renderDonationsPane}
         renderNotificationProfilesHome={renderNotificationProfilesHome}
@@ -1225,10 +1214,12 @@ export function SmartPreferences(): JSX.Element | null {
         renderProfileEditor={renderProfileEditor}
         renderToastManager={renderToastManagerWithoutMegaphone}
         renderUpdateDialog={renderUpdateDialog}
+        renderPreferencesBlockedPage={renderPreferencesBlockedPage}
         renderPreferencesChatFoldersPage={renderPreferencesChatFoldersPage}
         renderPreferencesEditChatFolderPage={
           renderPreferencesEditChatFolderPage
         }
+        renderPreferencesLinkedDevicesPage={renderPreferencesLinkedDevicesPage}
         previouslyViewedBackupKeyHash={previouslyViewedBackupKeyHash}
         promptOSAuth={promptOSAuth}
         resetAllChatColors={resetAllChatColors}
@@ -1238,11 +1229,11 @@ export function SmartPreferences(): JSX.Element | null {
         resumeBackupMediaDownload={resumeBackupMediaDownload}
         pauseBackupMediaDownload={pauseBackupMediaDownload}
         cancelBackupMediaDownload={cancelBackupMediaDownload}
-        selectedCamera={selectedCamera}
+        selectedCamera={selectedCamera ?? null}
         selectedMicrophone={selectedMicrophone}
         selectedSpeaker={selectedSpeaker}
         sentMediaQualitySetting={sentMediaQualitySetting}
-        setGlobalDefaultConversationColor={setGlobalDefaultConversationColor}
+        setGlobalDefaultBubbleColor={setGlobalDefaultBubbleColor}
         setSettingsLocation={setSettingsLocation}
         shouldShowUpdateDialog={shouldShowUpdateDialog}
         showPinChangeModal={showPinChangeModal}

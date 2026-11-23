@@ -1,10 +1,12 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { ReactNode, JSX } from 'react';
-import { memo, useCallback } from 'react';
-import type { Placement } from 'react-aria';
-import { DialogTrigger } from 'react-aria-components';
-import { FunPopover } from './base/FunPopover.dom.tsx';
+import { memo, useCallback, useId } from 'react';
+import { Popover } from 'radix-ui';
+import {
+  FunPopover,
+  type FunPopoverPlacement,
+} from './base/FunPopover.dom.tsx';
 import type { FunStickerSelection } from './panels/FunPanelStickers.dom.tsx';
 import { FunPanelStickers } from './panels/FunPanelStickers.dom.tsx';
 import { useFunContext } from './FunProvider.dom.tsx';
@@ -18,7 +20,11 @@ export type FunStickerPickerProps = Readonly<{
   showTimeStickers: boolean;
   onSelectTimeSticker?: (style: FunTimeStickerStyle) => void;
   onSelectSticker: (stickerSelection: FunStickerSelection) => void;
-  placement?: Placement;
+  onMarkStickerAsFavorite: (
+    stickerSelection: FunStickerSelection,
+    markAsFavorite: boolean
+  ) => void;
+  placement?: FunPopoverPlacement;
   theme?: ThemeType;
   children: ReactNode;
 }>;
@@ -28,6 +34,7 @@ export const FunStickerPicker = memo(function FunStickerPicker(
 ): JSX.Element {
   const { onOpenChange } = props;
   const fun = useFunContext();
+  const triggerId = useId();
   const { onAnyOpenChange } = fun;
 
   const handleOpenChange = useCallback(
@@ -43,20 +50,26 @@ export const FunStickerPicker = memo(function FunStickerPicker(
   }, [handleOpenChange]);
 
   return (
-    <DialogTrigger isOpen={props.open} onOpenChange={handleOpenChange}>
-      {props.children}
-      <FunPopover placement={props.placement} theme={props.theme}>
+    <Popover.Root open={props.open} onOpenChange={handleOpenChange} modal>
+      <Popover.Trigger id={triggerId} asChild>
+        {props.children}
+      </Popover.Trigger>
+      <FunPopover
+        aria-labelledby={triggerId}
+        placement={props.placement}
+        theme={props.theme}
+      >
         <FunErrorBoundary>
           <FunPanelStickers
-            isReply={false}
             showTimeStickers={props.showTimeStickers}
             onSelectTimeSticker={props.onSelectTimeSticker}
             onSelectSticker={props.onSelectSticker}
             onClose={handleClose}
             onAddStickerPack={null}
+            onMarkStickerAsFavorite={props.onMarkStickerAsFavorite}
           />
         </FunErrorBoundary>
       </FunPopover>
-    </DialogTrigger>
+    </Popover.Root>
   );
 });

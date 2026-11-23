@@ -5,7 +5,7 @@ import { useState, useEffect, type JSX } from 'react';
 import type { LocalizerType } from '../types/Util.std.ts';
 import { ResolvedSendStatus } from '../types/Stories.std.ts';
 import { usePreviousDeprecated } from './usePrevious.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 export function useRetryStorySend(
   i18n: LocalizerType,
@@ -48,7 +48,7 @@ export function useRetryStorySend(
         title={null}
         description={i18n('icu:Stories__failed-send')}
       >
-        <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+        <AxoConfirmDialog.Ok />
       </AxoConfirmDialog.Root>
     );
   }

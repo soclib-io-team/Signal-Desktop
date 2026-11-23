@@ -14,84 +14,6 @@
   background: var(--axo-color-surface-primary);
 
   &__pane {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 380px;
-    padding-top: calc(2px + var(--title-bar-drag-area-height));
-    @include mixins.light-theme {
-      background: variables.$color-gray-04;
-      border-inline-end: 1px solid variables.$color-black-alpha-16;
-    }
-    @include mixins.dark-theme {
-      background: variables.$color-gray-80;
-      border-inline-end: 1px solid variables.$color-white-alpha-16;
-    }
-
-    &__add-story__container {
-      padding: 4px;
-      border-radius: 4px;
-      &:hover,
-      &:focus {
-        @include mixins.light-theme {
-          background-color: variables.$color-black-alpha-06;
-        }
-        @include mixins.dark-theme {
-          background-color: variables.$color-white-alpha-06;
-        }
-      }
-    }
-
-    &__add-story__button {
-      height: 20px;
-      width: 20px;
-      @include mixins.light-theme {
-        @include mixins.color-svg(
-          '../images/icons/v3/plus/plus.svg',
-          variables.$color-black
-        );
-      }
-      @include mixins.dark-theme {
-        @include mixins.color-svg(
-          '../images/icons/v3/plus/plus.svg',
-          variables.$color-gray-15
-        );
-      }
-
-      &:focus-visible {
-        background-color: variables.$color-ultramarine;
-      }
-    }
-
-    &__header {
-      align-items: center;
-      display: flex;
-      justify-content: space-between;
-      padding-block: 0;
-      padding-inline: 16px;
-      position: relative;
-
-      &--centered {
-        justify-content: flex-start;
-      }
-
-      &--title {
-        @include mixins.font-title-medium;
-        flex: 1;
-        @include mixins.light-theme {
-          color: variables.$color-black;
-        }
-        @include mixins.dark-theme {
-          color: variables.$color-gray-05;
-        }
-      }
-
-      &--centered .Stories__pane__header--title {
-        text-align: center;
-        width: 100%;
-      }
-    }
-
     &__list {
       display: flex;
       flex-direction: column;
@@ -199,14 +121,4 @@
       }
     }
   }
-}
-
-.StoriesTab__MoreActionsIcon {
-  display: block;
-  width: 20px;
-  height: 20px;
-  @include mixins.color-svg(
-    '../images/icons/v3/more/more.svg',
-    var(--axo-color-label-secondary)
-  );
 }

@@ -5,14 +5,14 @@ import { contextBridge } from 'electron';
 
 import { createLogger } from '../../logging/log.std.ts';
 
-import '../context.preload.ts';
-import '../clipboard.preload.ts';
+import '../context.sandbox.ts';
+import '../clipboard.sandbox.ts';
 
 // Connect websocket early
 import '../../textsecure/preconnect.preload.ts';
 
 import './phase1-ipc.preload.ts';
-import '../preload.preload.ts';
+import '../preload.sandbox.ts';
 import './phase2-dependencies.preload.ts';
 import './phase3-post-signal.preload.ts';
 import './phase4-test.preload.ts';
@@ -48,7 +48,7 @@ window.addEventListener('contextmenu', e => {
     node?.closest('textarea, input, [contenteditable="plaintext-only"]')
   );
   const isLink = Boolean(node?.closest('a'));
-  const isImage = Boolean(node?.closest('.Lightbox img'));
+  const isImage = Boolean(node?.closest('#lightbox img'));
   const hasSelection = Boolean(window.getSelection()?.toString());
 
   if (!isEditable && !hasSelection && !isLink && !isImage) {

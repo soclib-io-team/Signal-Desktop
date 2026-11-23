@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { MouseEvent } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
-import { AxoDialog } from '../../../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../../../axo/dialogs/AxoDialog.dom.tsx';
 import type { LocalizerType } from '../../../types/I18N.std.ts';
 import { AxoRadioGroup } from '../../../axo/controls/AxoRadioGroup.dom.tsx';
 import { strictAssert } from '../../../util/assert.std.ts';
-import { AxoAlertDialog } from '../../../axo/AxoAlertDialog.dom.tsx';
-import { isInternalFeaturesEnabled } from '../../../util/isInternalFeaturesEnabled.dom.ts';
+import { AxoAlertDialog } from '../../../axo/dialogs/AxoAlertDialog.dom.tsx';
+import { isInternalFeaturesEnabled } from '../../../util/isInternalFeaturesEnabled.std.ts';
 import { DurationSecs } from '@signalapp/types';
 
 enum DurationOption {
@@ -267,7 +267,7 @@ function PinMessageSelectDurationDialog(props: {
         </AxoDialog.Body>
         <AxoDialog.Footer>
           <AxoDialog.Actions>
-            <AxoDialog.Action variant="strong-secondary" onClick={handleCancel}>
+            <AxoDialog.Action variant="subtle-secondary" onClick={handleCancel}>
               {i18n('icu:PinMessageDialog__Cancel')}
             </AxoDialog.Action>
             <AxoDialog.Action variant="strong-primary" onClick={handleConfirm}>
@@ -305,7 +305,7 @@ function PinMessageDisappearingMessagesWarningDialog(props: {
             variant="strong-primary"
             onClick={props.onConfirm}
           >
-            {i18n('icu:PinMessageDisappearingMessagesWarningDialog__Okay')}
+            {i18n('icu:ok')}
           </AxoAlertDialog.Action>
         </AxoAlertDialog.Footer>
       </AxoAlertDialog.Content>

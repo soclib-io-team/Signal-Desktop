@@ -4,13 +4,13 @@ import { useCallback, useId, useMemo, useState, type JSX } from 'react';
 import type { LocalizerType } from '../types/I18N.std.ts';
 import { AxoSymbol } from '../axo/AxoSymbol.dom.tsx';
 import { AxoButton } from '../axo/AxoButton.dom.tsx';
-import { AxoDialog } from '../axo/AxoDialog.dom.tsx';
+import { AxoTooltip } from '../axo/AxoTooltip.dom.tsx';
+import { AxoDialog } from '../axo/dialogs/AxoDialog.dom.tsx';
 import { CallQualitySurvey } from '../types/CallQualitySurvey.std.ts';
 import { tw } from '../axo/tw.dom.tsx';
 import { missingCaseError } from '../util/missingCaseError.std.ts';
 import { AxoCheckbox } from '../axo/AxoCheckbox.dom.tsx';
 import { strictAssert } from '../util/assert.std.ts';
-import { Tooltip, TooltipPlacement } from './Tooltip.dom.tsx';
 import { I18n } from './I18n.dom.tsx';
 
 import Issue = CallQualitySurvey.Issue;
@@ -65,7 +65,7 @@ export function CallQualitySurveyDialog(
   const [userHasSeenOtherForm, setUserHasSeenOtherForm] = useState(false);
   const debugLogCheckboxId = useId();
   const otherTextareaErrorId = useId();
-  const [shareDebugLog, setShareDebugLog] = useState(false);
+  const [shareDebugLog, setShareDebugLog] = useState(true);
 
   // Validation for the issues page
   const hasOtherIssue = callQualityIssues.has(Issue.OTHER);
@@ -126,14 +126,14 @@ export function CallQualitySurveyDialog(
               <AxoDialog.Close />
             </AxoDialog.Header>
             <AxoDialog.Body>
-              <p className={tw('mb-3 type-body-medium text-primary')}>
-                <AxoDialog.Description>
+              <AxoDialog.Description>
+                <p className={tw('mb-3 text-center text-primary')}>
                   {i18n(
                     'icu:CallQualitySurvey__HowWasYourCall__PageDescription'
                   )}
-                </AxoDialog.Description>
-              </p>
-              <div className={tw('mb-6 flex justify-center gap-10')}>
+                </p>
+              </AxoDialog.Description>
+              <div className={tw('flex justify-center gap-10')}>
                 <BigCircleButton
                   symbol="thumbsdown"
                   className={tw(
@@ -179,27 +179,25 @@ export function CallQualitySurveyDialog(
               <AxoDialog.Close />
             </AxoDialog.Header>
             <AxoDialog.Body>
-              <p className={tw('mb-3 type-body-medium text-primary')}>
-                <AxoDialog.Description>
+              <AxoDialog.Description>
+                <p className={tw('mb-3 text-center text-primary')}>
                   {i18n(
                     'icu:CallQualitySurvey__WhatIssuesDidYouHave__IssuesList__Heading'
                   )}
-                </AxoDialog.Description>
-              </p>
-              <div className={tw('mb-3')}>
-                <IssueSelector
-                  i18n={i18n}
-                  issues={callQualityIssues}
-                  onIssuesChange={newIssues => {
-                    if (!newIssues.has(Issue.OTHER)) {
-                      setUserHasSeenOtherForm(false);
-                    }
-                    setCallQualityIssues(newIssues);
-                  }}
-                />
-              </div>
+                </p>
+              </AxoDialog.Description>
+              <IssueSelector
+                i18n={i18n}
+                issues={callQualityIssues}
+                onIssuesChange={newIssues => {
+                  if (!newIssues.has(Issue.OTHER)) {
+                    setUserHasSeenOtherForm(false);
+                  }
+                  setCallQualityIssues(newIssues);
+                }}
+              />
               {hasOtherIssue && (
-                <div className={tw('mb-3')}>
+                <div className={tw('mt-3')}>
                   <textarea
                     aria-label={i18n(
                       'icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__AccessibilityLabel'
@@ -215,7 +213,9 @@ export function CallQualitySurveyDialog(
                     onBlur={() => {
                       setUserHasSeenOtherForm(true);
                     }}
-                    placeholder="Describe your issue"
+                    placeholder={i18n(
+                      'icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__Placeholder'
+                    )}
                     className={tw(
                       'field-sizing-content max-h-50 min-h-20 w-full resize-none',
                       'rounded-lg border-[0.5px] px-3 py-2 shadow-elevation-1',
@@ -262,13 +262,12 @@ export function CallQualitySurveyDialog(
                     )}
                   </AxoButton.Root>
                 ) : (
-                  <Tooltip
-                    content={i18n(
+                  <AxoTooltip.Root
+                    label={i18n(
                       !isOtherInputValid
                         ? 'icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__ErrorText'
                         : 'icu:CallQualitySurvey__WhatIssuesDidYouHave__ContinueButton__DisabledTooltip'
                     )}
-                    direction={TooltipPlacement.Top}
                   >
                     <AxoButton.Root
                       variant="strong-primary"
@@ -280,7 +279,7 @@ export function CallQualitySurveyDialog(
                         'icu:CallQualitySurvey__WhatIssuesDidYouHave__ContinueButton'
                       )}
                     </AxoButton.Root>
-                  </Tooltip>
+                  </AxoTooltip.Root>
                 )}
               </AxoDialog.Actions>
             </AxoDialog.Footer>
@@ -304,15 +303,15 @@ export function CallQualitySurveyDialog(
               <AxoDialog.Close />
             </AxoDialog.Header>
             <AxoDialog.Body>
-              <p className={tw('mb-3 type-body-medium text-primary')}>
-                <AxoDialog.Description>
+              <AxoDialog.Description>
+                <p className={tw('mb-3 text-primary')}>
                   <I18n
                     i18n={i18n}
                     id="icu:CallQualitySurvey__ConfirmSubmission__PageDescriptionWithDiagnosticLink"
                     components={diagnosticInfoLinkComponents}
                   />
-                </AxoDialog.Description>
-              </p>
+                </p>
+              </AxoDialog.Description>
               <div className={tw('my-1.5 flex items-center gap-3')}>
                 <AxoCheckbox.Root
                   variant="square"
@@ -322,7 +321,7 @@ export function CallQualitySurveyDialog(
                 />
                 <label
                   htmlFor={debugLogCheckboxId}
-                  className={tw('grow truncate')}
+                  className={tw('grow truncate text-primary')}
                 >
                   {i18n(
                     'icu:CallQualitySurvey__ConfirmSubmission__ShareDebugLog__Label'
@@ -401,7 +400,7 @@ const ISSUE_ICONS: Record<Issue, AxoSymbol.Name> = {
   [Issue.VIDEO_LOW_QUALITY]: 'videocamera',
   [Issue.VIDEO_LOW_RESOLUTION]: 'videocamera',
   [Issue.CALL_DROPPED]: 'x-circle',
-  [Issue.OTHER]: 'error',
+  [Issue.OTHER]: 'error-circle',
 };
 
 function getIssueLabel(i18n: LocalizerType, issue: Issue): string {

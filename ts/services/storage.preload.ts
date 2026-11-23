@@ -21,14 +21,14 @@ import {
   mergeGroupV1Record,
   mergeGroupV2Record,
   mergeStoryDistributionListRecord,
-  mergeStickerPackRecord,
+  mergeInstalledStickerPackRecord,
   toAccountRecord,
   toContactRecord,
   toGroupV1Record,
   toGroupV2Record,
   toNotificationProfileRecord,
   toStoryDistributionListRecord,
-  toStickerPackRecord,
+  toInstalledStickerPackRecord,
   toCallLinkRecord,
   mergeCallLinkRecord,
   toChatFolderRecord,
@@ -36,6 +36,10 @@ import {
   toPendingCallLinkRecord,
   mergeChatFolderRecord,
   mergeNotificationProfileRecord,
+  mergeFavoriteStickerRecord,
+  toFavoriteStickerPackRecord,
+  toHiddenStickerPackRecord,
+  mergeHiddenStickerPackRecord,
 } from './storageRecordOps.preload.ts';
 import type { MergeResultType } from './storageRecordOps.preload.ts';
 import { MAX_READ_KEYS } from './storageConstants.std.ts';
@@ -49,7 +53,7 @@ import { storageJobQueue } from '../util/JobQueue.std.ts';
 import { sleep } from '../util/sleep.std.ts';
 import { isMoreRecentThan, isOlderThan } from '../util/timestamp.std.ts';
 import { map, filter } from '../util/iterables.std.ts';
-import { getMessageQueueTime } from '../util/getMessageQueueTime.dom.ts';
+import { getMessageQueueTime } from '../util/getMessageQueueTime.std.ts';
 import { ourProfileKeyService } from './ourProfileKey.std.ts';
 import {
   ConversationTypes,
@@ -104,6 +108,11 @@ import { isCurrentAllChatFolder } from '../types/CurrentChatFolders.std.ts';
 import type { NotificationProfileType } from '../types/NotificationProfile.std.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
 import { toNumber } from '../util/toNumber.std.ts';
+import type {
+  FavoriteStickerType,
+  HiddenStickerPackType,
+} from '../types/Stickers.preload.ts';
+import { redactPackId } from '../util/Stickers.std.ts';
 
 const { debounce, isNumber, chunk } = lodash;
 
@@ -144,6 +153,8 @@ const validRecordTypes = new Set([
   ITEM_TYPE.CALL_LINK,
   ITEM_TYPE.CHAT_FOLDER,
   ITEM_TYPE.NOTIFICATION_PROFILE,
+  ITEM_TYPE.HIDDEN_STICKER_PACK,
+  ITEM_TYPE.FAVORITE_STICKER_PACK,
 ]);
 
 const backOff = new BackOff([
@@ -445,6 +456,8 @@ async function generateManifest(
     storyDistributionLists,
     installedStickerPacks,
     uninstalledStickerPacks,
+    hiddenStickerPacks,
+    favoriteStickers,
     chatFolders,
   } = await getNonConversationRecords();
 
@@ -585,7 +598,7 @@ async function generateManifest(
   uninstalledStickerPacks.forEach(stickerPack => {
     const storageRecord: Proto.StorageRecord.Params = {
       record: {
-        stickerPack: toStickerPackRecord(stickerPack),
+        installedStickerPack: toInstalledStickerPackRecord(stickerPack),
       },
     };
 
@@ -654,7 +667,7 @@ async function generateManifest(
 
     const storageRecord: Proto.StorageRecord.Params = {
       record: {
-        stickerPack: toStickerPackRecord(stickerPack),
+        installedStickerPack: toInstalledStickerPackRecord(stickerPack),
       },
     };
 
@@ -687,6 +700,126 @@ async function generateManifest(
       `installed=${newlyInstalledPacks}/${installedStickerPacks.length} ` +
       `uninstalled=${newlyUninstalledPacks}/${uninstalledStickerPacks.length}`
   );
+
+  log.info(`${logId}: adding hiddenStickerPacks=${hiddenStickerPacks.length}`);
+
+  let newHiddenStickerPacks = 0;
+  hiddenStickerPacks.forEach(hiddenPack => {
+    const storageRecord: Proto.StorageRecord.Params = {
+      record: {
+        hiddenStickerPack: toHiddenStickerPackRecord(hiddenPack),
+      },
+    };
+
+    const { unhiddenAtTimestampMs, packId } = hiddenPack;
+
+    if (
+      unhiddenAtTimestampMs &&
+      unhiddenAtTimestampMs !== 0 &&
+      isOlderThan(unhiddenAtTimestampMs, getMessageQueueTime())
+    ) {
+      const droppedID = hiddenPack.storageID;
+      const droppedVersion = hiddenPack.storageVersion;
+      if (droppedID) {
+        const recordID = redactStorageID(droppedID, droppedVersion);
+
+        log.info(
+          `${logId}: dropping hiddenStickerPack=${recordID} ` +
+            `due to expired deleted timestamp=${unhiddenAtTimestampMs}`
+        );
+        deleteKeys.add(droppedID);
+      } else {
+        const safePackId = redactPackId(hiddenPack.packId);
+        log.info(
+          `${logId}: dropping never uploaded hiddenStickerPack from pack=${safePackId}` +
+            `due to expired deleted timestamp=${unhiddenAtTimestampMs}`
+        );
+      }
+
+      drop(DataWriter.deleteHiddenStickerPack(packId));
+      return;
+    }
+
+    const { isNewItem, storageID } = processStorageRecord({
+      currentStorageID: hiddenPack.storageID,
+      currentStorageVersion: hiddenPack.storageVersion,
+      identifierType: ITEM_TYPE.HIDDEN_STICKER_PACK,
+      storageNeedsSync: hiddenPack.storageNeedsSync,
+      storageRecord,
+    });
+
+    if (isNewItem) {
+      newHiddenStickerPacks += 1;
+      postUploadUpdateFunctions.push(() =>
+        DataWriter.updateHiddenStickerPack({
+          ...hiddenPack,
+          storageID,
+          storageVersion: version,
+          storageNeedsSync: false,
+        })
+      );
+    }
+  });
+
+  log.info(`${logId}: adding favoriteStickers=${favoriteStickers.length}`);
+
+  let newFavoriteStickers = 0;
+  favoriteStickers.forEach(favoriteSticker => {
+    const storageRecord: Proto.StorageRecord.Params = {
+      record: {
+        sticker: toFavoriteStickerPackRecord(favoriteSticker),
+      },
+    };
+
+    const { deletedAtTimestampMs, packId, stickerId } = favoriteSticker;
+
+    if (
+      deletedAtTimestampMs &&
+      deletedAtTimestampMs !== 0 &&
+      isOlderThan(deletedAtTimestampMs, getMessageQueueTime())
+    ) {
+      const droppedID = favoriteSticker.storageID;
+      const droppedVersion = favoriteSticker.storageVersion;
+      if (droppedID) {
+        const recordID = redactStorageID(droppedID, droppedVersion);
+
+        log.info(
+          `${logId}: dropping favoriteSticker=${recordID} ` +
+            `due to expired deleted timestamp=${deletedAtTimestampMs}`
+        );
+        deleteKeys.add(droppedID);
+      } else {
+        const safePackId = redactPackId(favoriteSticker.packId);
+        log.info(
+          `${logId}: dropping never uploaded favoriteSticker from pack=${safePackId}` +
+            `due to expired deleted timestamp=${deletedAtTimestampMs}`
+        );
+      }
+
+      drop(DataWriter.deleteFavoriteSticker({ packId, stickerId }));
+      return;
+    }
+
+    const { isNewItem, storageID } = processStorageRecord({
+      currentStorageID: favoriteSticker.storageID,
+      currentStorageVersion: favoriteSticker.storageVersion,
+      identifierType: ITEM_TYPE.FAVORITE_STICKER_PACK,
+      storageNeedsSync: favoriteSticker.storageNeedsSync,
+      storageRecord,
+    });
+
+    if (isNewItem) {
+      newFavoriteStickers += 1;
+      postUploadUpdateFunctions.push(() =>
+        DataWriter.updateFavoriteSticker({
+          ...favoriteSticker,
+          storageID,
+          storageVersion: version,
+          storageNeedsSync: false,
+        })
+      );
+    }
+  });
 
   log.info(`${logId}: adding callLinks=${callLinkDbRecords.length}`);
 
@@ -1151,12 +1284,8 @@ async function uploadManifest(
     log.warn(`${logId}: nothing to upload`);
   }
 
+  const storageKeyBase64 = itemStorage.get('storageKey');
   const recordIkm = itemStorage.get('manifestRecordIkm');
-  window.SignalCI?.handleEvent('uploadManifest', {
-    version,
-    storageKeyBase64: itemStorage.get('storageKey'),
-    recordIkmBase64: recordIkm ? Bytes.toBase64(recordIkm) : undefined,
-  });
 
   const credentials = itemStorage.get('storageCredentials');
   try {
@@ -1175,6 +1304,12 @@ async function uploadManifest(
 
     await modifyStorageRecords(writeOperation, {
       credentials,
+    });
+
+    window.SignalCI?.handleEvent('uploadManifest', {
+      version,
+      storageKeyBase64,
+      recordIkmBase64: recordIkm ? Bytes.toBase64(recordIkm) : undefined,
     });
 
     log.info(
@@ -1609,12 +1744,30 @@ async function mergeRecord(
       );
     } else if (
       itemType === ITEM_TYPE.STICKER_PACK &&
-      storageRecord.record?.stickerPack
+      storageRecord.record?.installedStickerPack
     ) {
-      mergeResult = await mergeStickerPackRecord(
+      mergeResult = await mergeInstalledStickerPackRecord(
         storageID,
         storageVersion,
-        storageRecord.record.stickerPack
+        storageRecord.record.installedStickerPack
+      );
+    } else if (
+      itemType === ITEM_TYPE.HIDDEN_STICKER_PACK &&
+      storageRecord.record?.hiddenStickerPack
+    ) {
+      mergeResult = await mergeHiddenStickerPackRecord(
+        storageID,
+        storageVersion,
+        storageRecord.record.hiddenStickerPack
+      );
+    } else if (
+      itemType === ITEM_TYPE.FAVORITE_STICKER_PACK &&
+      storageRecord.record?.sticker
+    ) {
+      mergeResult = await mergeFavoriteStickerRecord(
+        storageID,
+        storageVersion,
+        storageRecord.record.sticker
       );
     } else if (
       itemType === ITEM_TYPE.CALL_LINK &&
@@ -1699,6 +1852,8 @@ type NonConversationRecordsResultType = Readonly<{
   callLinkDbRecords: ReadonlyArray<CallLinkRecord>;
   chatFolders: ReadonlyArray<ChatFolder>;
   defunctCallLinks: ReadonlyArray<DefunctCallLinkType>;
+  favoriteStickers: ReadonlyArray<FavoriteStickerType>;
+  hiddenStickerPacks: ReadonlyArray<HiddenStickerPackType>;
   installedStickerPacks: ReadonlyArray<StickerPackType>;
   notificationProfiles: ReadonlyArray<NotificationProfileType>;
   pendingCallLinks: ReadonlyArray<PendingCallLinkType>;
@@ -1716,6 +1871,8 @@ async function getNonConversationRecords(): Promise<NonConversationRecordsResult
     storyDistributionLists,
     uninstalledStickerPacks,
     installedStickerPacks,
+    hiddenStickerPacks,
+    favoriteStickers,
     chatFolders,
   ] = await Promise.all([
     DataReader.getAllCallLinkRecordsForStorageService(),
@@ -1727,6 +1884,8 @@ async function getNonConversationRecords(): Promise<NonConversationRecordsResult
     DataReader.getAllStoryDistributionsWithMembers(),
     DataReader.getUninstalledStickerPacks(),
     DataReader.getInstalledStickerPacks(),
+    DataReader.getAllHiddenStickerPacks(),
+    DataReader.getAllFavoriteStickers(),
     DataReader.getAllChatFolders(),
   ]);
 
@@ -1734,6 +1893,8 @@ async function getNonConversationRecords(): Promise<NonConversationRecordsResult
     callLinkDbRecords,
     chatFolders,
     defunctCallLinks,
+    favoriteStickers,
+    hiddenStickerPacks,
     installedStickerPacks,
     notificationProfiles,
     pendingCallLinks,
@@ -1777,6 +1938,8 @@ async function processManifest(
       storyDistributionLists,
       installedStickerPacks,
       uninstalledStickerPacks,
+      hiddenStickerPacks,
+      favoriteStickers,
       chatFolders,
     } = await getNonConversationRecords();
 
@@ -1811,6 +1974,12 @@ async function processManifest(
 
     installedStickerPacks.forEach(collectLocalKeysFromFields);
     localRecordCount += installedStickerPacks.length;
+
+    hiddenStickerPacks.forEach(collectLocalKeysFromFields);
+    localRecordCount += hiddenStickerPacks.length;
+
+    favoriteStickers.forEach(collectLocalKeysFromFields);
+    localRecordCount += favoriteStickers.length;
 
     chatFolders.forEach(collectLocalKeysFromFields);
     localRecordCount += chatFolders.length;
@@ -1934,6 +2103,8 @@ async function processManifest(
       pendingCallLinks,
       storyDistributionLists,
       uninstalledStickerPacks,
+      hiddenStickerPacks,
+      favoriteStickers,
     } = await getNonConversationRecords();
 
     uninstalledStickerPacks.forEach(stickerPack => {
@@ -1969,6 +2140,69 @@ async function processManifest(
         storageNeedsSync: false,
         uninstalledAt: stickerPack.uninstalledAt,
       });
+    });
+
+    hiddenStickerPacks.forEach(hiddenPack => {
+      const { unhiddenAtTimestampMs, packId, storageID, storageVersion } =
+        hiddenPack;
+      if (!storageID || remoteKeys.has(storageID)) {
+        return;
+      }
+
+      const missingKey = redactStorageID(storageID, storageVersion);
+      if (unhiddenAtTimestampMs) {
+        log.info(
+          `${logId}/hiddenStickerPack: localKey=${missingKey} was not in remote manifest. Removing.`
+        );
+        drop(DataWriter.deleteHiddenStickerPack(packId));
+        return;
+      }
+
+      log.info(
+        `${logId}/hiddenStickerPack: localKey=${missingKey} was not in remote manifest`
+      );
+
+      drop(
+        DataWriter.updateHiddenStickerPack({
+          ...hiddenPack,
+          storageID: null,
+          storageVersion: null,
+        })
+      );
+    });
+
+    favoriteStickers.forEach(favoriteSticker => {
+      const {
+        deletedAtTimestampMs,
+        packId,
+        stickerId,
+        storageID,
+        storageVersion,
+      } = favoriteSticker;
+      if (!storageID || remoteKeys.has(storageID)) {
+        return;
+      }
+
+      const missingKey = redactStorageID(storageID, storageVersion);
+      if (deletedAtTimestampMs) {
+        log.info(
+          `${logId}/favoriteSticker: localKey=${missingKey} was not in remote manifest. Removing.`
+        );
+        drop(DataWriter.deleteFavoriteSticker({ packId, stickerId }));
+        return;
+      }
+
+      log.info(
+        `${logId}/favoriteSticker: localKey=${missingKey} was not in remote manifest`
+      );
+
+      drop(
+        DataWriter.updateFavoriteSticker({
+          ...favoriteSticker,
+          storageID: null,
+          storageVersion: null,
+        })
+      );
     });
 
     storyDistributionLists.forEach(storyDistributionList => {
@@ -2651,7 +2885,7 @@ async function sync({ reason }: { reason: string }): Promise<SyncResult> {
   }
 
   log.info(`${logId}: starting...`);
-  await maybeFixStorageKey(`sync/${reason}`);
+  await maybeFixStorageKey(logId);
 
   let manifest: Proto.ManifestRecord;
   try {
@@ -2664,8 +2898,10 @@ async function sync({ reason }: { reason: string }): Promise<SyncResult> {
 
     const localManifestVersion = manifestFromStorage || 0;
 
-    log.info(`sync: fetching latest after version=${localManifestVersion}`);
+    log.info(`${logId}: fetching latest after version=${localManifestVersion}`);
     const fetchResult = await fetchManifest(localManifestVersion);
+    log.info(`${logId}: fetch returned state '${fetchResult.type}'`);
+
     if (fetchResult.type === 'cannotDecrypt') {
       return {
         success: false,
@@ -2675,7 +2911,7 @@ async function sync({ reason }: { reason: string }): Promise<SyncResult> {
     }
     if (fetchResult.type === 'noManifest') {
       log.info(
-        `sync: no updates, version=${localManifestVersion}, marking storageFetchComplete=true`
+        `${logId}: no updates, version=${localManifestVersion}, marking storageFetchComplete=true`
       );
       await itemStorage.put('storageFetchComplete', true);
       return {
@@ -2696,7 +2932,7 @@ async function sync({ reason }: { reason: string }): Promise<SyncResult> {
       (version !== 0 || localManifestVersion !== 0)
     ) {
       log.error(
-        'sync: remote manifest version mismatch ' +
+        `${logId}: remote manifest version mismatch ` +
           `${version} <= ${localManifestVersion}`
       );
       return {
@@ -2708,14 +2944,14 @@ async function sync({ reason }: { reason: string }): Promise<SyncResult> {
     await window.waitForEmptyEventQueue();
 
     log.info(
-      `sync: updating to remoteVersion=${version} ` +
+      `${logId}: updating to remoteVersion=${version} ` +
         `sourceDevice=${manifest.sourceDevice ?? '?'} from ` +
         `version=${localManifestVersion}`
     );
 
     await processManifest(manifest, version);
 
-    log.info(`sync: updated to version=${version}`);
+    log.info(`${logId}: updated to version=${version}`);
 
     await itemStorage.put('manifestVersion', version);
     if (Bytes.isNotEmpty(manifest.recordIkm)) {
@@ -2733,13 +2969,12 @@ async function sync({ reason }: { reason: string }): Promise<SyncResult> {
       });
     }
 
-    log.info('sync: complete');
-  } catch (error) {
-    log.error('sync: error processing manifest', Errors.toLogFormat(error));
-    throw error;
+    log.info(`${logId}: complete`);
+    return { success: true, manifest };
+  } catch (err) {
+    log.error(`${logId}: error processing manifest`, Errors.toLogFormat(err));
+    throw err;
   }
-
-  return { success: true, manifest };
 }
 
 async function upload({
@@ -3016,30 +3251,27 @@ export function runStorageServiceUploadJobAfterEnabled({
 
 export const runStorageServiceUploadJob = debounce(
   ({ reason }: { reason: string }) => {
+    const logId = `runStorageServiceUploadJob(${reason})`;
+
     if (!storageServiceEnabled) {
-      log.info(`runStorageServiceUploadJob(${reason}): called before enabled `);
+      log.info(`${logId}: called before enabled `);
       return;
     }
 
     void storageJobQueue(
       async () => {
         try {
-          await upload({
-            reason: `runStorageServiceUploadJob/${reason}`,
-          });
+          await upload({ reason: logId });
         } catch (error) {
           if (error instanceof CannotDecryptError) {
             drop(stopStorageServiceSync(error));
             return;
           }
 
-          log.error(
-            'runStorageServiceUploadJob: Upload failed',
-            Errors.toLogFormat(error)
-          );
+          log.error(`${logId}: Upload failed`, Errors.toLogFormat(error));
         }
       },
-      `upload v${itemStorage.get('manifestVersion')}`
+      `${logId} v${itemStorage.get('manifestVersion')}`
     );
   },
   isMockEnvironment() ? 0 : 500
@@ -3047,8 +3279,10 @@ export const runStorageServiceUploadJob = debounce(
 
 export const runStorageServiceSyncJob = debounce(
   ({ reason }: { reason: string }) => {
+    const logId = `runStorageServiceSyncJob(${reason})`;
+
     if (!storageServiceEnabled) {
-      log.info(`runStorageServiceSyncJob(${reason}): called before enabled`);
+      log.info(`${logId}: called before enabled`);
       return;
     }
 
@@ -3056,24 +3290,29 @@ export const runStorageServiceSyncJob = debounce(
       storageJobQueue(
         async () => {
           try {
-            await sync({ reason });
+            const result = await sync({ reason: logId });
+
+            if (!result.success && result.error === 'cannotDecrypt') {
+              throw new CannotDecryptError("Sync returned 'cannotDecrypt'");
+            }
+
+            if (!result.success && result.error === 'sameManifest') {
+              log.info(`${logId}: Sync returned 'sameManifest'`);
+            } else if (!result.success) {
+              log.error(`${logId}: Sync failed, returning '${result.error}'`);
+            }
           } catch (error) {
             if (error instanceof CannotDecryptError) {
               drop(stopStorageServiceSync(error));
-              return;
+            } else {
+              log.error(`${logId}: Sync failed`, Errors.toLogFormat(error));
             }
-
-            log.error(
-              'runStorageServiceSyncJob: Sync failed',
-              Errors.toLogFormat(error)
-            );
-            return;
           }
 
           // Notify listeners about sync completion
           window.Whisper.events.emit('storageService:syncComplete');
         },
-        `sync v${itemStorage.get('manifestVersion')}`
+        `${logId} v${itemStorage.get('manifestVersion')}`
       )
     );
   },

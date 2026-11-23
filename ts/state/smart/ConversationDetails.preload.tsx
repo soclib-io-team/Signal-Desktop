@@ -8,12 +8,11 @@ import { ConversationDetails } from '../../components/conversation/conversation-
 import {
   getGroupSizeHardLimit,
   getGroupSizeRecommendedLimit,
-} from '../../groups/limits.dom.ts';
+} from '../../groups/limits.std.ts';
 import { SignalService as Proto } from '../../protobuf/index.std.ts';
 import type { CallHistoryGroup } from '../../types/CallDisposition.std.ts';
 import { assertDev } from '../../util/assert.std.ts';
-import { getConversationColorAttributes } from '../../util/getConversationColorAttributes.std.ts';
-import { getGroupMemberships } from '../../util/getGroupMemberships.dom.ts';
+import { getGroupMemberships } from '../../util/getGroupMemberships.std.ts';
 import {
   getBadgesSelector,
   getPreferredBadgeSelector,
@@ -26,11 +25,9 @@ import {
   getConversationByServiceIdSelector,
   getPendingAvatarDownloadSelector,
 } from '../selectors/conversations.dom.ts';
-import {
-  getAreWeASubscriber,
-  getDefaultConversationColor,
-  getItems,
-} from '../selectors/items.dom.ts';
+import { getAreWeASubscriber, getItems } from '../selectors/items.dom.ts';
+import { getBubbleColorResolver } from '../selectors/chatColors.std.ts';
+import { getBubbleColorRenderDataBackground } from '../../util/getCustomColorStyle.std.ts';
 import { getSelectedNavTab } from '../selectors/nav.std.ts';
 import {
   getIntl,
@@ -114,7 +111,7 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
     getConversationByServiceIdSelector
   );
   const conversationSelector = useSelector(getConversationByIdSelector);
-  const defaultConversationColor = useSelector(getDefaultConversationColor);
+  const bubbleColorResolver = useSelector(getBubbleColorResolver);
   const getPreferredBadge = useSelector(getPreferredBadgeSelector);
   const isPendingAvatarDownload = useSelector(getPendingAvatarDownloadSelector);
   const selectedNavTab = useSelector(getSelectedNavTab);
@@ -162,10 +159,9 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
     conversation,
     '<SmartConversationDetails> expected a conversation to be found'
   );
-  const conversationWithColorAttributes = {
-    ...conversation,
-    ...getConversationColorAttributes(conversation, defaultConversationColor),
-  };
+  const bubbleColorBackground = getBubbleColorRenderDataBackground(
+    bubbleColorResolver(conversation.bubbleColor)
+  );
 
   const groupMemberships = getGroupMemberships(
     conversation,
@@ -212,7 +208,7 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
   const canAddLabel = getCanAddLabel(conversation, ourMembership);
 
   const handleDeleteNicknameAndNote = useCallback(() => {
-    updateNicknameAndNote(conversationId, { nickname: null, note: null });
+    void updateNicknameAndNote(conversationId, { nickname: null, note: null });
   }, [conversationId, updateNicknameAndNote]);
 
   const handleOpenEditNicknameAndNoteModal = useCallback(() => {
@@ -228,11 +224,11 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
   }, [onMoveToInbox, conversationId]);
 
   const onConversationDeleteMessages = useCallback(() => {
-    destroyMessages(conversationId);
+    void destroyMessages(conversationId);
   }, [destroyMessages, conversationId]);
 
   const onNavigateToDonate = useCallback(() => {
-    changeLocation({
+    void changeLocation({
       tab: NavTab.Settings,
       details: {
         page: SettingsPage.DonationsDonateFlow,
@@ -271,7 +267,8 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
       canAddLabel={canAddLabel}
       canAddNewMembers={canAddNewMembers}
       canEditGroupInfo={canEditGroupInfo}
-      conversation={conversationWithColorAttributes}
+      bubbleColorBackground={bubbleColorBackground}
+      conversation={conversation}
       deleteAvatarFromDisk={deleteAvatarFromDisk}
       getPreferredBadge={getPreferredBadge}
       getProfilesForConversation={getProfilesForConversation}

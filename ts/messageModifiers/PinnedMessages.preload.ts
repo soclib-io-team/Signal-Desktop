@@ -10,7 +10,7 @@ import { isValidSenderAciForConversation } from './helpers/isValidSenderAciForCo
 import { isGroupV2 } from '../util/whatTypeOfConversation.dom.ts';
 import { SignalService as Proto } from '../protobuf/index.std.ts';
 import type { ConversationModel } from '../models/conversations.preload.ts';
-import { getPinnedMessagesLimit } from '../util/pinnedMessages.dom.ts';
+import { getPinnedMessagesLimit } from '../util/pinnedMessages.std.ts';
 import { getPinnedMessageExpiresAt } from '../util/pinnedMessages.std.ts';
 import { pinnedMessagesCleanupService } from '../services/expiring/pinnedMessagesCleanupService.preload.ts';
 import { drop } from '../util/drop.std.ts';
@@ -34,6 +34,7 @@ export type PinnedMessageAddProps = Readonly<{
   pinDuration: DurationSecs | null;
   pinnedByAci: AciString;
   sentAtTimestamp: SentTimestampMs;
+  receivedAtCounter: number;
   receivedAtTimestamp: ReceivedTimestampMs;
   expireTimer: DurationInSeconds | null;
   expirationStartTimestamp: number | null;
@@ -131,6 +132,7 @@ export async function onPinnedMessageAdd(
       },
       senderAci: props.pinnedByAci,
       sentAtTimestamp: props.sentAtTimestamp,
+      receivedAtCounter: props.receivedAtCounter,
       receivedAtTimestamp: props.receivedAtTimestamp,
       expireTimer: props.expireTimer,
       expirationStartTimestamp: props.expirationStartTimestamp,

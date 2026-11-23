@@ -21,21 +21,21 @@ import { RemoveGroupMemberConfirmationDialog } from './RemoveGroupMemberConfirma
 import { missingCaseError } from '../../util/missingCaseError.std.ts';
 import { UserText } from '../UserText.dom.tsx';
 import { isInSystemContacts } from '../../util/isInSystemContacts.std.ts';
-import { InContactsIcon } from '../InContactsIcon.dom.tsx';
+import { AxoContactName } from '../../axo/AxoContactName.dom.tsx';
 import { canHaveNicknameAndNote } from '../../util/nicknames.dom.ts';
 import { InAnotherCallTooltip } from './InAnotherCallTooltip.dom.tsx';
 import type { ToggleGroupMemberLabelInfoModalType } from '../../state/ducks/globalModals.preload.ts';
 import type { ContactModalStateType } from '../../types/globalModals.std.ts';
 import { GroupMemberLabel } from './ContactName.dom.tsx';
 import { SignalService as Proto } from '../../protobuf/index.std.ts';
-import { AxoDialog } from '../../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../../axo/dialogs/AxoDialog.dom.tsx';
 import { AxoSymbol } from '../../axo/AxoSymbol.dom.tsx';
 import { tw } from '../../axo/tw.dom.tsx';
 import { strictAssert } from '../../util/assert.std.ts';
 import type { RemoveClientType } from '../../types/Calling.std.ts';
-import type { ContactNameColorType } from '../../types/Colors.std.ts';
+import type { ContactNameColorType } from '../../types/ContactNameColor.std.ts';
 import type { Emoji } from '../../axo/emoji.std.ts';
-import { AxoConfirmDialog } from '../../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../../axo/dialogs/AxoConfirmDialog.dom.tsx';
 import { AxoStackedButton } from '../../axo/AxoStackedButton.dom.tsx';
 
 const ACCESS_ENUM = Proto.AccessControl.AccessRequired;
@@ -422,10 +422,8 @@ export function ContactModal({
             escape="cancel-is-noop"
             disableMissingAriaDescriptionWarning
           >
-            <AxoDialog.Header>
-              <AxoDialog.Title screenReaderOnly>
-                {contact.title}
-              </AxoDialog.Title>
+            <AxoDialog.Header floating>
+              <AxoDialog.Title>{contact.title}</AxoDialog.Title>
               <AxoDialog.Close />
             </AxoDialog.Header>
             <AxoDialog.Body maxHeight={560}>
@@ -475,18 +473,15 @@ export function ContactModal({
                     toggleAboutContactModal({ contactId: contact.id });
                   }}
                 >
-                  <div className="ContactModal__name__text">
+                  <span className="ContactModal__name__text">
                     <UserText text={contact.title} />
                     {isInSystemContacts(contact) && (
-                      <span>
-                        {' '}
-                        <InContactsIcon
-                          className="ContactModal__name__contact-icon"
-                          i18n={i18n}
-                        />
-                      </span>
+                      <>
+                        &nbsp;
+                        <AxoContactName.SystemContactEmblemStatic />
+                      </>
                     )}
-                  </div>
+                  </span>
                   <i className="ContactModal__name__chevron" />
                 </button>
                 {contactLabelString && contactNameColor && (
@@ -518,22 +513,22 @@ export function ContactModal({
                   {canHaveNicknameAndNote(contact) && (
                     <button
                       type="button"
-                      className="ContactModal__button ContactModal__block"
+                      className="ContactModal__button"
                       onClick={onOpenEditNicknameAndNoteModal}
                     >
-                      <div className="ContactModal__bubble-icon">
-                        <div className="ContactModal__nickname__bubble-icon" />
-                      </div>
+                      <span className="ContactModal__bubble-icon">
+                        <span className="ContactModal__nickname__bubble-icon" />
+                      </span>
                       <span>{i18n('icu:ContactModal--nickname')}</span>
                     </button>
                   )}
 
                   {!contact.isMe &&
                     (contact.isBlocked ? (
-                      <div className="ContactModal__button ContactModal__block">
-                        <div className="ContactModal__bubble-icon">
-                          <div className="ContactModal__block__bubble-icon" />
-                        </div>
+                      <div className="ContactModal__button">
+                        <span className="ContactModal__bubble-icon">
+                          <span className="ContactModal__block__bubble-icon" />
+                        </span>
                         <span>
                           {i18n('icu:AboutContactModal__blocked', {
                             name: contact.title,
@@ -543,29 +538,29 @@ export function ContactModal({
                     ) : (
                       <button
                         type="button"
-                        className="ContactModal__button ContactModal__block"
+                        className="ContactModal__button"
                         onClick={() =>
                           setSubModalState(SubModalState.ConfirmingBlock)
                         }
                       >
-                        <div className="ContactModal__bubble-icon">
-                          <div className="ContactModal__block__bubble-icon" />
-                        </div>
+                        <span className="ContactModal__bubble-icon">
+                          <span className="ContactModal__block__bubble-icon" />
+                        </span>
                         <span>{i18n('icu:MessageRequests--block')}</span>
                       </button>
                     ))}
                   {!contact.isMe && (
                     <button
                       type="button"
-                      className="ContactModal__button ContactModal__safety-number"
+                      className="ContactModal__button"
                       onClick={() => {
                         hideContactModal();
                         toggleSafetyNumberModal(contact.id);
                       }}
                     >
-                      <div className="ContactModal__bubble-icon">
-                        <div className="ContactModal__safety-number__bubble-icon" />
-                      </div>
+                      <span className="ContactModal__bubble-icon">
+                        <span className="ContactModal__safety-number__bubble-icon" />
+                      </span>
                       <span>{i18n('icu:showSafetyNumber')}</span>
                     </button>
                   )}
@@ -578,9 +573,9 @@ export function ContactModal({
                         toggleAddUserToAnotherGroupModal(contact.id);
                       }}
                     >
-                      <div className="ContactModal__bubble-icon">
-                        <div className="ContactModal__add-to-another-group__bubble-icon" />
-                      </div>
+                      <span className="ContactModal__bubble-icon">
+                        <span className="ContactModal__add-to-another-group__bubble-icon" />
+                      </span>
                       {i18n('icu:ContactModal--add-to-group')}
                     </button>
                   )}
@@ -588,14 +583,14 @@ export function ContactModal({
                     <>
                       <button
                         type="button"
-                        className="ContactModal__button ContactModal__make-admin"
+                        className="ContactModal__button"
                         onClick={() =>
                           setSubModalState(SubModalState.ToggleAdmin)
                         }
                       >
-                        <div className="ContactModal__bubble-icon">
-                          <div className="ContactModal__make-admin__bubble-icon" />
-                        </div>
+                        <span className="ContactModal__bubble-icon">
+                          <span className="ContactModal__make-admin__bubble-icon" />
+                        </span>
                         {isAdmin ? (
                           <span>{i18n('icu:ContactModal--rm-admin')}</span>
                         ) : (
@@ -604,14 +599,14 @@ export function ContactModal({
                       </button>
                       <button
                         type="button"
-                        className="ContactModal__button ContactModal__remove-from-group"
+                        className="ContactModal__button"
                         onClick={() =>
                           setSubModalState(SubModalState.MemberRemove)
                         }
                       >
-                        <div className="ContactModal__bubble-icon">
-                          <div className="ContactModal__remove-from-group__bubble-icon" />
-                        </div>
+                        <span className="ContactModal__bubble-icon">
+                          <span className="ContactModal__remove-from-group__bubble-icon" />
+                        </span>
                         <span>
                           {i18n('icu:ContactModal--remove-from-group')}
                         </span>

@@ -9,8 +9,8 @@ import { missingCaseError } from '../../../util/missingCaseError.std.ts';
 import { SECOND } from '../../../util/durations/constants.std.ts';
 import { tw } from '../../../axo/tw.dom.tsx';
 import { AxoSymbol } from '../../../axo/AxoSymbol.dom.tsx';
-import { AxoConfirmDialog } from '../../../axo/AxoConfirmDialog.dom.tsx';
-import { AxoAlertDialog } from '../../../axo/AxoAlertDialog.dom.tsx';
+import { AxoConfirmDialog } from '../../../axo/dialogs/AxoConfirmDialog.dom.tsx';
+import { AxoAlertDialog } from '../../../axo/dialogs/AxoAlertDialog.dom.tsx';
 import { AxoButton } from '../../../axo/AxoButton.dom.tsx';
 import {
   Buttons,
@@ -207,7 +207,7 @@ function NeedAnotherDialog({
       )}
     >
       <AxoConfirmDialog.Action
-        variant="strong-secondary"
+        variant="subtle-secondary"
         onClick={() => setOpen(false)}
       >
         {i18n('icu:StandaloneRegistration--Captcha--NeedAnother--cancel')}
@@ -310,7 +310,7 @@ function ErrorDialog({
       )}
     >
       <AxoConfirmDialog.Action
-        variant="strong-secondary"
+        variant="subtle-secondary"
         onClick={() => setOpen(false)}
       >
         {i18n('icu:StandaloneRegistration--Captcha--Error--cancel')}

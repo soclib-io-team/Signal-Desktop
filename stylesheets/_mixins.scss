@@ -161,12 +161,6 @@
   }
 }
 
-@mixin explicit-light-theme() {
-  .light-theme & {
-    @content;
-  }
-}
-
 @mixin dark-theme() {
   .dark-theme & {
     @content;
@@ -714,41 +708,6 @@ $rtl-icon-map: (
   height: $bubble-size;
   padding: 2px;
   width: $bubble-size;
-
-  @each $color, $value in variables.$conversation-colors {
-    &--#{$color} {
-      background-color: $value;
-    }
-  }
-  @each $color, $value in variables.$conversation-colors-gradient {
-    &--#{$color} {
-      background-image: linear-gradient(
-        map.get($value, 'deg'),
-        map.get($value, 'start'),
-        map.get($value, 'end')
-      );
-    }
-  }
-}
-
-@mixin avatar-colors {
-  @each $color, $value in variables.$avatar-colors {
-    &--#{$color} {
-      --bg: #{map.get($value, 'bg')};
-      --fg: #{map.get($value, 'fg')};
-
-      background-color: var(--bg);
-      color: var(--fg);
-
-      &--icon {
-        background-color: var(--fg);
-        @include dark-theme {
-          // For specificity
-          background-color: var(--fg);
-        }
-      }
-    }
-  }
 }
 
 @mixin normal-input {
@@ -884,107 +843,6 @@ $rtl-icon-map: (
 @mixin scrollbar-on-hover {
   &:not(:hover, :focus-within) {
     scrollbar-color: transparent transparent;
-  }
-}
-
-@mixin tooltip {
-  & {
-    @include font-body-2;
-
-    @include light-theme {
-      background-color: variables.$color-gray-04;
-      color: variables.$color-black;
-      outline: 1px solid variables.$color-gray-20;
-    }
-
-    @include dark-theme {
-      background-color: variables.$color-gray-80;
-      color: variables.$color-gray-15;
-      outline: 1px solid variables.$color-gray-62;
-    }
-
-    & {
-      padding-block: 5px;
-      padding-inline: 12px;
-      border-radius: 6px;
-      filter: drop-shadow(0px 4px 3px variables.$color-black-alpha-16);
-      pointer-events: none;
-    }
-  }
-
-  & .module-tooltip-arrow::before {
-    position: absolute;
-    content: '';
-    border-style: solid;
-    border-width: 7px;
-    border-color: light-dark(
-      variables.$color-gray-04,
-      variables.$color-gray-80
-    );
-  }
-
-  &[data-placement='bottom'] .module-tooltip-arrow::before {
-    @include light-theme {
-      border-color: transparent transparent variables.$color-gray-20 transparent;
-    }
-
-    @include dark-theme {
-      border-color: transparent transparent variables.$color-gray-62 transparent;
-    }
-
-    & {
-      margin-top: -14px;
-      /* stylelint-disable-next-line liberty/use-logical-spec */
-      margin-left: -7px;
-    }
-  }
-
-  &[data-placement='top'] .module-tooltip-arrow::before {
-    @include light-theme {
-      border-color: variables.$color-gray-20 transparent transparent transparent;
-    }
-
-    @include dark-theme {
-      border-color: variables.$color-gray-62 transparent transparent transparent;
-    }
-
-    & {
-      margin-top: 0;
-      /* stylelint-disable-next-line liberty/use-logical-spec */
-      margin-left: -7px;
-    }
-  }
-
-  &[data-placement='left'] .module-tooltip-arrow::before {
-    @include light-theme {
-      border-color: transparent transparent transparent variables.$color-gray-20;
-    }
-
-    @include dark-theme {
-      border-color: transparent transparent transparent variables.$color-gray-62;
-    }
-
-    & {
-      margin-top: -7px;
-      /* stylelint-disable-next-line liberty/use-logical-spec */
-      margin-left: 0px;
-    }
-  }
-
-  &[data-placement='right'] .module-tooltip-arrow::before {
-    @include light-theme {
-      border-color: transparent variables.$color-gray-20 transparent transparent;
-    }
-
-    @include dark-theme {
-      border-color: transparent variables.$color-gray-62 transparent transparent;
-    }
-
-    & {
-      margin-top: -7px;
-      /* stylelint-disable-next-line liberty/use-logical-spec */
-      margin-left: -14px;
-    }
   }
 }
 

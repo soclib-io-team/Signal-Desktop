@@ -28,12 +28,13 @@ import type {
   verifyPIN as doVerifyPIN,
 } from '../../../state/ducks/standaloneInstaller.preload.ts';
 import { AxoPasswordField } from '../../../axo/fields/AxoPasswordField.dom.tsx';
-import { AxoAlertDialog } from '../../../axo/AxoAlertDialog.dom.tsx';
+import { AxoAlertDialog } from '../../../axo/dialogs/AxoAlertDialog.dom.tsx';
 import { openLinkInWebBrowser } from '../../../util/openLinkInWebBrowser.dom.ts';
 import { CONTACT_SUPPORT_URL } from '../../../util/contactSupport.dom.tsx';
-import { AxoDropdownMenu } from '../../../axo/AxoDropdownMenu.dom.tsx';
+import { AxoDropdownMenu } from '../../../axo/menus/AxoDropdownMenu.dom.tsx';
 import { AxoSymbol } from '../../../axo/AxoSymbol.dom.tsx';
 import { isNumber } from 'lodash';
+import { AxoDialog } from '../../../axo/dialogs/AxoDialog.dom.tsx';
 
 const FIRST_REGLOCK_TRIES_THRESHOLD = 5;
 const SECOND_REGLOCK_TRIES_THRESHOLD = 3;
@@ -84,7 +85,6 @@ export function VerifyPINScreen({
   );
 
   const { status } = workflow;
-  const pending = status.type === 'in-progress';
   const isIncorrectPin =
     status.type === 'failed' && status.error === 'incorrect-pin';
 
@@ -213,6 +213,16 @@ export function VerifyPINScreen({
     );
   }
 
+  const pending = status.type === 'in-progress';
+  const disabled = !isValidPIN;
+  const handleSubmit = useCallback(() => {
+    if (disabled || pending) {
+      return;
+    }
+    setShouldShowIncorrectPIN(undefined);
+    verifyPIN({ pin, workflow });
+  }, [disabled, pending, pin, setShouldShowIncorrectPIN, verifyPIN, workflow]);
+
   return (
     <Container>
       <TopMatter i18n={i18n} rightContent={menu} />
@@ -249,36 +259,41 @@ export function VerifyPINScreen({
         />
       </Description>
       <Spacer className={tw('h-10')} />
-      <InputContainer className={tw('w-81')} helperElement={helperElement}>
-        <AxoPasswordField.Root
-          maxBytes={PIN_MAX_BYTES}
-          maxGraphemes={PIN_MAX_GRAPHEMES}
-          onValueChange={onChangePIN}
-          disabled={pending}
-          value={pin}
-        >
-          <AxoPasswordField.Input
-            ref={inputRef}
-            autoFocus
-            autoComplete="current-password"
-            placeholder={i18n(
-              'icu:StandaloneRegistration--VerifyPIN--placeholder'
-            )}
-          />
-          <AxoPasswordField.Reveal />
-        </AxoPasswordField.Root>
-      </InputContainer>
+      <form
+        className={tw('max-w-full')}
+        onSubmit={event => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+      >
+        <InputContainer className={tw('w-81')} helperElement={helperElement}>
+          <AxoPasswordField.Root
+            maxBytes={PIN_MAX_BYTES}
+            maxGraphemes={PIN_MAX_GRAPHEMES}
+            onValueChange={onChangePIN}
+            disabled={pending}
+            value={pin}
+          >
+            <AxoPasswordField.Input
+              ref={inputRef}
+              autoFocus
+              autoComplete="current-password"
+              placeholder={i18n(
+                'icu:StandaloneRegistration--VerifyPIN--placeholder'
+              )}
+            />
+            <AxoPasswordField.Reveal />
+          </AxoPasswordField.Root>
+        </InputContainer>
+      </form>
       <Spacer className={tw('grow')} />
       <Buttons>
         <AxoButton.Root
           variant="strong-primary"
           size="md"
           pending={pending}
-          disabled={!isValidPIN || pending}
-          onClick={() => {
-            setShouldShowIncorrectPIN(undefined);
-            verifyPIN({ pin, workflow });
-          }}
+          disabled={disabled}
+          onClick={handleSubmit}
         >
           {i18n('icu:StandaloneRegistration--ProfileEntry--continue')}
         </AxoButton.Root>
@@ -339,7 +354,7 @@ function NeedHelpDialog({
   goToCreatePINStage: ActionCreator<typeof doGoToCreatePINStage>;
 }): JSX.Element {
   return (
-    <AxoAlertDialog.Root
+    <AxoDialog.Root
       open={isOpen}
       onOpenChange={open => {
         if (!open) {
@@ -347,59 +362,59 @@ function NeedHelpDialog({
         }
       }}
     >
-      <AxoAlertDialog.Content escape="cancel-is-noop">
-        <AxoAlertDialog.Body>
-          <AxoAlertDialog.Title>
-            <div className={tw('text-start')}>
-              {i18n('icu:StandaloneRegistration--VerifyPIN--NeedHelp--header')}
-            </div>
-          </AxoAlertDialog.Title>
-          <AxoAlertDialog.Description>
-            <div className={tw('text-start')}>
-              {hasReglock ? (
-                <I18n
-                  i18n={i18n}
-                  id="icu:StandaloneRegistration--VerifyPIN--NeedHelp--description--reglock"
-                  components={{ learnMore }}
-                />
-              ) : (
-                <I18n
-                  i18n={i18n}
-                  id="icu:StandaloneRegistration--VerifyPIN--NeedHelp--description--no-reglock"
-                  components={{ learnMore }}
-                />
-              )}
-            </div>
-          </AxoAlertDialog.Description>
-        </AxoAlertDialog.Body>
-        <AxoAlertDialog.Footer forceAlwaysBreakToSeparateLines>
-          <AxoAlertDialog.Action
-            variant="strong-secondary"
-            onClick={() => setOpen(false)}
-          >
-            {i18n('icu:StandaloneRegistration--VerifyPIN--NeedHelp--cancel')}
-          </AxoAlertDialog.Action>
-          <AxoAlertDialog.Action
-            variant="strong-secondary"
-            onClick={() => openLinkInWebBrowser(CONTACT_SUPPORT_URL)}
-          >
-            {i18n(
-              'icu:StandaloneRegistration--VerifyPIN--NeedHelp--contact-support-button'
+      <AxoDialog.Content size="sm" escape="cancel-is-noop">
+        <AxoDialog.Header>
+          <AxoDialog.Title>
+            {i18n('icu:StandaloneRegistration--VerifyPIN--NeedHelp--header')}
+          </AxoDialog.Title>
+        </AxoDialog.Header>
+        <AxoDialog.Body>
+          <AxoDialog.Description>
+            {hasReglock ? (
+              <I18n
+                i18n={i18n}
+                id="icu:StandaloneRegistration--VerifyPIN--NeedHelp--description--reglock"
+                components={{ learnMore }}
+              />
+            ) : (
+              <I18n
+                i18n={i18n}
+                id="icu:StandaloneRegistration--VerifyPIN--NeedHelp--description--no-reglock"
+                components={{ learnMore }}
+              />
             )}
-          </AxoAlertDialog.Action>
-          {hasReglock ? undefined : (
-            <AxoAlertDialog.Action
-              variant="subtle-destructive"
-              onClick={() => goToCreatePINStage()}
+          </AxoDialog.Description>
+        </AxoDialog.Body>
+        <AxoDialog.Footer>
+          <AxoDialog.Actions width="fill" forceAlwaysBreakToSeparateLines>
+            <AxoDialog.Action
+              variant="subtle-secondary"
+              onClick={() => setOpen(false)}
+            >
+              {i18n('icu:StandaloneRegistration--VerifyPIN--NeedHelp--cancel')}
+            </AxoDialog.Action>
+            <AxoDialog.Action
+              variant="subtle-secondary"
+              onClick={() => openLinkInWebBrowser(CONTACT_SUPPORT_URL)}
             >
               {i18n(
-                'icu:StandaloneRegistration--VerifyPIN--NeedHelp--skip-button--no-reglock'
+                'icu:StandaloneRegistration--VerifyPIN--NeedHelp--contact-support-button'
               )}
-            </AxoAlertDialog.Action>
-          )}
-        </AxoAlertDialog.Footer>
-      </AxoAlertDialog.Content>
-    </AxoAlertDialog.Root>
+            </AxoDialog.Action>
+            {hasReglock ? undefined : (
+              <AxoDialog.Action
+                variant="subtle-destructive"
+                onClick={() => goToCreatePINStage()}
+              >
+                {i18n(
+                  'icu:StandaloneRegistration--VerifyPIN--NeedHelp--skip-button--no-reglock'
+                )}
+              </AxoDialog.Action>
+            )}
+          </AxoDialog.Actions>
+        </AxoDialog.Footer>
+      </AxoDialog.Content>
+    </AxoDialog.Root>
   );
 }
 function SkipPINDialog({
@@ -429,9 +444,9 @@ function SkipPINDialog({
       <AxoAlertDialog.Content escape="cancel-is-noop">
         <AxoAlertDialog.Body>
           <AxoAlertDialog.Title>
-            <div className={tw('text-start')}>
+            <span className={tw('block text-start')}>
               {i18n('icu:StandaloneRegistration--VerifyPIN--SkipPIN--header')}
-            </div>
+            </span>
           </AxoAlertDialog.Title>
           <AxoAlertDialog.Description>
             <div className={tw('text-start')}>
@@ -447,7 +462,7 @@ function SkipPINDialog({
         </AxoAlertDialog.Body>
         <AxoAlertDialog.Footer forceAlwaysBreakToSeparateLines>
           <AxoAlertDialog.Action
-            variant="strong-secondary"
+            variant="subtle-secondary"
             onClick={() => setOpen(false)}
           >
             {i18n(
@@ -497,11 +512,11 @@ function FewRemainingTriesDialog({
       <AxoAlertDialog.Content escape="cancel-is-noop">
         <AxoAlertDialog.Body>
           <AxoAlertDialog.Title>
-            <div className={tw('text-start')}>
+            <span className={tw('block text-start')}>
               {i18n(
                 'icu:StandaloneRegistration--VerifyPIN--FewRemainingTries--header'
               )}
-            </div>
+            </span>
           </AxoAlertDialog.Title>
           <AxoAlertDialog.Description>
             <div className={tw('text-start')}>
@@ -563,11 +578,11 @@ function NoRemainingTriesDialog({
       <AxoAlertDialog.Content escape="cancel-is-noop">
         <AxoAlertDialog.Body>
           <AxoAlertDialog.Title>
-            <div className={tw('text-start')}>
+            <span className={tw('block text-start')}>
               {i18n(
                 'icu:StandaloneRegistration--VerifyPIN--NoRemainingTries--header'
               )}
-            </div>
+            </span>
           </AxoAlertDialog.Title>
           <AxoAlertDialog.Description>
             <div className={tw('text-start')}>
@@ -579,7 +594,7 @@ function NoRemainingTriesDialog({
         </AxoAlertDialog.Body>
         <AxoAlertDialog.Footer forceAlwaysBreakToSeparateLines>
           <AxoAlertDialog.Action
-            variant="strong-secondary"
+            variant="subtle-secondary"
             onClick={() => openLinkInWebBrowser(PIN_ARTICLE_ON_SUPPORT)}
           >
             {i18n(

@@ -2,8 +2,20 @@
   "icu:AxoAlertDialog.Cancel": {
     "messageformat": "రద్దు చేయండి"
   },
+  "icu:AxoAlertDialog.Ok": {
+    "messageformat": "అలాగే"
+  },
   "icu:AxoButton.Pending": {
     "messageformat": "పెండింగ్‌లో ఉంది"
+  },
+  "icu:AxoColorSlider.Hue": {
+    "messageformat": "రంగు"
+  },
+  "icu:AxoColorSlider.Saturation": {
+    "messageformat": "సంతృప్తత"
+  },
+  "icu:AxoColorSlider.Lightness": {
+    "messageformat": "కాంతి తీవ్రత"
   },
   "icu:AxoDialog.Back": {
     "messageformat": "తిరిగి"
@@ -11,8 +23,44 @@
   "icu:AxoDialog.Close": {
     "messageformat": "మూసివెయ్యి"
   },
+  "icu:AxoLoadingIndicator.Loading": {
+    "messageformat": "లోడ్ అవుతోంది"
+  },
+  "icu:AxoMediaButton.Play": {
+    "messageformat": "ప్లే చేయండి"
+  },
+  "icu:AxoMediaButton.Pause": {
+    "messageformat": "నిలుపు"
+  },
+  "icu:AxoMediaButton.Download": {
+    "messageformat": "డౌన్‌లోడ్"
+  },
+  "icu:AxoMediaButton.CancelDownload": {
+    "messageformat": "డౌన్‌లోడ్‌ను రద్దు చేయండి"
+  },
+  "icu:AxoOutgoingStatus.Sending": {
+    "messageformat": "పంపుతోంది"
+  },
+  "icu:AxoOutgoingStatus.Sent": {
+    "messageformat": "పంపబడింది"
+  },
+  "icu:AxoOutgoingStatus.Delivered": {
+    "messageformat": "డెలివరీ చేయబడింది"
+  },
+  "icu:AxoOutgoingStatus.Read": {
+    "messageformat": "చదివినవి"
+  },
+  "icu:AxoOutgoingStatus.Paused": {
+    "messageformat": "పంపడం తాత్కాలికంగా నిలిపివేయబడింది"
+  },
+  "icu:AxoOutgoingStatus.Error": {
+    "messageformat": "పంపించడం విఫలమైనది"
+  },
   "icu:AxoPasswordField.Reveal": {
     "messageformat": "పాస్‌వర్డ్‌ను చూపించండి"
+  },
+  "icu:AxoProgressIndicator.Loading": {
+    "messageformat": "లోడ్ అవుతోంది"
   },
   "icu:AxoTextField.Clear": {
     "messageformat": "స్పష్టమైన"
@@ -73,12 +121,6 @@
   },
   "icu:LinkedDevicesOnboardingDialog__bullet--2": {
     "messageformat": "వేటిని లింక్ చేయాలనేది మీ ప్రాథమిక పరికరం నిర్వహిస్తుంది, మీరు గరిష్టంగా 5 పరికరాలను లింక్ చేయవచ్చు."
-  },
-  "icu:LinkedDevicesOnboardingDialog__bullet--3": {
-    "messageformat": "ఖాతా సెట్టింగ్‌లు మరియు బ్యాకప్‌లతో సహా కొన్ని ఖాతా సెట్టింగ్‌లు మీ ప్రాథమిక పరికరంలో మాత్రమే నిర్వహించబడతాయి."
-  },
-  "icu:LinkedDevicesOnboardingDialog__bullet--3--1": {
-    "messageformat": "ఖాతా సెట్టింగులు మరియు బ్యాకప్‌లను మీ ప్రాథమిక పరికరంలో మాత్రమే నిర్వహించగలరు."
   },
   "icu:LinkedDevicesOnboardingDialog__bullet--3--2": {
     "messageformat": "ఖాతా సెట్టింగ్లు మరియు Signal సురక్షిత బ్యాకప్‌లు మీ ప్రాథమిక పరికరంలో మాత్రమే నిర్వహించగలరు."
@@ -260,6 +302,12 @@
   "icu:messageContextMenuButton": {
     "messageformat": "మరిన్ని చర్యలు"
   },
+  "icu:messageContextMenu__sticker--addFavorite": {
+    "messageformat": "ఇష్టమైన వాటికి జోడించండి"
+  },
+  "icu:messageContextMenu__sticker--removeFavorite": {
+    "messageformat": "ఇష్టమైన వాటినుండి తొలగించండి"
+  },
   "icu:contextMenuCopyLink": {
     "messageformat": "లింక్ను కాపీ చేయండి"
   },
@@ -280,6 +328,9 @@
   },
   "icu:archivedConversations": {
     "messageformat": "ఆర్కైవ్ చేసిన చాట్స్"
+  },
+  "icu:LeftPane__MoreActionsLabel": {
+    "messageformat": "మరిన్ని చర్యలు"
   },
   "icu:LeftPane__MoreActionsMenu__AddChatFolder": {
     "messageformat": "చాట్ ఫోల్డర్‌ను జోడించండి"
@@ -641,9 +692,6 @@
   "icu:SafetyNumberViewer__KeyTransparency__popup--unavailable__body": {
     "messageformat": "మీరు ఒకరితో ఫోన్ నంబర్ ద్వారా కనెక్ట్ అయినప్పుడు మాత్రమే Signal చాట్‌లలోని గుప్తీకరణను ఆటోమేటిక్‌గా ధృవీకరించగలదు. చాట్ ఒక యూజర్ నేమ్ లేదా ఉమ్మడి గ్రూప్‌తో ప్రారంభించబడి ఉంటే, మునుపటి స్క్రీన్‌లోని నంబర్‌లను పోల్చడం ద్వారా లేదా వారి పరికరంలోని కోడ్‌ను స్కాన్ చేయడం ద్వారా ఎండ్-టు-ఎండ్ గుప్తీకరణను ధృవీకరించండి."
   },
-  "icu:SafetyNumberViewer__KeyTransparency__popup__okay": {
-    "messageformat": "సరే"
-  },
   "icu:SafetyNumberNotReady__body": {
     "messageformat": "మీరు ఈ వ్యక్తితో సందేశాలను మార్పిడి చేసిన తర్వాత వారితో భద్రతా సంఖ్య సృష్టించబడుతుంది."
   },
@@ -671,8 +719,8 @@
   "icu:KeyTransparencyOnboardingDialog__Title": {
     "messageformat": "Signal ఇప్పుడు గుప్తీకరణను స్వయం-ధృవీకరణ చేయగలదు"
   },
-  "icu:KeyTransparencyOnboardingDialog__Description": {
-    "messageformat": "ఫోన్ నంబర్ ద్వారా మీరు కనెక్ట్ అయిన పరిచయాల కోసం, Signal కీ పారదర్శకత అనే ప్రక్రియను ఉపయోగించి కనెక్షన్ సురక్షితంగా ఉందో లేదో ఆటోమేటిక్‌గా నిర్ధారించగలదు. అదనపు భద్రత కోసం, మీరు ఇప్పటికీ QR కోడ్‌ను ఉపయోగించి లేదా భద్రతా సంఖ్యలను పోల్చడం ద్వారా కనెక్షన్‌లను మాన్యువల్‌గా ధృవీకరించవచ్చు."
+  "icu:KeyTransparencyOnboardingDialog__Description-v2": {
+    "messageformat": "<paragraph>ఫోన్ నంబర్ ద్వారా మీరు కనెక్ట్ అయిన పరిచయాల కోసం, Signal కీ పారదర్శకత అనే ప్రక్రియను ఉపయోగించి కనెక్షన్ సురక్షితమైనదో కాదో ఆటోమేటిక్‌గా నిర్ధారించగలదు.</paragraph><paragraph>అదనపు భద్రత కోసం, మీరు ఇప్పటికీ QR కోడ్‌ను ఉపయోగించి లేదా భద్రతా సంఖ్యలను పోల్చడం ద్వారా కనెక్షన్‌లను మాన్యువల్‌గా ధృవీకరించవచ్చు.</paragraph>"
   },
   "icu:KeyTransparencyOnboardingDialog__Continue": {
     "messageformat": "కొనసాగించండి"
@@ -755,6 +803,18 @@
   "icu:Toast--ChatFolderCreated": {
     "messageformat": "{chatFolderName} ఫోల్డర్ జోడించబడింది"
   },
+  "icu:Toast--LinkedDeviceAdded": {
+    "messageformat": "New device \"{name}\" successfully linked"
+  },
+  "icu:Toast--LinkedDeviceRemoved": {
+    "messageformat": "\"{name}\" unlinked"
+  },
+  "icu:Toast--LinkedDeviceNameUpdated": {
+    "messageformat": "Device name updated"
+  },
+  "icu:Toast--LinkedDeviceSyncComplete": {
+    "messageformat": "Message sync complete"
+  },
   "icu:cannotSelectPhotosAndVideosAlongWithFiles": {
     "messageformat": "మీరు ఫైళ్ళతో పాటుగా ఫోటోలు మరియు వీడియోలను ఎంపిక చేసుకోలేరు."
   },
@@ -769,6 +829,9 @@
   },
   "icu:videoFileTooLargeWarning": {
     "messageformat": "ఈ వీడియో ఫైల్ మరీ పెద్దదిగా ఉన్నందున దీనిని పంపలేము. మీరు {limit,number}{units} పరిమాణం వరకు ఉన్న వీడియో ఫైల్‌లను పంపవచ్చు."
+  },
+  "icu:videoFileTooLongWarning": {
+    "messageformat": "{maxDuration} కంటే ఎక్కువ నిడివి ఉన్నందున వీడియోను పంపడం సాధ్యం కాదు"
   },
   "icu:unableToLoadAttachment": {
     "messageformat": "ఎంచుకున్న అటాచ్‌మెంట్‌ను లోడ్ చేయడం సాధ్యం కాలేదు."
@@ -919,24 +982,6 @@
   },
   "icu:sendMessageToContact": {
     "messageformat": "సందేశము పంపుము"
-  },
-  "icu:home": {
-    "messageformat": "హోమ్"
-  },
-  "icu:work": {
-    "messageformat": "పని"
-  },
-  "icu:mobile": {
-    "messageformat": "చరవాణి"
-  },
-  "icu:email": {
-    "messageformat": "ఇమెయిల్"
-  },
-  "icu:phone": {
-    "messageformat": "ఫోన్"
-  },
-  "icu:address": {
-    "messageformat": "చిరునామా"
   },
   "icu:poBox": {
     "messageformat": "P.O. బాక్స్"
@@ -1349,9 +1394,6 @@
   "icu:PinMessageDisappearingMessagesWarningDialog__Description": {
     "messageformat": "అదృశ్యమయ్యే సందేశాలు వాటి టైమర్ ముగిశాక అన్‌పిన్ చేయబడతాయి మరియు సందేశం చాట్ నుండి తొలగించబడుతుంది."
   },
-  "icu:PinMessageDisappearingMessagesWarningDialog__Okay": {
-    "messageformat": "సరే"
-  },
   "icu:PinnedMessagesBar__AccessibilityLabel": {
     "messageformat": "{pinsCount, plural, one {పిన్ చేసిన సందేశం} other {పిన్ చేసిన సందేశాలు}}"
   },
@@ -1480,6 +1522,9 @@
   },
   "icu:ConversationMerge--learn-more": {
     "messageformat": "మరింత తెలుసుకోండి"
+  },
+  "icu:ConversationMerge--explainer-dialog--label": {
+    "messageformat": "సందేశ చరిత్ర విలీనం చేయబడింది"
   },
   "icu:ConversationMerge--explainer-dialog--line-1": {
     "messageformat": "{obsoleteConversationTitle} కు సందేశాన్ని పంపిన తరువాత, ఈ నెంబర్‌ {conversationTitle} కు చెందిందని మీరు తెెలుసుకున్నారు. ఈ ఫోన్ నంబర్ ప్రైవేట్."
@@ -1742,6 +1787,9 @@
   "icu:Preferences__EditChatFolderPage__SelectChatsDialog__Search__Placeholder": {
     "messageformat": "వెతకండి"
   },
+  "icu:Preferences__EditChatFolderPage__SelectChatsDialog__NoChats": {
+    "messageformat": "చాట్స్ లేవు"
+  },
   "icu:Preferences__EditChatFolderPage__SelectChatsDialog__ChatTypesSection__Title": {
     "messageformat": "చాట్ రకాలు"
   },
@@ -1804,6 +1852,15 @@
   },
   "icu:Preferences__EditChatFolderPage__CancelButton": {
     "messageformat": "రద్దు చేయండి"
+  },
+  "icu:Preferences__PrivacyPage__SealedSender": {
+    "messageformat": "సీల్ చేయబడ్డ సెండర్"
+  },
+  "icu:Preferences__PrivacyPage__AllowFromAnyone__Label": {
+    "messageformat": "ఎవరి నుండి అయినా అనుమతించు"
+  },
+  "icu:Preferences__PrivacyPage__AllowFromAnyone__Description": {
+    "messageformat": "మీరు మీ ప్రొఫైల్‌ను పంచుకోని పరిచయస్తులు-కాని వారి నుండి మరియు వ్యక్తుల నుండి వచ్చే సందేశాల కోసం సీల్డ్ సెండర్‌ను ఎనేబుల్ చేయండి. <learnMoreLink>మరింత తెలుసుకోండి</learnMoreLink>."
   },
   "icu:Preferences__PrivacyPage__ShowStatusIcon__Label": {
     "messageformat": "స్టేటస్ ఐకాన్‌ని చూపించడం"
@@ -2234,6 +2291,24 @@
   "icu:deleteAccountDialogBody": {
     "messageformat": "ఇది మీ ఖాతా సమాచారం, ప్రొఫైల్ మరియు మీ సందేశాలన్నింటినీ తొలగిస్తుంది. మీరు అన్ని Signal గ్రూపుల నుండి కూడా .ఈ ప్రక్రియ పూర్తయిన తరువాత యాప్ మూసివేయబడుతుంది."
   },
+  "icu:DeleteAccountConfirmDialog--Title": {
+    "messageformat": "ఖాతాను తొలగించండి"
+  },
+  "icu:DeleteAccountConfirmDialog--Description": {
+    "messageformat": "ఇది మీ ఖాతా సమాచారం, ప్రొఫైల్ మరియు మీ సందేశాలన్నింటినీ తొలగిస్తుంది. మీరు అన్ని Signal గ్రూపుల నుండి కూడా ."
+  },
+  "icu:DeleteAccountConfirmDialog--ConfirmNumber": {
+    "messageformat": "మీ ఫోన్ నంబర్‌ను నిర్ధారించండి"
+  },
+  "icu:DeleteAccountConfirmDialog--CountryCodePlaceholder": {
+    "messageformat": "దేశం కోడ్"
+  },
+  "icu:DeleteAccountConfirmDialog--NumberPlaceholder": {
+    "messageformat": "ఫోన్ నంబర్"
+  },
+  "icu:DeleteAccountConfirmDialog--DeleteButton": {
+    "messageformat": "తొలగించండి"
+  },
   "icu:deleteOldIndexedDBData": {
     "messageformat": "Signal Desktop యొక్క మునుపటి ఇన్‌స్టాలేషన్ నుండి మీరు వాడుకలో లేని డేటా కలిగి ఉన్నారు. ఒకవేళ మీరు కొనసాగించాలని ఎంచుకుంటే, అది తొలగించబడుతుంది మరియు మీరు మొదటి నుండి ప్రారంభిస్తారు."
   },
@@ -2386,9 +2461,6 @@
   },
   "icu:callRingtoneNotificationDescription": {
     "messageformat": "కాలింగ్ శబ్దాలను ప్లే చేయండి"
-  },
-  "icu:callSystemNotificationDescription": {
-    "messageformat": "కాల్‌ల కోసం ప్రకటనను చూపించు"
   },
   "icu:incomingCallNotificationDescription": {
     "messageformat": "వౘ్చుౘున్న కాల్‌లను ప్రారంభించండి"
@@ -2828,17 +2900,38 @@
   "icu:stickers--StickerManager--UninstallWarning": {
     "messageformat": "మీకు ఇకపై మూల సందేశం లేకపోతే మీరు ఈ స్టిక్కర్ ప్యాక్‌ను తిరిగి ఇన్‌స్టాల్ చేయలేరు."
   },
+  "icu:stickers--StickerManager--UninstallWarning--Title": {
+    "messageformat": "Remove Sticker Pack?"
+  },
+  "icu:stickers--StickerManager--UninstallWarning--Body": {
+    "messageformat": "This will remove the sticker pack. You can't add it again without a link or sticker message."
+  },
+  "icu:stickers--StickerManager--UninstallWarning--Remove": {
+    "messageformat": "Remove"
+  },
   "icu:stickers--StickerManagerHeader--All": {
     "messageformat": "అన్నీ"
   },
   "icu:stickers--StickerManagerHeader--MyStickers": {
     "messageformat": "నా స్టిక్కర్‌లు"
   },
+  "icu:stickers--StickerManagerHidePackDialog--Title": {
+    "messageformat": "Hide Sticker Pack?"
+  },
+  "icu:stickers--StickerManagerHidePackDialog--Body": {
+    "messageformat": "This will remove the sticker pack. You can't add it again without a link or sticker message."
+  },
+  "icu:stickers--StickerManagerHidePackDialog--Hide": {
+    "messageformat": "Hide"
+  },
   "icu:stickers--StickerManagerPackContextMenu--Add": {
     "messageformat": "జోడించండి"
   },
   "icu:stickers--StickerManagerPackContextMenu--Remove": {
     "messageformat": "తొలగించండి"
+  },
+  "icu:stickers--StickerManagerPackContextMenu--Hide": {
+    "messageformat": "Hide"
   },
   "icu:stickers--StickerManagerPackDragHandle--Label": {
     "messageformat": "స్టిక్కర్ ప్యాక్ క్రమాన్ని మార్చడానికి లాగండి"
@@ -2876,8 +2969,41 @@
   "icu:stickers--StickerPreview--StickerNoEmojiAriaLabel": {
     "messageformat": "ఎమోజీ లేని స్టిక్కర్"
   },
+  "icu:stickers--StickerPreview--SeeStickerDetails": {
+    "messageformat": "స్టిక్కర్ వివరాలను చూడండి"
+  },
+  "icu:stickers--StickerPreview--StickerDetailsTitle": {
+    "messageformat": "స్టిక్కర్ వివరాలు"
+  },
+  "icu:stickers--StickerPreview--AddFavorite": {
+    "messageformat": "ఇష్టమైన వాటికి జోడించండి"
+  },
+  "icu:stickers--StickerPreview--RemoveFavorite": {
+    "messageformat": "ఇష్టమైన వాటినుండి తొలగించండి"
+  },
   "icu:stickers--StickerPackLinkPreviewDescription": {
     "messageformat": "{author} ద్వారా స్టిక్కర్ ప్యాక్"
+  },
+  "icu:stickers--Toast--StickerFavoriteAdded": {
+    "messageformat": "ఇష్టమైన జాబితాకు స్టిక్కర్ జోడించబడింది"
+  },
+  "icu:stickers--Toast--StickerFavoriteRemoved": {
+    "messageformat": "ఇష్టమైన జాబితా నుండి స్టిక్కర్ తొలగించబడింది"
+  },
+  "icu:stickers--Toast--StickerFavoritesHint": {
+    "messageformat": "Right click a sticker to add to Favorites"
+  },
+  "icu:stickers--Toast--StickerFavoritesTooMany": {
+    "messageformat": "{count, plural, one {మీరు ఇష్టమైన జాబితాకు {count,number} స్టిక్కర్ మాత్రమే జోడించగలరు} other {మీరు ఇష్టమైన జాబితాకు {count,number} స్టిక్కర్లు మాత్రమే జోడించగలరు}}"
+  },
+  "icu:stickers--Toast--StickerPackHidden": {
+    "messageformat": "Sticker pack hidden"
+  },
+  "icu:stickers--Toast--StickerPackHidden--Undo": {
+    "messageformat": "Undo"
+  },
+  "icu:stickers--Toast--StickerPackUnhidden": {
+    "messageformat": "Sticker pack unhidden"
   },
   "icu:stickers--ViewPack": {
     "messageformat": "ప్యాక్‌ను వీక్షించండి"
@@ -2987,6 +3113,9 @@
   "icu:FunPanelSticker__SubNavLabel": {
     "messageformat": "స్టిక్కర్ ప్యాక్‌లు"
   },
+  "icu:FunPanelStickers__SubNavCategoryLabel--Favorites": {
+    "messageformat": "ఇష్టమైనవి"
+  },
   "icu:FunPanelStickers__SubNavCategoryLabel--Recents": {
     "messageformat": "ఇటీవల ఉపయోగించబడింది"
   },
@@ -2999,11 +3128,20 @@
   "icu:FunPanelStickers__SectionTitle--Recents": {
     "messageformat": "ఇటీవల ఉపయోగించబడింది"
   },
+  "icu:FunPanelStickers__SectionTitle--Favorites": {
+    "messageformat": "ఇష్టమైనవి"
+  },
   "icu:FunPanelStickers__SectionTitle--Featured": {
     "messageformat": "ఫీచర్ చేయబడింది"
   },
   "icu:FunPanelStickers__SearchResults__EmptyHeading": {
     "messageformat": "స్టిక్కర్లు కనుగొనబడలేదు"
+  },
+  "icu:FunPanelStickers__StickerContextMenu--AddFavorite": {
+    "messageformat": "ఇష్టమైన వాటికి జోడించండి"
+  },
+  "icu:FunPanelStickers__StickerContextMenu--RemoveFavorite": {
+    "messageformat": "ఇష్టమైన వాటినుండి తొలగించండి"
   },
   "icu:FunPanelStickers__LightboxDialog__Label": {
     "messageformat": "స్టిక్కర్ ప్రివ్యూ"
@@ -3061,9 +3199,6 @@
   },
   "icu:FunPanelGifs__GiphyAttribution__AccessibilityLabel": {
     "messageformat": "GIPHY ద్వారా శక్తివంతం చేయబడింది"
-  },
-  "icu:FunSearch__ClearButtonLabel": {
-    "messageformat": "శోధనను క్లియర్ చేయండి"
   },
   "icu:FunSkinTones__List": {
     "messageformat": "స్కిన్ టోన్"
@@ -3512,6 +3647,9 @@
   "icu:MessageRequests--unblock-group-confirm-body": {
     "messageformat": "సమూహములో ఉన్న వారు మిమ్మల్ని తిరిగి అందులో చేర్చగలరు."
   },
+  "icu:MessageRequests--unblock-signal-confirm-body": {
+    "messageformat": "మీరు Signal అప్ డేట్ లు మరియు వార్తలను అందుకుంటారు."
+  },
   "icu:MessageRequests--block-and-report-spam-success-toast": {
     "messageformat": "స్పామ్‌గా నివేదించబడింది మరియు బ్లాక్ చేయబడింది."
   },
@@ -3526,6 +3664,9 @@
   },
   "icu:MessageRequests--block-group-confirm-body": {
     "messageformat": "మీరు ఇకపై ఈ గుంపు నుండి సందేశాలు లేదా నవీకరణలను స్వీకరించరు మరియు సభ్యులు మిమ్మల్ని మళ్ళీ ఈ గుంపుకు చేర్చలేరు."
+  },
+  "icu:MessageRequests--block-signal-confirm-body": {
+    "messageformat": "మీకు ఇకపై Signal అప్ డేట్ లు మరియు వార్తలు అందవు."
   },
   "icu:MessageRequests--reportAndMaybeBlock": {
     "messageformat": "నివేదించండి..."
@@ -3854,6 +3995,9 @@
   "icu:callingDeviceSelection__settings": {
     "messageformat": "అమరికలు"
   },
+  "icu:callingDeviceSelection__settings-v2": {
+    "messageformat": "కాల్ సెట్టింగ్లు"
+  },
   "icu:calling__participants--pluralized": {
     "messageformat": "{people, plural, one {కాల్‌లో {people,number}} other {కాల్‌లో {people,number}}}"
   },
@@ -3959,6 +4103,15 @@
   "icu:callingDeviceSelection__select--default": {
     "messageformat": "అప్రమేయం"
   },
+  "icu:callingDeviceSelection__select--default-nonwin": {
+    "messageformat": "డిఫాల్ట్: {deviceName}"
+  },
+  "icu:callingDeviceSelection__select--default_console": {
+    "messageformat": "డిఫాల్ట్: {deviceName}"
+  },
+  "icu:callingDeviceSelection__select--default_communications": {
+    "messageformat": "డిఫాల్ట్ కమ్యూనికేషన్లు: {deviceName}"
+  },
   "icu:muteNotificationsTitle": {
     "messageformat": "నోటిఫికేషన్లను మ్యూట్ చేయండి"
   },
@@ -4027,9 +4180,6 @@
   },
   "icu:DebugLogErrorModal__SubmitDebugLog__Cancel": {
     "messageformat": "వద్దు ధన్యవాదాలు"
-  },
-  "icu:Confirmation--confirm": {
-    "messageformat": "సరే"
   },
   "icu:MessageMaxEditsModal__Title": {
     "messageformat": "సందేశాన్ని సవరించడం సాధ్యపడదు"
@@ -4811,6 +4961,69 @@
   "icu:CompositionArea__AttachMenu__Poll": {
     "messageformat": "పోల్"
   },
+  "icu:CompositionArea__AttachMenu__Contact": {
+    "messageformat": "పరిచయం"
+  },
+  "icu:ShareContactDialog__SelectContact__Title": {
+    "messageformat": "పరిచయాలను ఎంచుకోండి"
+  },
+  "icu:ShareContactDialog__SelectContact__SearchPlaceholder": {
+    "messageformat": "వెతకండి"
+  },
+  "icu:ShareContactDialog__SelectContact__EmptyState": {
+    "messageformat": "పరిచయాలు లేవు"
+  },
+  "icu:ShareContactDialog__SelectContact__NoResults": {
+    "messageformat": "“{searchQuery}” కోసం ఏ ఫలితాలు లేవు"
+  },
+  "icu:ShareContactDialog__ShareContact__Title": {
+    "messageformat": "పరిచయ వివరాలు పంపండి"
+  },
+  "icu:ShareContactDialog__ShareContact__Description": {
+    "messageformat": "మీరు ఎవరితోనైనా ఈ ప్రొఫైల్ ను పంచుకుంటే వారు {name} కు సందేశం పంపగలరు."
+  },
+  "icu:ShareContactDialog__ShareContact__Send": {
+    "messageformat": "కాంటాక్ట్ పంపండి"
+  },
+  "icu:ShareContactDialog__ShareContact__EditName": {
+    "messageformat": "పేరు ఎడిట్ చేయండి"
+  },
+  "icu:ShareContactDialog__EditName__Title": {
+    "messageformat": "పేరు ఎడిట్ చేయండి"
+  },
+  "icu:ShareContactDialog__EditName__Prefix": {
+    "messageformat": "ఉపసర్గ"
+  },
+  "icu:ShareContactDialog__EditName__GivenName": {
+    "messageformat": "మొదటి పేరు"
+  },
+  "icu:ShareContactDialog__EditName__MiddleName": {
+    "messageformat": "మధ్య పేరు"
+  },
+  "icu:ShareContactDialog__EditName__FamilyName": {
+    "messageformat": "చివరి పేరు"
+  },
+  "icu:ShareContactDialog__EditName__Suffix": {
+    "messageformat": "ప్రత్యయం"
+  },
+  "icu:ShareContactDialog__EditName__Organization": {
+    "messageformat": "సంస్థ"
+  },
+  "icu:ShareContactDialog__ShareContact__EditPhoto": {
+    "messageformat": "ఫోటోని ఎడిట్ చేయండి"
+  },
+  "icu:ShareContactDialog__SelectPhoto__Title": {
+    "messageformat": "ఒక ఫోటోను ఎంచుకోండి"
+  },
+  "icu:ShareContactDialog__SelectPhoto__ContactPhoto": {
+    "messageformat": "పరిచయ ఫొటో"
+  },
+  "icu:ShareContactDialog__SelectPhoto__ProfilePhoto": {
+    "messageformat": "ప్రొఫైల్ ఫోటో"
+  },
+  "icu:ShareContactDialog__SelectPhoto__DefaultAvatar": {
+    "messageformat": "డిఫాల్ట్ అవతార్"
+  },
   "icu:CompositionArea--attach-plus": {
     "messageformat": "జోడింపు లేదా పోల్‌ను జోడించండి"
   },
@@ -4849,9 +5062,6 @@
   },
   "icu:CompositionInput__editing-message": {
     "messageformat": "సందేశాన్ని సవరించండి"
-  },
-  "icu:countMutedConversationsDescription": {
-    "messageformat": "బ్యాడ్జ్ కౌంట్‌లో మ్యూట్ చేయబడిన చాట్‌లను చేర్చండి"
   },
   "icu:ContactModal--nickname": {
     "messageformat": "మారుపేరు"
@@ -5432,9 +5642,6 @@
   },
   "icu:DeleteAttachmentModal__Delete": {
     "messageformat": "తొలగించండి"
-  },
-  "icu:DeleteAttachmentModal__Cancel": {
-    "messageformat": "రద్దు చేయండి"
   },
   "icu:SelectModeActions__toast--TooManyMessagesToForward": {
     "messageformat": "మీరు 30 వరకు సందేశాలను మాత్రమే ఫార్వర్డ్ చేయగలరు"
@@ -6079,6 +6286,9 @@
   "icu:Preferences__button--account": {
     "messageformat": "ఖాతా"
   },
+  "icu:Preferences__button--linked-devices": {
+    "messageformat": "Linked Devices"
+  },
   "icu:Preferences__button--general": {
     "messageformat": "సాధారణం"
   },
@@ -6148,6 +6358,186 @@
   "icu:Preferences--system": {
     "messageformat": "వ్యవస్థ"
   },
+  "icu:LinkDevice--OSPrompt--Mac": {
+    "messageformat": "link a new device"
+  },
+  "icu:LinkDevice--OSPrompt--Windows": {
+    "messageformat": "Verify your identity to link a new device."
+  },
+  "icu:LinkDevice--OSPrompt--description--Linux": {
+    "messageformat": "Link a device"
+  },
+  "icu:LinkDevice--OSPrompt--message--Linux": {
+    "messageformat": "Authentication is required to link a new device."
+  },
+  "icu:Preferences--LinkedDevices--title": {
+    "messageformat": "Linked devices"
+  },
+  "icu:Preferences--LinkedDevices--description": {
+    "messageformat": "Use Signal on another device. Your messages will sync to your linked devices. <learnMore>Learn more</learnMore>"
+  },
+  "icu:Preferences--LinkedDevices--button": {
+    "messageformat": "Link a new device"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--title": {
+    "messageformat": "Linked devices"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--defaultName": {
+    "messageformat": "Linked device"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--createdAt": {
+    "messageformat": "Linked {date}"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--lastSeenAt": {
+    "messageformat": "Last active {date}"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--openMenu": {
+    "messageformat": "Open menu"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--Menu--rename": {
+    "messageformat": "Rename"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--Menu--unlink": {
+    "messageformat": "Unlink"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--footer": {
+    "messageformat": "Messages and chat info are protected by end-to-end encryption on all devices"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--title": {
+    "messageformat": "Signal on a linked device"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet1": {
+    "messageformat": "All messaging on linked devices is private"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet2": {
+    "messageformat": "Signal messages are synchronized with Signal on your desktop after it is linked."
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet3": {
+    "messageformat": "On your other device, visit <linkToSignal>signal.org/download</linkToSignal> to install Signal"
+  },
+  "icu:Preferences--LinkedDevices--EditDeviceNameDialog--title": {
+    "messageformat": "Edit device name"
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--title": {
+    "messageformat": "Unlink \"{name}\""
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--description": {
+    "messageformat": "This device will no longer be able to send or receive messages if it is unlinked."
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--unlinkButton": {
+    "messageformat": "Unlink"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--title": {
+    "messageformat": "Scan QR code"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--description": {
+    "messageformat": "Scan the QR code displayed on the device to link"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--title": {
+    "messageformat": "Linking device failed"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--description": {
+    "messageformat": "Make sure you are on the latest version of Signal, and scanning a QR code from within Signal and not another app."
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--retry-button": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--title": {
+    "messageformat": "Finish linking"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--linkNSync--title": {
+    "messageformat": "Transfer Message History"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--linkNSync--description": {
+    "messageformat": "Transfer your text messages and your last 45 days of media"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--doNotTransfer--title": {
+    "messageformat": "Don't transfer"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--doNotTransfer--description": {
+    "messageformat": "No old messages or media will be transferred to your linked device"
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--title": {
+    "messageformat": "Syncing messages..."
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--progress": {
+    "messageformat": "{percentage,number,percent} complete"
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--do-not-close": {
+    "messageformat": "Do not close Signal"
+  },
+  "icu:Preferences--LinkedDevices--LinkingDeviceDialog--title": {
+    "messageformat": "Linking device"
+  },
+  "icu:Preferences--LinkedDevices--LinkingDeviceDialog--progress": {
+    "messageformat": "Your device is being linked..."
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--title": {
+    "messageformat": "Linking device failed"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--description": {
+    "messageformat": "Something went wrong! Please ensure that both devices are connected to the internet and try again."
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--learn-more": {
+    "messageformat": "Learn more"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--retry": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--NotEnoughSpaceDialog--title": {
+    "messageformat": "Not enough storage space"
+  },
+  "icu:Preferences--LinkedDevices--NotEnoughSpaceDialog--description": {
+    "messageformat": "You don’t have enough free storage space on your device to transfer your messages. Free up some space and try again, or link your device without transferring your messages."
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--title": {
+    "messageformat": "Message sync failed"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--description": {
+    "messageformat": "Your device was successfully linked, but your messages could not be transferred."
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--learn-more": {
+    "messageformat": "Learn more"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--continue": {
+    "messageformat": "Continue"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--title": {
+    "messageformat": "Message sync failed"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--description": {
+    "messageformat": "Your messages couldn’t be transferred to your linked device. You can try re-linking and transferring again, or continue without transferring your message history."
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--continue-no-transfer": {
+    "messageformat": "Continue without transferring"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--retry": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--title": {
+    "messageformat": "Include a debug log?"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--description": {
+    "messageformat": "Including your debug log helps us diagnose and fix the issue, and does not contain identifying information. This is optional."
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--include-log-checkbox": {
+    "messageformat": "Include debug log"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--view": {
+    "messageformat": "View"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--no-thanks": {
+    "messageformat": "No thanks"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
   "icu:Preferences--signal-login": {
     "messageformat": "Signal Login"
   },
@@ -6168,9 +6558,6 @@
   },
   "icu:Preferences__SignalAccountKeys__Description": {
     "messageformat": "దీనిని ఒక సురక్షితమైన ప్రదేశంలో దాచండి, మీ ఖాతా మరియు డేటాను తిరిగి పొందడానికి మీ లాగిన్ సమాచారం అవసరమవుతుంది. ఎప్పుడూ ఎవరితోనూ దీనిని పంచుకోవద్దు."
-  },
-  "icu:Preferences__SignalAccountKeys__AccountKey": {
-    "messageformat": "ఖాతా కీ"
   },
   "icu:Preferences__SignalAccountKeys__AccountID": {
     "messageformat": "ఖాతా ID"
@@ -6271,9 +6658,6 @@
   "icu:Preferences--pin-reminders--header": {
     "messageformat": "పిన్ రిమైండర్‌లు"
   },
-  "icu:Preferences--pin-reminders--description": {
-    "messageformat": "క్రమేపీ మిమ్మల్ని తక్కువసార్లు అడుగుతారు"
-  },
   "icu:Preferences--registration-lock__label": {
     "messageformat": "నమోదు లాక్"
   },
@@ -6291,9 +6675,6 @@
   },
   "icu:Preferences__Notifications__SoundsSection__Title": {
     "messageformat": "శబ్దాలు"
-  },
-  "icu:Preferences__Notifications__AppBadgeSection__Title": {
-    "messageformat": "యాప్ బ్యాడ్జ్"
   },
   "icu:Preferences__Notifications__AppBadgeSection__Title-v2": {
     "messageformat": "చదవని బ్యాడ్జ్‌లు"
@@ -6673,6 +7054,9 @@
   "icu:Preferences--blocked-users--description": {
     "messageformat": "బ్లాక్ చేయబడిన యూజర్‌లు మీకు కాల్ చేయలేరు లేదా మీకు సందేశాలు పంపలేరు"
   },
+  "icu:Preferences--add-blocked": {
+    "messageformat": "బ్లాక్ చేయబడిన యూజర్ లేదా గ్రూప్ ను జోడించండి"
+  },
   "icu:Preferences--blocked-users": {
     "messageformat": "బ్లాక్ చేయబడిన యూజర్లు"
   },
@@ -6681,6 +7065,12 @@
   },
   "icu:Preferences--blocked--blocked-on": {
     "messageformat": "{blockedAt} రోజున బ్లాక్ చేయబడింది"
+  },
+  "icu:Preferences--BlockChooser--Done": {
+    "messageformat": "పూర్తయింది"
+  },
+  "icu:Preferences--BlockChooser--Search--Placeholder": {
+    "messageformat": "వెతకండి"
   },
   "icu:Preferences--signal-backups": {
     "messageformat": "Signal సురక్షిత బ్యాకప్‌లు"
@@ -7078,6 +7468,36 @@
   "icu:InstallScreenUpdateDialog--cannot-update__body": {
     "messageformat": "Signal డెస్క్‌టాప్ అప్‌డేట్ చేయడంలో విఫలమైంది, కానీ కొత్త వెర్షన్ అందుబాటులో ఉంది. {downloadUrl} కు వెళ్ళి కొత్త వెర్షన్ మాన్యువల్‌గా ఇన్‌స్టాల్‌ చేసుకోండి, అప్పుడు ఈ సమస్య గురించి మద్దతును సంప్రదించండి లేదా బగ్ ఫైల్ చేయండి."
   },
+  "icu:EntryPoint--signal-logo": {
+    "messageformat": "Signal లోగో"
+  },
+  "icu:EntryPoint--Title--Line1": {
+    "messageformat": "మీ గోప్యతను మీతోపాటు తీసుకెళ్లండి."
+  },
+  "icu:EntryPoint--Title--Line2": {
+    "messageformat": "ప్రతి సందేశంలో మీ వ్యక్తిత్వాన్ని చాటుకోండి."
+  },
+  "icu:EntryPoint--link-button": {
+    "messageformat": "మీ ఖాతాను లింక్ చేయండి"
+  },
+  "icu:EntryPoint--more-options-button": {
+    "messageformat": "మరిన్ని ఎంపికలు"
+  },
+  "icu:EntryPoint--nonprofit": {
+    "messageformat": "సిగ్నల్ ఒక లాభాపేక్ష లేని సంస్థ"
+  },
+  "icu:EntryPoint--terms": {
+    "messageformat": "నిబంధనలు & గోప్యతా విధానం"
+  },
+  "icu:EntryPoint--MoreOptions--Title": {
+    "messageformat": "మరిన్ని ఎంపికలు"
+  },
+  "icu:EntryPoint--MoreOptions--RegistrationButton--Title": {
+    "messageformat": "కొత్త ఖాతాను సృష్టించండి"
+  },
+  "icu:EntryPoint--MoreOptions--RegistrationButton--Description": {
+    "messageformat": "మీ ఫోన్ నంబర్‌ను ఉపయోగించి ఒక కొత్త Signal ఖాతాను సృష్టించండి."
+  },
   "icu:StandaloneRegistration--signal-logo": {
     "messageformat": "Signal లోగో"
   },
@@ -7097,7 +7517,7 @@
     "messageformat": "దయచేసి {duration} లో మళ్ళీ ప్రయత్నించండి"
   },
   "icu:StandaloneRegistration--PhoneNumber--RegionCodeSelector--Label": {
-    "messageformat": "Select region code"
+    "messageformat": "దేశ కోడ్‌ను ఎంచుకోండి"
   },
   "icu:StandaloneRegistration--PhoneNumber--placeholder": {
     "messageformat": "ఫోన్ నంబర్"
@@ -7272,6 +7692,21 @@
   },
   "icu:StandaloneRegistration--VerificationCode--CannotSendCodeTemporary--ok-button": {
     "messageformat": "అలాగే"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Title": {
+    "messageformat": "నమోదు చేసుకోవడంలో సమస్య ఉన్నదా?"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet1": {
+    "messageformat": "మీ SMS లేదా కాల్‌ను స్వీకరించడానికి మీ ఫోన్‌కు సెల్యులార్ సంకేతం ఉందని నిర్ధారించుకోండి"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet2": {
+    "messageformat": "మీరు ఆ నంబర్‌కు ఫోన్ కాల్ ను స్వీకరించగలరని నిర్ధారించండి"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet3": {
+    "messageformat": "మీరు మీ ఫోన్ నెంబర్‌ను సరిగ్గా నమోదు చేశారో లేదో తనిఖీ చేయండి"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Footer": {
+    "messageformat": "మీరు ఇప్పటికీ నమోదు చేసుకోలేకపోతే, ఈ <troubleshootingLink>ట్రబుల్ షూటింగ్ దశలను</troubleshootingLink> అనుసరించండి లేదా <contactSupportLink>మద్దతు బృందాన్ని సంప్రదించండి</contactSupportLink>."
   },
   "icu:StandaloneRegistration--ProfileEntry--header": {
     "messageformat": "మీ వ్యక్తిత్వవర్ణనను సెటప్ చేయండి"
@@ -8008,6 +8443,9 @@
   "icu:StoryDetailsModal__download-attachment": {
     "messageformat": "అటాచ్మెంట్ దిగుమతి"
   },
+  "icu:StoryDetailsModal__more-actions": {
+    "messageformat": "More actions"
+  },
   "icu:StoryViewsNRepliesModal__read-receipts-off": {
     "messageformat": "మీ కథలను ఎవరు వీక్షించారనేది చూడటానికి రిసిప్ట్‌లను వీక్షించండి ప్రారంభించండి. మీ మొబైల్ పరికరంలో Signal యాప్‌ను తెరవండి, సెట్టింగ్స్ > కథలకు వెళ్ళండి."
   },
@@ -8561,12 +8999,6 @@
   "icu:CallLinkPendingParticipantModal__DenyButtonLabel": {
     "messageformat": "ప్రవేశాన్ని నిరాకరించండి"
   },
-  "icu:CallLinkRestrictionsSelect__Option--Off": {
-    "messageformat": "ఆఫ్"
-  },
-  "icu:CallLinkRestrictionsSelect__Option--On": {
-    "messageformat": "ఆన్"
-  },
   "icu:CallLinkAddNameModal__Title": {
     "messageformat": "కాల్ పేరును జోడించండి"
   },
@@ -8614,6 +9046,39 @@
   },
   "icu:SaveMultiDialog__title": {
     "messageformat": "అటాచ్‌మెంట్‌లను సేవ్ చేయండి"
+  },
+  "icu:EmbeddedContact__message": {
+    "messageformat": "సందేశం"
+  },
+  "icu:ContactDetail__message": {
+    "messageformat": "సందేశం"
+  },
+  "icu:ContactDetail__add-to-group": {
+    "messageformat": "సమూహానికి జోడించండి"
+  },
+  "icu:ContactDetail__nickname": {
+    "messageformat": "మారుపేరు"
+  },
+  "icu:ContactDetail__note": {
+    "messageformat": "గమనికలు"
+  },
+  "icu:email-v2": {
+    "messageformat": "ఇమెయిల్"
+  },
+  "icu:home-v2": {
+    "messageformat": "హోమ్"
+  },
+  "icu:mobile-v2": {
+    "messageformat": "మొబైల్"
+  },
+  "icu:work-v2": {
+    "messageformat": "పని"
+  },
+  "icu:phone-v2": {
+    "messageformat": "ఫోన్"
+  },
+  "icu:address-v2": {
+    "messageformat": "చిరునామా"
   },
   "icu:WhatsNew__modal-title": {
     "messageformat": "కొత్తది ఏమిటి"
@@ -8781,7 +9246,7 @@
     "messageformat": "Signal కు మద్దతు ఇచ్చినందుకు ధన్యవాదాలు. ఓపెన్ సోర్స్ గోప్యతా సాంకేతికత ద్వారా ప్రపంచవ్యాప్తంగా లక్షలాది మందికి స్వేచ్ఛా వ్యక్తీకరణను రక్షించడం మరియు సురక్షితమైన భౌగోళిక కమ్యూనికేషన్‌ను ప్రారంభించడం అనే లక్ష్యాన్ని ముందుకు తీసుకెళ్ళడంలో మీ సహకారం సహాయపడుతుంది. ఒకవేళ మీరు యునైటెడ్ స్టేట్స్ నివాసి అయితే, మీ పన్ను రికార్డ్‌ల కోసం దయచేసి ఈ రసీదును మీ దగ్గర ఉంచుకోండి. Signal టెక్నాలజీ ఫౌండేషన్ అనేది యునైటెడ్ స్టేట్స్‌లోని అంతర్గత రెవెన్యూ కోడ్ యొక్క సెక్షన్ 501c3 కింద పన్ను మినహాయింపు పొందిన లాభాపేక్షలేని సంస్థ. మా ఫెడరల్ పన్ను ID 82-4506840. ఈ విరాళానికి ప్రతిఫలంగా Signal ఎటువంటి వస్తువులను లేదా సేవలను అందించలేదు."
   },
   "icu:MessageCta__Donate": {
-    "messageformat": "Donate Now"
+    "messageformat": "ఇప్పుడు విరాళం ఇవ్వండి"
   },
   "icu:Donations__OfflineTooltip": {
     "messageformat": "మీరు ఆఫ్‌లైన్‌లో ఉన్నారు. విరాళాన్ని పూర్తి చేయడానికి దయచేసి ఇంటర్నెట్‌కు కనెక్ట్ అవ్వండి."
@@ -8981,6 +9446,9 @@
   "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__AccessibilityLabel": {
     "messageformat": "సమస్యల వివరణ"
   },
+  "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__Placeholder": {
+    "messageformat": "మీ సమస్యను వివరించండి"
+  },
   "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__HelpText": {
     "messageformat": "దయచేసి సమస్యకు సంబంధించిన ఏవైనా వివరాలను చేర్చండి. మీరు ఇక్కడ పంచుకునేవి ఏవైనా రహస్యంగా ఉంచబడతాయి మరియు Signal లో కాల్‌లను మెరుగుపరచడంలో సహాయపడటానికి మాత్రమే ఉపయోగించబడతాయి."
   },
@@ -9090,10 +9558,16 @@
     "messageformat": "చిన్న ట్వీక్‌లు, బగ్ ఫిక్స్‌లు, మరియు పనితీరు మెరుగుదలలు. Signal ఉపయోగించినందుకు మీకు ధన్యవాదాలు!",
     "ignoreUnused": true
   },
-  "icu:WhatsNew__8.30--0": {
-    "messageformat": "వీడియో కాల్స్ కోసం పనితీరు మెరుగుదలలు."
+  "icu:WhatsNew__8.34--0": {
+    "messageformat": "ఇప్పుడు మీ Signal Desktop పరిచయాలను పంచుకోవడానికి కూడా మద్దతునిస్తుంది కాబట్టి మీ స్మార్ట్ ఫోన్ ను తాకాల్సిన అవసరం లేకుండా, మీ కంప్యూటర్ మీదనే దృష్టి పెట్టవచ్చు."
   },
-  "icu:WhatsNew__8.30--1": {
-    "messageformat": "ఒకవేళ మీరు వీడియో కాల్‌లో చేరడానికి ప్రయత్నించినప్పుడు Signal కు కెమెరాను యాక్సెస్ చేయడానికి అనుమతి లేకపోతే Windows లో మీ సిస్టమ్ సెట్టింగ్లను తెరవడానికి సౌకర్యవంతమైన షార్ట్‌కట్‌ను కూడా మేము జోడించాము. ఇప్పుడు ఇతరులు మిమ్మల్ని చూడగలిగేలా మీరు ఏం చెయ్యాలో తెలుసుకోవడం మరింత సులభం."
+  "icu:WhatsNew__8.34--1": {
+    "messageformat": "కనెక్ట్ చేసిన ఆడియో పరికరాల నిర్వహణ మరియు పనితీరు మెరుగుపరచబడ్డాయి."
+  },
+  "icu:WhatsNew__8.36--0": {
+    "messageformat": "Your top stickers now have a place to remain stuck. Add any sticker pack to your list of favorites so it's easy to stick with the ones you love."
+  },
+  "icu:WhatsNew__8.36--0--fix": {
+    "messageformat": "ఇప్పుడు మీ టాప్ స్టిక్కర్లను భద్రపరచుకోవడానికి ప్రత్యేక స్థానం ఉంది. మీకు నచ్చిన స్టిక్కర్లను సులభంగా మళ్ళీ ఉపయోగించుకోవడానికి వాటిలో దేనినైనా మీ ఇష్టమైన స్టిక్కర్ల జాబితాకు జోడించండి."
   }
 }

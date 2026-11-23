@@ -37,8 +37,7 @@ import { NavSidebarSearchHeader, NavSidebarEmpty } from './NavSidebar.dom.tsx';
 import { SizeObserver } from '../hooks/useSizeObserver.dom.tsx';
 import type { getCallIdFromEra } from '../util/callDisposition.preload.ts';
 import { CallsNewCallButton } from './CallsNewCallButton.dom.tsx';
-import { Tooltip, TooltipPlacement } from './Tooltip.dom.tsx';
-import { Theme } from '../util/theme.std.ts';
+import { AxoTooltip } from '../axo/AxoTooltip.dom.tsx';
 import type { CallingConversationType } from '../types/Calling.std.ts';
 import type { CallLinkType } from '../types/CallLink.std.ts';
 import {
@@ -721,12 +720,8 @@ export function CallsList({
         return (
           <div key={key} style={style}>
             <ListTile
-              moduleClassName="CallsList__ItemTile"
-              title={
-                <span className="CallsList__ItemTitle">
-                  {i18n('icu:CallsList__CreateCallLink')}
-                </span>
-              }
+              className="CallsList__ItemTile"
+              title={i18n('icu:CallsList__CreateCallLink')}
               leading={
                 <i className="ComposeStepButton__icon ComposeStepButton__icon--call-link" />
               }
@@ -821,7 +816,7 @@ export function CallsList({
         return (
           <div key={key} style={style}>
             <ListTile
-              moduleClassName="CallsList__ItemTile"
+              className="CallsList__ItemTile"
               leading={<div className="CallsList__LoadingAvatar" />}
               title={
                 <span className="CallsList__LoadingText CallsList__LoadingText--title" />
@@ -910,14 +905,14 @@ export function CallsList({
           style={style}
           data-type={item.type}
           data-testid={item.peerId}
-          className={classNames('CallsList__Item', {
+          className={classNames({
             'CallsList__Item--selected': isSelected,
             'CallsList__Item--missed': wasMissed,
             'CallsList__Item--declined': wasDeclined,
           })}
         >
           <ListTile
-            moduleClassName="CallsList__ItemTile"
+            className="CallsList__ItemTile"
             aria-selected={isSelected}
             leading={
               <Avatar
@@ -932,7 +927,6 @@ export function CallsList({
                 title={conversation.title}
                 size={AvatarSize.THIRTY_SIX}
                 badge={undefined}
-                className="CallsList__ItemAvatar"
               />
             }
             trailing={isCallButtonVisible ? callButton : undefined}
@@ -955,7 +949,7 @@ export function CallsList({
             }
             subtitleMaxLines={1}
             subtitle={
-              <span className="CallsList__ItemCallInfo">
+              <span>
                 {item.children.length > 1 ? `(${item.children.length}) ` : ''}
                 {statusText} &middot;{' '}
                 {isActiveVisible ? (
@@ -1053,12 +1047,10 @@ export function CallsList({
           onClear={handleSearchInputClear}
           value={queryInput}
         />
-        <Tooltip
-          direction={TooltipPlacement.Bottom}
-          content={i18n('icu:CallsList__ToggleFilterByMissedLabel')}
-          theme={Theme.Dark}
-          delay={600}
-          wrapperClassName="CallsList__ToggleFilterByMissedWrapper"
+        <AxoTooltip.Root
+          label={i18n('icu:CallsList__ToggleFilterByMissedLabel')}
+          side="bottom"
+          tooltipRepeatsTriggerAccessibleName
         >
           <button
             className={classNames('CallsList__ToggleFilterByMissed', {
@@ -1075,7 +1067,7 @@ export function CallsList({
               {i18n('icu:CallsList__ToggleFilterByMissedLabel')}
             </span>
           </button>
-        </Tooltip>
+        </AxoTooltip.Root>
       </NavSidebarSearchHeader>
 
       <SizeObserver>

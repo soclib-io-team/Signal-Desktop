@@ -35,7 +35,7 @@ import {
   encryptAttachmentV2,
   generateAttachmentKeys,
 } from '../AttachmentCrypto.node.ts';
-import { isVideoTypeSupported } from '../util/GoogleChrome.std.ts';
+import { isVideoTypePlayable } from '../util/GoogleChrome.std.ts';
 import { typeIntoInput, typeVerificationCode } from './helpers.node.ts';
 
 import type { RendererConfigType } from '../types/RendererConfig.std.ts';
@@ -174,9 +174,10 @@ export type RegressionSample = Readonly<{
 
 export type StandaloneLinkData = Readonly<{
   aci: AciString;
+  profileKey: Buffer<ArrayBuffer>;
+  recordIkm: Buffer<ArrayBuffer> | undefined;
   startingStorageServiceVersion: bigint;
   storageKey: Buffer<ArrayBuffer>;
-  recordIkm: Buffer<ArrayBuffer> | undefined;
 }>;
 
 function sanitizePathComponent(component: string): string {
@@ -207,21 +208,18 @@ const DEFAULT_REMOTE_CONFIG = [
     'desktop.libsignalNet.grpc.BackupsAnonymousGetUploadForm',
     { enabled: true },
   ],
-  // TODO: move to gRPC
   [
     'desktop.libsignalNet.grpc.AccountsAnonymousCheckAccountExistence.2',
-    { enabled: true, value: 'ws' },
-  ],
-  [
-    'desktop.libsignalNet.grpc.KeyTransparencyQueryServiceSearchV2',
-    { enabled: true, value: 'ws' },
+    { enabled: true },
   ],
   [
     'desktop.libsignalNet.grpc.MessagesAnonymousSendSingleRecipientMessage',
-    { enabled: true, value: 'ws' },
+    { enabled: true },
   ],
+  ['desktop.libsignalNet.grpc.MessagesSendMessage', { enabled: true }],
+  // TODO: move to gRPC
   [
-    'desktop.libsignalNet.grpc.MessagesSendMessage',
+    'desktop.libsignalNet.grpc.KeyTransparencyQueryServiceSearchV2',
     { enabled: true, value: 'ws' },
   ],
 ] as const;
@@ -566,12 +564,20 @@ export class Bootstrap {
 
     const { version, storageKey, recordIkm } =
       await app.waitForUploadManifest();
+    const { profileKey, reason } = await app.waitForSetProfileKey();
+
+    assert.strictEqual(
+      reason,
+      'AccountManager.doCreateAccount',
+      'Expect to get profileKey from account create'
+    );
 
     return {
       aci,
+      profileKey,
+      recordIkm: recordIkm ? Buffer.from(recordIkm) : undefined,
       startingStorageServiceVersion: BigInt(version),
       storageKey: Buffer.from(storageKey),
-      recordIkm: recordIkm ? Buffer.from(recordIkm) : undefined,
     };
   }
 
@@ -600,10 +606,29 @@ export class Bootstrap {
           if (gotProvisionURL) {
             return;
           }
+          debug('clicking Relink button');
           await relinkButton.click();
           await window.getByRole('button', { name: "Don't transfer" }).click();
         } catch {
           // Ignore, provision will fail if QR code was never generated
+        }
+      })()
+    );
+
+    drop(
+      (async () => {
+        try {
+          const linkYourAccountButton = window.getByTestId(
+            'EntryPoint--link-button'
+          );
+          await linkYourAccountButton.waitFor();
+          if (gotProvisionURL) {
+            return;
+          }
+          debug('clicking Link your Account button');
+          await linkYourAccountButton.click();
+        } catch {
+          // Ignore; this is okay if we're attempting to relink
         }
       })()
     );
@@ -837,7 +862,7 @@ export class Bootstrap {
       debug('creating screenshot');
       snapshots.push({
         name,
-        data: await window.screenshot(),
+        data: await window.screenshot({ animations: 'disabled' }),
       });
     });
 
@@ -852,7 +877,9 @@ export class Bootstrap {
         assert(before != null, 'No previous snapshot');
         assert.strictEqual(before.name, name, 'Wrong snapshot order');
         await anotherWindow.setViewportSize(viewportSize);
-        const after = await anotherWindow.screenshot();
+        const after = await anotherWindow.screenshot({
+          animations: 'disabled',
+        });
 
         const beforePng = PNG.sync.read(before.data);
         const afterPng = PNG.sync.read(after);
@@ -919,7 +946,7 @@ export class Bootstrap {
         plaintext: {
           data,
         },
-        needIncrementalMac: isVideoTypeSupported(contentType),
+        needIncrementalMac: isVideoTypePlayable(contentType),
         sink: passthrough,
       }),
       this.server.storeAttachmentOnCdn(cdnNumber, cdnKey, passthrough),

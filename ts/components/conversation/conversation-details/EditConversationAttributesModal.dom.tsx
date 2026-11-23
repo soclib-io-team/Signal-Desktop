@@ -14,10 +14,10 @@ import type {
   DeleteAvatarFromDiskActionType,
   ReplaceAvatarActionType,
   SaveAvatarToDiskActionType,
+  AvatarColorType,
 } from '../../../types/Avatar.std.ts';
-import type { AvatarColorType } from '../../../types/Colors.std.ts';
 import { useConfirmDiscard } from '../../../hooks/useConfirmDiscard.dom.tsx';
-import { AxoDialog } from '../../../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../../../axo/dialogs/AxoDialog.dom.tsx';
 
 type PropsType = {
   avatarColor?: AvatarColorType;
@@ -191,11 +191,7 @@ export function EditConversationAttributesModal({
     );
   } else {
     content = (
-      <form
-        ref={formRef}
-        onSubmit={onSubmit}
-        className="module-EditConversationAttributesModal"
-      >
+      <form ref={formRef} onSubmit={onSubmit}>
         <AvatarPreview
           avatarColor={avatarColor}
           avatarUrl={avatarUrlForPreview}
@@ -248,7 +244,11 @@ export function EditConversationAttributesModal({
 
   return (
     <AxoDialog.Root open onOpenChange={onTryClose}>
-      <AxoDialog.Content size="md" escape="cancel-is-destructive">
+      <AxoDialog.Content
+        size="md"
+        escape="cancel-is-destructive"
+        disableMissingAriaDescriptionWarning
+      >
         <AxoDialog.Header>
           <AxoDialog.Title>
             {i18n('icu:updateGroupAttributes__title')}
@@ -263,7 +263,7 @@ export function EditConversationAttributesModal({
             <AxoDialog.Footer>
               <AxoDialog.Actions>
                 <AxoDialog.Action
-                  variant="strong-secondary"
+                  variant="subtle-secondary"
                   onClick={onClose}
                   disabled={isRequestActive}
                 >

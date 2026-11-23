@@ -6,13 +6,13 @@ on:
   issue_comment:
     types: [created]
   pull_request:
-    types: [opened, labeled, unlabeled, closed]
+    types: [opened, synchronize, labeled, unlabeled, closed]
 
 jobs:
   backport:
     name: Apply labels and open backport pull requests
     if: ${{ github.repository == 'signalapp/Signal-Desktop-Private' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Apply labels and open backport pull requests
         uses: signalapp/Signal-Backport-Action-Private@main

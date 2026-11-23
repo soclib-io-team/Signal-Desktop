@@ -25,6 +25,7 @@ import { FunPickerTabKey } from './constants.dom.tsx';
 import type { FunEmojiSelection } from './panels/FunPanelEmojis.dom.tsx';
 import type { FunStickerSelection } from './panels/FunPanelStickers.dom.tsx';
 import type { Emoji } from '../../axo/emoji.std.ts';
+import type { ShowToastAction } from '../../state/ducks/toast.dom.ts';
 
 export type FunContextSmartProps = Readonly<{
   i18n: LocalizerType;
@@ -41,11 +42,18 @@ export type FunContextSmartProps = Readonly<{
   onSelectEmoji: (emojiSelection: FunEmojiSelection) => void;
 
   // Stickers
+  favoriteStickers: ReadonlyArray<StickerType>;
+  isFavoriteStickersEnabled: boolean;
   isStickerReplySendEnabled: boolean;
   installedStickerPacks: ReadonlyArray<StickerPackType>;
   showStickerPickerHint: boolean;
   onClearStickerPickerHint: () => unknown;
   onSelectSticker: (stickerSelection: FunStickerSelection) => void;
+  onMarkStickerAsFavorite: (
+    stickerSelection: FunStickerSelection,
+    markAsFavorite: boolean
+  ) => void;
+  showToast: ShowToastAction;
 
   // GIFs
   fetchGiphyTrending: typeof fetchGiphyTrending;
@@ -70,10 +78,6 @@ export type FunContextProps = FunContextSmartProps &
     onStoredSearchInputChange: (nextSearchInput: string) => void;
     shouldAutoFocus: boolean;
     onChangeShouldAutoFocus: (shouldAutoFocus: boolean) => void;
-
-    // Sticker reply
-    stagedStickerReply: FunStickerSelection | null;
-    onStageStickerReply: (selection: FunStickerSelection | null) => void;
   }>;
 
 const FunContext = createContext<FunContextProps | null>(null);
@@ -117,10 +121,6 @@ export const FunProvider = memo(function FunProvider(
   // Search Input
   const [storedSearchInput, setStoredSearchInput] = useState<string>('');
 
-  // Sticker reply
-  const [stagedStickerReply, setStagedStickerReply] =
-    useState<FunStickerSelection | null>(null);
-
   const [shouldAutoFocus, setShouldAutoFocus] = useState(true);
 
   // Callbacks
@@ -140,13 +140,6 @@ export const FunProvider = memo(function FunProvider(
   const handleStoredSearchInputChange = useCallback(
     (newSearchInput: string) => {
       setStoredSearchInput(newSearchInput);
-    },
-    []
-  );
-
-  const handleStageStickerReply = useCallback(
-    (selection: FunStickerSelection | null) => {
-      setStagedStickerReply(selection);
     },
     []
   );
@@ -184,13 +177,15 @@ export const FunProvider = memo(function FunProvider(
       }
       onSelectEmoji={props.onSelectEmoji}
       // Stickers
+      favoriteStickers={props.favoriteStickers}
+      isFavoriteStickersEnabled={props.isFavoriteStickersEnabled}
       isStickerReplySendEnabled={props.isStickerReplySendEnabled}
       installedStickerPacks={props.installedStickerPacks}
       showStickerPickerHint={props.showStickerPickerHint}
-      stagedStickerReply={stagedStickerReply}
       onClearStickerPickerHint={props.onClearStickerPickerHint}
       onSelectSticker={props.onSelectSticker}
-      onStageStickerReply={handleStageStickerReply}
+      onMarkStickerAsFavorite={props.onMarkStickerAsFavorite}
+      showToast={props.showToast}
       // GIFs
       fetchGiphyTrending={props.fetchGiphyTrending}
       fetchGiphySearch={props.fetchGiphySearch}

@@ -5,11 +5,11 @@ import type { ComponentProps } from 'react';
 import { memo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 
-import { getIntl } from '../selectors/user.std.ts';
+import { getIntl, getVersion } from '../selectors/user.std.ts';
 import { getUpdatesState } from '../selectors/updates.std.ts';
 import { getInstallerState } from '../selectors/installer.std.ts';
 import { useInstallerActions } from '../ducks/installer.preload.ts';
-import { useUpdatesActions } from '../ducks/updates.preload.ts';
+import { useUpdatesActions } from '../ducks/updates.dom.ts';
 import { hasExpired as hasExpiredSelector } from '../selectors/expiration.dom.ts';
 import { missingCaseError } from '../../util/missingCaseError.std.ts';
 import { backupsService } from '../../services/backups/index.preload.ts';
@@ -21,6 +21,8 @@ import { isStagingServer } from '../../util/isStagingServer.dom.ts';
 import { createLogger } from '../../logging/log.std.ts';
 import { SmartToastManager } from './ToastManager.preload.tsx';
 import { shouldNeverBeCalled } from '../../util/shouldNeverBeCalled.std.ts';
+import { useAppActions } from '../ducks/app.preload.ts';
+import { isStandaloneEnabled } from '../../types/StandaloneRegistration.std.ts';
 
 const log = createLogger('InstallScreen');
 
@@ -34,6 +36,10 @@ export const SmartInstallScreen = memo(function SmartInstallScreen() {
     useInstallerActions();
   const { startUpdate, forceCheck } = useUpdatesActions();
   const hasExpired = useSelector(hasExpiredSelector);
+  const { openEntryPoint } = useAppActions();
+
+  const version = useSelector(getVersion);
+  const isStandaloneFeatureEnabled = isStandaloneEnabled(version);
 
   const onCancelBackupImport = useCallback((): void => {
     backupsService.cancelDownloadAndImport();
@@ -62,6 +68,8 @@ export const SmartInstallScreen = memo(function SmartInstallScreen() {
           restartInstall: startInstaller,
           continueInstallWithDataDeletion,
           OS: OS.getName(),
+          openEntryPoint,
+          isStandaloneFeatureEnabled,
           isStaging: isStagingServer(),
         },
       };

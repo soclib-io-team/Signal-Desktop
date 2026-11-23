@@ -18,7 +18,6 @@ import type {
   JSX,
 } from 'react';
 import classNames from 'classnames';
-import { Manager, Reference } from 'react-popper';
 import Quill, { Delta } from '@signalapp/quill-cjs';
 import {
   matchText,
@@ -67,12 +66,11 @@ import {
 } from '../quill/util.dom.ts';
 import { SignalClipboard } from '../quill/signal-clipboard/index.dom.ts';
 import { DirectionalBlot } from '../quill/block/blot.dom.tsx';
-import { getClassNamesFor } from '../util/getClassNamesFor.std.ts';
 import { isNotNil } from '../util/isNotNil.std.ts';
 import { createLogger } from '../logging/log.std.ts';
 import type { LinkPreviewForUIType } from '../types/message/LinkPreviews.std.ts';
 import { StagedLinkPreview } from './conversation/StagedLinkPreview.dom.tsx';
-import type { DraftEditMessageType } from '../model-types.d.ts';
+import type { DraftEditMessageType } from '../model-types.std.ts';
 import { usePreviousDeprecated } from '../hooks/usePrevious.std.ts';
 import {
   matchBold,
@@ -88,7 +86,7 @@ import { dropNull } from '../util/dropNull.std.ts';
 import { SimpleQuillWrapper } from './SimpleQuillWrapper.dom.tsx';
 import { FUN_STATIC_EMOJI_CLASS } from './fun/FunEmoji.dom.tsx';
 import type { EmojiCompletionOptions } from '../quill/emoji/completion.dom.tsx';
-import { MAX_BODY_ATTACHMENT_BYTE_LENGTH } from '../util/longAttachment.std.ts';
+import { MAX_PLAINTEXT_BODY_ATTACHMENT_BYTE_LENGTH } from '../util/longAttachment.std.ts';
 import type { FunEmojiSelection } from './fun/panels/FunPanelEmojis.dom.tsx';
 import { AxoSymbol } from '../axo/AxoSymbol.dom.tsx';
 import { AxoTooltip } from '../axo/AxoTooltip.dom.tsx';
@@ -158,7 +156,8 @@ export type Props = Readonly<{
   emojiSkinToneDefault: Emoji.SkinTone | null;
   draftText: string | null;
   draftBodyRanges: HydratedBodyRangesType | null;
-  moduleClassName?: string;
+  /** @deprecated */
+  className?: string;
   theme: ThemeType;
   placeholder?: string;
   sortedGroupMembers: ReadonlyArray<ConversationType> | null;
@@ -193,8 +192,6 @@ export type Props = Readonly<{
   onToggleViewOnce: () => void;
 }>;
 
-const BASE_CLASS_NAME = 'module-composition-input';
-
 export function CompositionInput(props: Props): ReactElement {
   const {
     children,
@@ -211,7 +208,7 @@ export function CompositionInput(props: Props): ReactElement {
     large,
     linkPreviewLoading,
     linkPreviewResult,
-    moduleClassName,
+    className,
     onCloseLinkPreview,
     onBlur,
     onFocus,
@@ -244,6 +241,7 @@ export function CompositionInput(props: Props): ReactElement {
 
   const emojiCompletionRef = useRef<EmojiCompletion>(undefined);
   const mentionCompletionRef = useRef<MentionCompletion>(undefined);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
   const quillRef = useRef<Quill>(undefined);
 
   const propsRef = useRef<Props>(props);
@@ -686,7 +684,7 @@ export function CompositionInput(props: Props): ReactElement {
 
       // FIXME
       // oxlint-disable-next-line no-undef
-      if (Buffer.byteLength(text) > MAX_BODY_ATTACHMENT_BYTE_LENGTH) {
+      if (Buffer.byteLength(text) > MAX_PLAINTEXT_BODY_ATTACHMENT_BYTE_LENGTH) {
         quill.history.undo();
         propsRef.current.onTextTooLong();
         return;
@@ -777,22 +775,6 @@ export function CompositionInput(props: Props): ReactElement {
     emojiCompletion.options.emojiSkinToneDefault = emojiSkinToneDefault;
   }, [emojiSkinToneDefault]);
 
-  useEffect(
-    () => () => {
-      const emojiCompletion = emojiCompletionRef.current;
-      const mentionCompletion = mentionCompletionRef.current;
-
-      if (emojiCompletion !== undefined) {
-        emojiCompletion.destroy();
-      }
-
-      if (mentionCompletion !== undefined) {
-        mentionCompletion.destroy();
-      }
-    },
-    []
-  );
-
   const removeStaleMentions = (
     currentMembers: ReadonlyArray<ConversationType>
   ) => {
@@ -854,7 +836,7 @@ export function CompositionInput(props: Props): ReactElement {
 
       return (
         <SimpleQuillWrapper
-          className={`${BASE_CLASS_NAME}__quill`}
+          className="module-composition-input__quill"
           onChange={() => callbacksRef.current.onChange()}
           defaultValue={delta}
           modules={{
@@ -875,6 +857,7 @@ export function CompositionInput(props: Props): ReactElement {
                 ['STRONG', matchBold],
                 ['EM', matchItalic],
                 ['SPAN', matchMonospace],
+                ['A', matchMonospace],
                 ['S', matchStrikethrough],
                 ['SPAN', matchSpoiler],
                 [Node.TEXT_NODE, matchEmojiText],
@@ -924,6 +907,7 @@ export function CompositionInput(props: Props): ReactElement {
               setFormattingChooserElement,
             },
             mentionCompletion: {
+              getAnchorElement: () => inputContainerRef.current,
               getPreferredBadge,
               memberRepositoryRef,
               setMentionPickerElement: setMentionCompletionElement,
@@ -947,6 +931,11 @@ export function CompositionInput(props: Props): ReactElement {
             }
 
             quillRef.current = quill;
+
+            // Completion lists set `aria-activedescendant` on the editor
+            quill.root.setAttribute('role', 'textbox');
+            quill.root.setAttribute('aria-multiline', 'true');
+            quill.root.setAttribute('aria-autocomplete', 'list');
 
             quill.on(Emitter.events.COMPOSITION_START, () => {
               quill.root.classList.toggle('ql-blank', false);
@@ -1014,8 +1003,6 @@ export function CompositionInput(props: Props): ReactElement {
   //   visual text box is much larger. Clicking that should allow you to start typing,
   //   hence the click handler.
 
-  const getClassName = getClassNamesFor(BASE_CLASS_NAME, moduleClassName);
-
   const onMouseDown = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       const { currentTarget } = event;
@@ -1047,112 +1034,107 @@ export function CompositionInput(props: Props): ReactElement {
   const isInputEnabled = !disabled && !isViewOnceActive;
 
   return (
-    <Manager>
-      <Reference>
-        {({ ref }) => (
-          <div
-            className={classNames(
-              getClassName('__input'),
-              showViewOnceButton && getClassName('__input--with-view-once'),
-              isViewOnceActive && getClassName('__input--view-once-active')
-            )}
-            data-supertab
-            ref={ref}
-            data-testid="CompositionInput"
-            data-enabled={isInputEnabled ? 'true' : 'false'}
-            data-focus-visible={isFocusVisibleWithin}
-            {...mergeProps(focusVisibleWithinProps, { onMouseDown })}
+    <div
+      className={classNames(
+        'module-composition-input__input',
+        showViewOnceButton && 'module-composition-input__input--with-view-once',
+        isViewOnceActive && 'module-composition-input__input--view-once-active',
+        className
+      )}
+      data-supertab
+      ref={inputContainerRef}
+      data-testid="CompositionInput"
+      data-enabled={isInputEnabled ? 'true' : 'false'}
+      data-focus-visible={isFocusVisibleWithin}
+      {...mergeProps(focusVisibleWithinProps, { onMouseDown })}
+    >
+      {onRecoveryKeyPasteConfirm ? (
+        <RecoveryKeyPasteWarning
+          i18n={i18n}
+          onCancel={() => setOnRecoveryKeyPasteConfirm(null)}
+          onConfirm={() => {
+            setOnRecoveryKeyPasteConfirm(null);
+            onRecoveryKeyPasteConfirm.onAllowPaste();
+          }}
+        />
+      ) : null}
+      {draftEditMessage && (
+        <div className="module-composition-input__editing-message">
+          {i18n('icu:CompositionInput__editing-message')}
+        </div>
+      )}
+      {draftEditMessage?.attachmentThumbnail && (
+        <div className="module-composition-input__editing-message__attachment">
+          <img
+            alt={i18n('icu:stagedImageAttachment', {
+              path: draftEditMessage.attachmentThumbnail,
+            })}
+            src={draftEditMessage.attachmentThumbnail}
+          />
+        </div>
+      )}
+      {conversationId && linkPreviewLoading && linkPreviewResult && (
+        <StagedLinkPreview
+          {...linkPreviewResult}
+          className="CompositionInput__link-preview"
+          i18n={i18n}
+          onClose={() => onCloseLinkPreview?.(conversationId)}
+        />
+      )}
+      {children}
+      {isViewOnceActive && (
+        <div className="module-composition-input__view-once-placeholder">
+          {i18n('icu:CompositionArea--viewOnceMediaPlaceholder')}
+        </div>
+      )}
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        onClick={focus}
+        onScroll={onScroll}
+        className={classNames(
+          'module-composition-input__input__scroller',
+          !large && linkPreviewResult
+            ? 'module-composition-input__input__scroller--link-preview'
+            : null,
+          large ? 'module-composition-input__input__scroller--large' : null,
+          children ? 'module-composition-input__input--with-children' : null
+        )}
+      >
+        {reactQuill}
+        {shouldHidePopovers ? null : (
+          <>
+            {emojiCompletionElement}
+            {mentionCompletionElement}
+            {formattingChooserElement}
+          </>
+        )}
+      </div>
+      {showViewOnceButton && (
+        <div className="module-composition-input__view-once-button">
+          <AxoTooltip.Root
+            label={i18n('icu:CompositionArea--viewOnceToggle')}
+            tooltipRepeatsTriggerAccessibleName
           >
-            {onRecoveryKeyPasteConfirm ? (
-              <RecoveryKeyPasteWarning
-                i18n={i18n}
-                onCancel={() => setOnRecoveryKeyPasteConfirm(null)}
-                onConfirm={() => {
-                  setOnRecoveryKeyPasteConfirm(null);
-                  onRecoveryKeyPasteConfirm.onAllowPaste();
-                }}
-              />
-            ) : null}
-            {draftEditMessage && (
-              <div className={getClassName('__editing-message')}>
-                {i18n('icu:CompositionInput__editing-message')}
-              </div>
-            )}
-            {draftEditMessage?.attachmentThumbnail && (
-              <div className={getClassName('__editing-message__attachment')}>
-                <img
-                  alt={i18n('icu:stagedImageAttachment', {
-                    path: draftEditMessage.attachmentThumbnail,
-                  })}
-                  src={draftEditMessage.attachmentThumbnail}
-                />
-              </div>
-            )}
-            {conversationId && linkPreviewLoading && linkPreviewResult && (
-              <StagedLinkPreview
-                {...linkPreviewResult}
-                moduleClassName="CompositionInput__link-preview"
-                i18n={i18n}
-                onClose={() => onCloseLinkPreview?.(conversationId)}
-              />
-            )}
-            {children}
-            {isViewOnceActive && (
-              <div className={getClassName('__view-once-placeholder')}>
-                {i18n('icu:CompositionArea--viewOnceMediaPlaceholder')}
-              </div>
-            )}
-            {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-            <div
-              onClick={focus}
-              onScroll={onScroll}
-              className={classNames(
-                getClassName('__input__scroller'),
-                !large && linkPreviewResult
-                  ? getClassName('__input__scroller--link-preview')
-                  : null,
-                large ? getClassName('__input__scroller--large') : null,
-                children ? getClassName('__input--with-children') : null
+            <button
+              type="button"
+              aria-label={i18n('icu:CompositionArea--viewOnceToggle')}
+              onClick={onToggleViewOnce}
+              className={tw(
+                'flex cursor-default items-center justify-center rounded-full',
+                'focus-visible:axo-focus-ring',
+                'forced-colors:border forced-colors:border-[ButtonBorder]'
               )}
             >
-              {reactQuill}
-              {shouldHidePopovers ? null : (
-                <>
-                  {emojiCompletionElement}
-                  {mentionCompletionElement}
-                  {formattingChooserElement}
-                </>
-              )}
-            </div>
-            {showViewOnceButton && (
-              <div className={getClassName('__view-once-button')}>
-                <AxoTooltip.Root
-                  label={i18n('icu:CompositionArea--viewOnceToggle')}
-                  tooltipRepeatsTriggerAccessibleName
-                >
-                  <button
-                    type="button"
-                    aria-label={i18n('icu:CompositionArea--viewOnceToggle')}
-                    onClick={onToggleViewOnce}
-                    className={tw(
-                      'flex cursor-default items-center justify-center rounded-full',
-                      'focus-visible:axo-focus-ring',
-                      'forced-colors:border forced-colors:border-[ButtonBorder]'
-                    )}
-                  >
-                    <AxoSymbol.Icon
-                      size={20}
-                      symbol={isViewOnceActive ? 'viewonce' : 'viewonce-slash'}
-                      label={null}
-                    />
-                  </button>
-                </AxoTooltip.Root>
-              </div>
-            )}
-          </div>
-        )}
-      </Reference>
-    </Manager>
+              <AxoSymbol.Icon
+                size={20}
+                symbol={isViewOnceActive ? 'viewonce' : 'viewonce-slash'}
+                label={null}
+              />
+            </button>
+          </AxoTooltip.Root>
+        </div>
+      )}
+    </div>
   );
 }
 

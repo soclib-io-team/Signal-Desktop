@@ -24,7 +24,7 @@ import {
 import type {
   MessageAttributesType,
   QuotedMessageType,
-} from '../../model-types.d.ts';
+} from '../../model-types.std.ts';
 import {
   hasRequiredInformationForRemoteBackup,
   isVoiceMessage,
@@ -566,7 +566,14 @@ describe('backup/attachments', () => {
       await asymmetricRoundtripHarness(
         [
           composeMessage(1, {
-            contact: [{ avatar: { avatar: attachment, isProfile: false } }],
+            contact: [
+              {
+                avatar: { avatar: attachment, isProfile: false },
+                aci: undefined,
+                note: undefined,
+                nickname: undefined,
+              },
+            ],
           }),
         ],
         // path & iv will not be roundtripped
@@ -578,6 +585,9 @@ describe('backup/attachments', () => {
                   avatar: expectedRoundtrippedFields(attachment),
                   isProfile: false,
                 },
+                aci: undefined,
+                note: undefined,
+                nickname: undefined,
               },
             ],
           }),
@@ -592,7 +602,14 @@ describe('backup/attachments', () => {
       await asymmetricRoundtripHarness(
         [
           composeMessage(1, {
-            contact: [{ avatar: { avatar: attachment, isProfile: false } }],
+            contact: [
+              {
+                avatar: { avatar: attachment, isProfile: false },
+                aci: undefined,
+                note: undefined,
+                nickname: undefined,
+              },
+            ],
           }),
         ],
         [
@@ -603,6 +620,9 @@ describe('backup/attachments', () => {
                   avatar: expectedRoundtrippedFields(attachment),
                   isProfile: false,
                 },
+                aci: undefined,
+                note: undefined,
+                nickname: undefined,
               },
             ],
           }),

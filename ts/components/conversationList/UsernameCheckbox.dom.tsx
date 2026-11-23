@@ -5,12 +5,11 @@ import { memo, useCallback } from 'react';
 import type { FunctionComponent } from 'react';
 
 import type { LocalizerType, ThemeType } from '../../types/Util.std.ts';
-import { AvatarColors } from '../../types/Colors.std.ts';
+import { AvatarColors } from '../../types/Avatar.std.ts';
 import type { LookupConversationWithoutServiceIdActionsType } from '../../util/lookupConversationWithoutServiceId.preload.ts';
 import { ListTile } from '../ListTile.dom.tsx';
 import { Avatar, AvatarSize } from '../Avatar.dom.tsx';
 import { Spinner } from '../Spinner.dom.tsx';
-import { SPINNER_CLASS_NAME } from './BaseConversationListItem.dom.tsx';
 
 export type PropsDataType = {
   username: string;
@@ -81,12 +80,7 @@ export const UsernameCheckbox: FunctionComponent<PropsType> = memo(
         leading={avatar}
         title={title}
         trailing={
-          <Spinner
-            size="20px"
-            svgSize="small"
-            moduleClassName={SPINNER_CLASS_NAME}
-            direction="on-progress-dialog"
-          />
+          <Spinner size="20px" svgSize="small" direction="on-progress-dialog" />
         }
       />
     ) : (

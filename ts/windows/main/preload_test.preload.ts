@@ -15,7 +15,7 @@ import * as Stickers from '../../types/Stickers.preload.ts';
 import { ThemeType } from '../../types/Util.std.ts';
 import { itemStorage } from '../../textsecure/Storage.preload.ts';
 import { MessageCache } from '../../services/MessageCache.preload.ts';
-import { updateRemoteConfig } from '../../test-helpers/RemoteConfigStub.dom.ts';
+import { updateRemoteConfig } from '../../test-helpers/RemoteConfigStub.std.ts';
 
 chaiUse(chaiAsPromised);
 
@@ -106,12 +106,20 @@ window.testUtilities = {
       callLinks: [],
       callHistory: [],
       callHistoryUnreadCountsByConversationId: {},
+      account: {
+        defaultBubbleColor: null,
+      },
+      customChatColors: [],
       chatFolders: [],
       emojis: {
         recentEmojis: [],
       },
       gifs: {
         recentGifs: [],
+      },
+      linkedDevices: {
+        workflow: undefined,
+        devices: undefined,
       },
       mainWindowStats: {
         isFullScreen: false,
@@ -143,7 +151,9 @@ window.testUtilities = {
         installedPack: null,
         packs: {},
         recentStickers: [],
+        favoriteStickers: [],
         blessedPacks: {},
+        hiddenPackIds: [],
         stickerManagerTab: 'all',
       },
       theme: ThemeType.dark,

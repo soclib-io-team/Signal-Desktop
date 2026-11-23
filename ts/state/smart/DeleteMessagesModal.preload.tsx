@@ -10,7 +10,7 @@ import DeleteMessagesModal from '../../components/DeleteMessagesModal.dom.tsx';
 import { strictAssert } from '../../util/assert.std.ts';
 import { getMessagesCanDeleteForEveryone } from '../selectors/message.preload.ts';
 import { useConversationsActions } from '../ducks/conversations.preload.ts';
-import { useToastActions } from '../ducks/toast.preload.ts';
+import { useToastActions } from '../ducks/toast.dom.ts';
 import {
   getConversationSelector,
   getLastSelectedMessage,
@@ -61,7 +61,7 @@ export const SmartDeleteMessagesModal = memo(
     }, [toggleDeleteMessagesModal]);
 
     const handleDeleteForMe = useCallback(() => {
-      deleteMessages({
+      void deleteMessages({
         conversationId,
         messageIds,
         lastSelectedMessage,
@@ -76,7 +76,7 @@ export const SmartDeleteMessagesModal = memo(
     ]);
 
     const handleDeleteForEveryone = useCallback(() => {
-      deleteMessagesForEveryone(messageIds);
+      void deleteMessagesForEveryone(messageIds);
       onDelete?.();
     }, [deleteMessagesForEveryone, messageIds, onDelete]);
 

@@ -6,7 +6,7 @@ import { createRef, type JSX } from 'react';
 
 import { action } from '@storybook/addon-actions';
 
-import { ConversationColors } from '../../types/Colors.std.ts';
+import { ConversationColors } from '../../types/ChatStyle.std.ts';
 import { pngUrl } from '../../storybook/Fixtures.std.ts';
 import type { Props as TimelineMessagesProps } from './TimelineMessage.dom.tsx';
 import { TimelineMessage } from './TimelineMessage.dom.tsx';
@@ -27,6 +27,8 @@ import { WidthBreakpoint } from '../_util.std.ts';
 import { ThemeType } from '../../types/Util.std.ts';
 import { PaymentEventKind } from '../../types/Payment.std.ts';
 import { Emoji } from '../../axo/emoji.std.ts';
+import { AxoColor } from '../../axo/AxoColor.std.ts';
+import { Uint32 } from '@signalapp/types';
 
 const { i18n } = window.SignalContext;
 
@@ -52,7 +54,7 @@ export default {
   },
   args: {
     authorTitle: 'Default Sender',
-    conversationColor: 'forest',
+    bubbleColor: { bubbleColorPreset: 'forest' },
     doubleCheckMissingQuoteReference: action(
       'doubleCheckMissingQuoteReference'
     ),
@@ -81,16 +83,16 @@ const defaultMessageProps: TimelineMessagesProps = {
   canPinMessage: true,
   canReact: true,
   canReply: true,
+  canReplyPrivately: false,
   canRetry: true,
   canRetryDeleteForEveryone: true,
   canSendPollVote: true,
   canDeleteForEveryone: true,
   canDownload: true,
-  checkForAccount: action('checkForAccount'),
   clearTargetedMessage: action('default--clearTargetedMessage'),
   containerElementRef: createRef<HTMLElement | null>(),
   containerWidthBreakpoint: WidthBreakpoint.Wide,
-  conversationColor: 'crimson',
+  bubbleColor: { bubbleColorPreset: 'crimson' },
   conversationId: 'conversationId',
   conversationTitle: 'Conversation Title',
   conversationType: 'direct', // override
@@ -107,6 +109,7 @@ const defaultMessageProps: TimelineMessagesProps = {
   interactivity: MessageInteractivity.Normal,
   isBlocked: false,
   isMessageRequestAccepted: true,
+  isFavoriteSticker: false,
   isPinned: false,
   isSelected: false,
   isSelectMode: false,
@@ -123,10 +126,12 @@ const defaultMessageProps: TimelineMessagesProps = {
   cancelAttachmentDownload: action('default--cancelAttachmentDownload'),
   kickOffAttachmentDownload: action('default--kickOffAttachmentDownload'),
   markAttachmentAsCorrupted: action('default--markAttachmentAsCorrupted'),
+  markStickerAsFavorite: action('default--markStickerAsFavorite'),
   messageExpanded: action('default--message-expanded'),
   showConversation: action('default--showConversation'),
   openGiftBadge: action('openGiftBadge'),
   previews: [],
+  stickerRef: undefined,
   reactToMessage: action('default--reactToMessage'),
   endPoll: action('default--endPoll'),
   readStatus: ReadStatus.Read,
@@ -134,6 +139,7 @@ const defaultMessageProps: TimelineMessagesProps = {
   renderAudioAttachment: () => <div>*AudioAttachment*</div>,
   setMessageToEdit: action('setMessageToEdit'),
   setQuoteByMessageId: action('default--setQuoteByMessageId'),
+  replyPrivately: action('default--replyPrivately'),
   retryMessageSend: action('default--retryMessageSend'),
   sendPollVote: action('default--sendPollVote'),
   copyMessageText: action('copyMessageText'),
@@ -164,7 +170,9 @@ const defaultMessageProps: TimelineMessagesProps = {
   toggleDeleteMessagesModal: action('default--toggleDeleteMessagesModal'),
   toggleForwardMessagesModal: action('default--toggleForwardMessagesModal'),
   showLightbox: action('default--showLightbox'),
-  startConversation: action('default--startConversation'),
+  startConversationWithSharedContact: action(
+    'default--startConversationWithSharedContact'
+  ),
   status: 'sent',
   text: 'This is really interesting.',
   textDirection: TextDirection.Default,
@@ -176,28 +184,32 @@ const defaultMessageProps: TimelineMessagesProps = {
 const renderInMessage = ({
   authorTitle,
   authorLabel,
-  conversationColor,
+  bubbleColor,
   isFromMe,
   rawAttachment,
   isViewOnce,
   isGiftBadge,
   referencedMessageNotFound,
+  quotedGroupTitle,
+  isQuotedGroupMissing,
   text: quoteText,
 }: Props) => {
   const messageProps = {
     ...defaultMessageProps,
-    conversationColor,
+    bubbleColor,
     quote: {
       authorId: 'an-author',
       authorTitle,
       authorLabel,
-      conversationColor,
+      bubbleColor,
       conversationTitle: getDefaultConversation().title,
       isFromMe,
       rawAttachment,
       isViewOnce,
       isGiftBadge,
       referencedMessageNotFound,
+      quotedGroupTitle,
+      isQuotedGroupMissing,
       sentAt: Date.now() - 30 * 1000,
       text: quoteText,
     },
@@ -253,7 +265,7 @@ export function IncomingOutgoingColors(args: Props): JSX.Element {
       {ConversationColors.map(color =>
         renderInMessage({
           ...args,
-          conversationColor: color,
+          bubbleColor: { bubbleColorPreset: color },
           authorLabel: {
             labelEmoji: Emoji.ONE,
             labelString: 'First',
@@ -568,6 +580,29 @@ MessageNotFound.args = {
   referencedMessageNotFound: true,
 };
 
+export const PrivateReply = TemplateInMessage.bind({});
+PrivateReply.args = {
+  quotedGroupTitle: 'Soi Dog Rescue',
+};
+
+export const PrivateReplyGroupNotFound = TemplateInMessage.bind({});
+PrivateReplyGroupNotFound.args = {
+  referencedMessageNotFound: true,
+  isQuotedGroupMissing: true,
+};
+
+export const PrivateReplyWithMention = TemplateInMessage.bind({});
+PrivateReplyWithMention.args = {
+  quotedGroupTitle: 'Soi Dog Rescue',
+  text: '@Jamie can you bring the leashes?',
+};
+
+export const PrivateReplyWithUnknownMention = TemplateInMessage.bind({});
+PrivateReplyWithUnknownMention.args = {
+  quotedGroupTitle: 'Soi Dog Rescue',
+  text: `@${i18n('icu:unknownContact')} can you bring the leashes?`,
+};
+
 export const MissingTextAttachment = Template.bind({});
 MissingTextAttachment.args = {
   text: undefined,
@@ -604,18 +639,24 @@ export function CustomColor(args: Props): JSX.Element {
     <>
       <Quote
         {...args}
-        customColor={{
-          start: { hue: 82, saturation: 35 },
+        bubbleColor={{
+          customColor: {
+            solid: AxoColor.parse('hsl(82, 35%, 30%)').argbInt(),
+          },
         }}
       />
       <Quote
         {...args}
         isIncoming={false}
         text="A gradient"
-        customColor={{
-          deg: 192,
-          start: { hue: 304, saturation: 85 },
-          end: { hue: 231, saturation: 76 },
+        bubbleColor={{
+          customColor: {
+            gradient: {
+              angle: Uint32.fromNumber(192),
+              start: AxoColor.parse('hsl(304, 85%, 40.33%)').argbInt(),
+              end: AxoColor.parse('hsl(231, 76%, 47%)').argbInt(),
+            },
+          },
         }}
       />
     </>
@@ -631,7 +672,7 @@ IsStoryReply.args = {
   text: 'Wow!',
   authorTitle: 'Amanda',
   isStoryReply: true,
-  moduleClassName: 'StoryReplyQuote',
+  className: 'StoryReplyQuote',
   onClose: undefined,
   rawAttachment: {
     contentType: VIDEO_MP4,
@@ -644,7 +685,7 @@ export const IsStoryReplyEmoji = Template.bind({});
 IsStoryReplyEmoji.args = {
   authorTitle: getDefaultConversation().firstName,
   isStoryReply: true,
-  moduleClassName: 'StoryReplyQuote',
+  className: 'StoryReplyQuote',
   onClose: undefined,
   rawAttachment: {
     contentType: IMAGE_PNG,

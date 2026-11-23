@@ -37,10 +37,12 @@ export namespace AxoList {
 
   export const Root: FC<RootProps> = memo(props => {
     return (
-      <AriaLabelled.Root asChild label={props.accessibilityLabel}>
-        <section className={tw('group/axo-list-root min-w-min')}>
-          {props.children}
-        </section>
+      <AriaLabelled.Root>
+        <AriaLabelled.Target asChild label={props.accessibilityLabel}>
+          <section className={tw('group/axo-list-root min-w-min')}>
+            {props.children}
+          </section>
+        </AriaLabelled.Target>
       </AriaLabelled.Root>
     );
   });
@@ -68,13 +70,14 @@ export namespace AxoList {
    */
 
   export type LabelProps = Readonly<{
+    id?: string;
     children: ReactNode;
   }>;
 
   export const Label: FC<LabelProps> = memo(props => {
     return (
-      <AriaLabelled.Label asChild>
-        <h2 className={tw('type-body-medium font-semibold')}>
+      <AriaLabelled.Label asChild id={props.id}>
+        <h2 className={tw('type-body-medium font-semibold text-primary')}>
           {props.children}
         </h2>
       </AriaLabelled.Label>
@@ -157,14 +160,14 @@ export namespace AxoList {
   export const FooterDescription: FC<FooterDescriptionProps> = memo(props => {
     return (
       <AriaLabelled.Description asChild>
-        <p
+        <div
           className={tw(
             'type-body-small text-secondary',
             'forced-colors:text-[GrayText]'
           )}
         >
           {props.children}
-        </p>
+        </div>
       </AriaLabelled.Description>
     );
   });

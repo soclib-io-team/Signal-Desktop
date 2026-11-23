@@ -16,9 +16,10 @@ import { Message, MessageInteractivity } from './Message.dom.tsx';
 import type { LocalizerType, ThemeType } from '../../types/Util.std.ts';
 import type { ConversationType } from '../../state/ducks/conversations.preload.ts';
 import type { PreferredBadgeSelectorType } from '../../state/selectors/badges.preload.ts';
-import type { ContactNameColorType } from '../../types/Colors.std.ts';
+import type { ContactNameColorType } from '../../types/ContactNameColor.std.ts';
 import {
   SendStatus,
+  VISIBLE_SEND_STATUS_ORDER,
   type VisibleSendStatus,
 } from '../../messages/MessageSendState.std.ts';
 import { WidthBreakpoint } from '../_util.std.ts';
@@ -88,7 +89,6 @@ export type PropsSmartActions = Pick<MessagePropsType, 'renderAudioAttachment'>;
 export type PropsReduxActions = Pick<
   MessagePropsType,
   | 'cancelAttachmentDownload'
-  | 'checkForAccount'
   | 'clearTargetedMessage'
   | 'doubleCheckMissingQuoteReference'
   | 'endPoll'
@@ -113,7 +113,7 @@ export type PropsReduxActions = Pick<
   | 'showSpoiler'
   | 'retryDeleteForEveryone'
   | 'showTapToViewNotAvailableModal'
-  | 'startConversation'
+  | 'startConversationWithSharedContact'
   | 'viewStory'
 > & {
   toggleSafetyNumberModal: (contactId: string) => void;
@@ -134,7 +134,6 @@ export function MessageDetail({
   receivedAt,
   sentAt,
   cancelAttachmentDownload,
-  checkForAccount,
   clearTargetedMessage,
   contactNameColor,
   doubleCheckMissingQuoteReference,
@@ -164,7 +163,7 @@ export function MessageDetail({
   showMediaNoLongerAvailableToast,
   showSpoiler,
   showTapToViewNotAvailableModal,
-  startConversation,
+  startConversationWithSharedContact,
   theme,
   toggleSafetyNumberModal,
   viewStory,
@@ -185,7 +184,6 @@ export function MessageDetail({
               {...message}
               renderingContext="conversation/MessageDetail"
               cancelAttachmentDownload={cancelAttachmentDownload}
-              checkForAccount={checkForAccount}
               clearTargetedMessage={clearTargetedMessage}
               contactNameColor={contactNameColor}
               containerElementRef={messageContainerElementRef}
@@ -235,7 +233,9 @@ export function MessageDetail({
               }
               showLightbox={showLightbox}
               showMediaNoLongerAvailableToast={showMediaNoLongerAvailableToast}
-              startConversation={startConversation}
+              startConversationWithSharedContact={
+                startConversationWithSharedContact
+              }
               theme={theme}
               viewStory={viewStory}
               onToggleSelect={noop}
@@ -351,17 +351,7 @@ function Contacts({
 
   return (
     <>
-      {(
-        [
-          undefined,
-          SendStatus.Failed,
-          SendStatus.Viewed,
-          SendStatus.Read,
-          SendStatus.Delivered,
-          SendStatus.Sent,
-          SendStatus.Pending,
-        ] as Array<VisibleSendStatus | undefined>
-      ).map(sendStatus => {
+      {[undefined, ...VISIBLE_SEND_STATUS_ORDER].map(sendStatus => {
         const statusContacts = contactsBySendStatus.get(sendStatus);
 
         if (!statusContacts || !statusContacts.length) {

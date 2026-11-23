@@ -1,7 +1,6 @@
 // Copyright 2022 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { getEmptyState as accountsEmptyState } from './ducks/accounts.preload.ts';
 import { getEmptyState as appEmptyState } from './ducks/app.preload.ts';
 import { getEmptyState as audioPlayerEmptyState } from './ducks/audioPlayer.preload.ts';
 import { getEmptyState as audioRecorderEmptyState } from './ducks/audioRecorder.preload.ts';
@@ -9,13 +8,15 @@ import { getEmptyState as backupsEmptyState } from './ducks/backups.preload.ts';
 import { getEmptyState as badgesEmptyState } from './ducks/badges.preload.ts';
 import { getEmptyState as callHistoryEmptyState } from './ducks/callHistory.preload.ts';
 import { getEmptyState as callingEmptyState } from './ducks/calling.preload.ts';
+import { getEmptyState as accountEmptyState } from './ducks/account.preload.ts';
+import { getEmptyState as chatColorsEmptyState } from './ducks/chatColors.preload.ts';
 import {
   getEmptyState as chatFoldersEmptyState,
   getInitialChatFoldersState,
 } from './ducks/chatFolders.preload.ts';
 import { getEmptyState as composerEmptyState } from './ducks/composer.preload.ts';
 import { getEmptyState as conversationsEmptyState } from './ducks/conversations.preload.ts';
-import { getEmptyState as crashReportsEmptyState } from './ducks/crashReports.preload.ts';
+import { getEmptyState as crashReportsEmptyState } from './ducks/crashReports.dom.ts';
 import { getEmptyState as donationsEmptyState } from './ducks/donations.preload.ts';
 import { getEmptyState as emojiEmptyState } from './ducks/emojis.preload.ts';
 import { getEmptyState as expirationEmptyState } from './ducks/expiration.std.ts';
@@ -25,6 +26,7 @@ import { getEmptyState as inboxEmptyState } from './ducks/inbox.std.ts';
 import { getEmptyState as installerEmptyState } from './ducks/installer.preload.ts';
 import { getEmptyState as itemsEmptyState } from './ducks/items.preload.ts';
 import { getEmptyState as lightboxEmptyState } from './ducks/lightbox.preload.ts';
+import { getEmptyState as linkedDevicesEmptyState } from './ducks/linkedDevices.preload.ts';
 import { getEmptyState as linkPreviewsEmptyState } from './ducks/linkPreviews.preload.ts';
 import { getEmptyState as mediaGalleryEmptyState } from './ducks/mediaGallery.preload.ts';
 import { getEmptyState as megaphonesEmptyState } from './ducks/megaphones.preload.ts';
@@ -38,8 +40,8 @@ import { getEmptyState as standaloneInstallerEmptyState } from './ducks/standalo
 import { getEmptyState as stickersEmptyState } from './ducks/stickers.preload.ts';
 import { getEmptyState as storiesEmptyState } from './ducks/stories.preload.ts';
 import { getEmptyState as storyDistributionListsEmptyState } from './ducks/storyDistributionLists.preload.ts';
-import { getEmptyState as toastEmptyState } from './ducks/toast.preload.ts';
-import { getEmptyState as updatesEmptyState } from './ducks/updates.preload.ts';
+import { getEmptyState as toastEmptyState } from './ducks/toast.dom.ts';
+import { getEmptyState as updatesEmptyState } from './ducks/updates.dom.ts';
 import { getEmptyState as userEmptyState } from './ducks/user.preload.ts';
 import { getEmptyState as usernameEmptyState } from './ducks/username.preload.ts';
 
@@ -52,7 +54,7 @@ import {
 } from '../util/basePaths.preload.ts';
 
 import type { StateType } from './reducer.preload.ts';
-import type { MainWindowStatsType } from '../windows/context.preload.ts';
+import type { MainWindowStatsType } from '../windows/context.sandbox.ts';
 import type { ConversationsStateType } from './ducks/conversations.preload.ts';
 import type { MenuOptionsType } from '../types/menu.std.ts';
 import type {
@@ -70,6 +72,8 @@ export function getInitialState(
     callLinks,
     callHistory: calls,
     callHistoryUnreadCountsByConversationId,
+    account,
+    customChatColors,
     chatFolders,
     donations,
     gifs,
@@ -100,6 +104,8 @@ export function getInitialState(
       ...callingEmptyState(),
       callLinks: makeLookup(callLinks, 'roomId'),
     },
+    account,
+    chatColors: { customChatColors },
     chatFolders: getInitialChatFoldersState(chatFolders),
     donations,
     emojis,
@@ -148,7 +154,6 @@ function generateConversationsState(): ConversationsStateType {
 
 function getEmptyState(): StateType {
   return {
-    accounts: accountsEmptyState(),
     app: appEmptyState(),
     audioPlayer: audioPlayerEmptyState(),
     audioRecorder: audioRecorderEmptyState(),
@@ -156,6 +161,8 @@ function getEmptyState(): StateType {
     badges: badgesEmptyState(),
     callHistory: callHistoryEmptyState(),
     calling: callingEmptyState(),
+    account: accountEmptyState(),
+    chatColors: chatColorsEmptyState(),
     chatFolders: chatFoldersEmptyState(),
     composer: composerEmptyState(),
     conversations: generateConversationsState(),
@@ -169,6 +176,7 @@ function getEmptyState(): StateType {
     installer: installerEmptyState(),
     items: itemsEmptyState(),
     lightbox: lightboxEmptyState(),
+    linkedDevices: linkedDevicesEmptyState(),
     linkPreviews: linkPreviewsEmptyState(),
     mediaGallery: mediaGalleryEmptyState(),
     megaphones: megaphonesEmptyState(),

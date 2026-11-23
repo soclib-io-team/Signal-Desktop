@@ -25,7 +25,7 @@ import {
   processNewAttachment,
 } from '../util/migrations.preload.ts';
 import { DataReader, DataWriter } from '../sql/Client.preload.ts';
-import { getValue } from '../RemoteConfig.dom.ts';
+import { getValue } from '../RemoteConfig.std.ts';
 
 import { isInCall as isInCallSelector } from '../state/selectors/calling.std.ts';
 import {
@@ -44,10 +44,14 @@ import {
   isDownloadableFromTransitTier,
   isDownloadable,
 } from '../util/Attachment.std.ts';
-import type { ReadonlyMessageAttributesType } from '../model-types.d.ts';
+import type { ReadonlyMessageAttributesType } from '../model-types.std.ts';
 import { backupsService } from '../services/backups/index.preload.ts';
 import { getMessageById } from '../messages/getMessageById.preload.ts';
-import { getMaximumIncomingAttachmentSize } from '../types/AttachmentSize.std.ts';
+import {
+  getMaximumIncomingAttachmentSize,
+  isAttachmentTooLarge,
+  MAX_STICKER_CIPHERTEXT_BYTE_LENGTH,
+} from '../types/AttachmentSize.std.ts';
 import {
   addAttachmentToMessage,
   AttachmentNotNeededForMessageError,
@@ -75,14 +79,14 @@ import { getAttachmentCiphertextSize } from '../util/AttachmentCrypto.std.ts';
 import { updateBackupMediaDownloadProgress } from '../util/updateBackupMediaDownloadProgress.preload.ts';
 import { HTTPError } from '../types/HTTPError.std.ts';
 import { isOlderThan } from '../util/timestamp.std.ts';
-import { getMessageQueueTime as doGetMessageQueueTime } from '../util/getMessageQueueTime.dom.ts';
+import { getMessageQueueTime as doGetMessageQueueTime } from '../util/getMessageQueueTime.std.ts';
 import { JobCancelReason } from './types.std.ts';
 import { isAbortError } from '../util/isAbortError.std.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
 import { calculateExpirationTimestamp } from '../util/expirationTimer.std.ts';
 import { cleanupAttachmentFiles } from '../util/cleanup.preload.ts';
 import { getExistingAttachmentDataForReuse } from '../util/attachments/deduplicateAttachment.preload.ts';
-import { MAX_BODY_ATTACHMENT_BYTE_LENGTH } from '../util/longAttachment.std.ts';
+import { MAX_PLAINTEXT_BODY_ATTACHMENT_BYTE_LENGTH } from '../util/longAttachment.std.ts';
 import { markAttachmentAsErrored } from '../util/attachments/markAttachmentAsErrored.std.ts';
 
 const { noop, omit, throttle } = lodash;
@@ -126,8 +130,8 @@ const BACKUP_RETRY_CONFIG = {
 type RunDownloadAttachmentJobOptions = {
   abortSignal: AbortSignal;
   isForCurrentlyVisibleMessage: boolean;
-  maxAttachmentSize: number;
-  maxTextAttachmentSize: number;
+  maxCiphertextAttachmentSize: number;
+  maxPlaintextTextAttachmentSize: number;
   hasMediaBackups: boolean;
 };
 
@@ -150,8 +154,8 @@ type AttachmentDownloadManagerParamsType = Omit<
   onLowDiskSpaceBackupImport: (bytesNeeded: number) => Promise<void>;
   hasMediaBackups: () => boolean;
   getMessageQueueTime: () => number;
-  maxAttachmentSize?: number;
-  maxTextAttachmentSize?: number;
+  maxCiphertextAttachmentSize?: number;
+  maxPlaintextTextAttachmentSize?: number;
   minimumFreeDiskSpace?: number;
   statfs: typeof statfs;
 };
@@ -184,8 +188,8 @@ export class AttachmentDownloadManager extends JobManager<CoreAttachmentDownload
   readonly #getMessageQueueTime: () => number;
   readonly #hasMediaBackups: () => boolean;
   readonly #statfs: typeof statfs;
-  readonly #maxAttachmentSize: number;
-  readonly #maxTextAttachmentSize: number;
+  readonly #maxCiphertextAttachmentSize: number;
+  readonly #maxPlaintextTextAttachmentSize: number;
   readonly #minimumFreeDiskSpace: number;
 
   readonly #attachmentBackfill = new AttachmentBackfill();
@@ -282,8 +286,9 @@ export class AttachmentDownloadManager extends JobManager<CoreAttachmentDownload
             abortSignal,
             hasMediaBackups: this.#hasMediaBackups(),
             isForCurrentlyVisibleMessage,
-            maxAttachmentSize: this.#maxAttachmentSize,
-            maxTextAttachmentSize: this.#maxTextAttachmentSize,
+            maxCiphertextAttachmentSize: this.#maxCiphertextAttachmentSize,
+            maxPlaintextTextAttachmentSize:
+              this.#maxPlaintextTextAttachmentSize,
           },
         });
       },
@@ -291,14 +296,14 @@ export class AttachmentDownloadManager extends JobManager<CoreAttachmentDownload
     this.#onLowDiskSpaceBackupImport = params.onLowDiskSpaceBackupImport;
     this.#getMessageQueueTime = params.getMessageQueueTime;
     this.#hasMediaBackups = params.hasMediaBackups;
-    this.#maxAttachmentSize =
-      params.maxAttachmentSize ?? getMaximumIncomingAttachmentSize(getValue);
-    this.#maxTextAttachmentSize = getAttachmentCiphertextSize({
-      unpaddedPlaintextSize: MAX_BODY_ATTACHMENT_BYTE_LENGTH,
-      mediaTier: MediaTier.STANDARD,
-    });
+    this.#maxCiphertextAttachmentSize =
+      params.maxCiphertextAttachmentSize ??
+      getMaximumIncomingAttachmentSize(getValue);
+    this.#maxPlaintextTextAttachmentSize =
+      params.maxPlaintextTextAttachmentSize ??
+      MAX_PLAINTEXT_BODY_ATTACHMENT_BYTE_LENGTH;
     this.#minimumFreeDiskSpace =
-      params.minimumFreeDiskSpace ?? 5 * this.#maxAttachmentSize;
+      params.minimumFreeDiskSpace ?? 5 * this.#maxCiphertextAttachmentSize;
 
     this.#statfs = params.statfs;
   }
@@ -577,8 +582,8 @@ export async function runDownloadAttachmentJob({
       hasMediaBackups: options.hasMediaBackups,
       isForCurrentlyVisibleMessage:
         options?.isForCurrentlyVisibleMessage ?? false,
-      maxAttachmentSize: options.maxAttachmentSize,
-      maxTextAttachmentSize: options.maxTextAttachmentSize,
+      maxCiphertextAttachmentSize: options.maxCiphertextAttachmentSize,
+      maxPlaintextTextAttachmentSize: options.maxPlaintextTextAttachmentSize,
       dependencies,
       messageExpiresAt:
         calculateExpirationTimestamp(message.attributes) ?? null,
@@ -765,8 +770,8 @@ export async function runDownloadAttachmentJobInner({
   job,
   abortSignal,
   isForCurrentlyVisibleMessage,
-  maxAttachmentSize,
-  maxTextAttachmentSize,
+  maxCiphertextAttachmentSize,
+  maxPlaintextTextAttachmentSize,
   hasMediaBackups,
   messageExpiresAt,
   dependencies,
@@ -786,14 +791,37 @@ export async function runDownloadAttachmentJobInner({
 
   const { size } = attachment;
 
-  if (!Number.isFinite(size) || size < 0 || size > maxAttachmentSize) {
+  if (
+    !Number.isFinite(size) ||
+    size < 0 ||
+    isAttachmentTooLarge({
+      plaintextSize: size,
+      ciphertextLimit: maxCiphertextAttachmentSize,
+    })
+  ) {
     throw new AttachmentSizeError(
-      `${logId}: Attachment was ${size}, max is ${maxAttachmentSize}`
+      `${logId}: Attachment was ${size}, max is ${maxCiphertextAttachmentSize}`
     );
   }
-  if (attachmentType === 'long-message' && size > maxTextAttachmentSize) {
+
+  if (
+    attachmentType === 'long-message' &&
+    size > maxPlaintextTextAttachmentSize
+  ) {
     throw new AttachmentSizeError(
-      `${logId}: Text attachment was ${size}, max is ${maxTextAttachmentSize}`
+      `${logId}: Text attachment was ${size}, max is ${maxPlaintextTextAttachmentSize}`
+    );
+  }
+
+  if (
+    attachmentType === 'sticker' &&
+    isAttachmentTooLarge({
+      plaintextSize: size,
+      ciphertextLimit: MAX_STICKER_CIPHERTEXT_BYTE_LENGTH,
+    })
+  ) {
+    throw new AttachmentSizeError(
+      `${logId}: Sticker attachment was ${size}, max is ${MAX_STICKER_CIPHERTEXT_BYTE_LENGTH}`
     );
   }
   const mightBeInRemoteBackup = isDownloadableFromBackupTier(attachment, {

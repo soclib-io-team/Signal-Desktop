@@ -105,6 +105,8 @@ import type {
 } from '../types/PinnedMessage.std.ts';
 import type { Emoji } from '../axo/emoji.std.ts';
 import type { BlockedNumber } from '../types/StorageKeys.std.ts';
+import { isAciString } from '../util/isAciString.std.ts';
+import { GroupId } from '@signalapp/types';
 
 const log = createLogger('SendMessage');
 
@@ -141,6 +143,7 @@ export type OutgoingQuoteAttachmentType = Readonly<{
 export type OutgoingQuoteType = Readonly<{
   isGiftBadge?: boolean;
   id?: number;
+  groupId: GroupId | null;
   authorAci?: AciString;
   text?: string;
   attachments: ReadonlyArray<OutgoingQuoteAttachmentType>;
@@ -488,6 +491,11 @@ class Message {
             organization = contactEntry.organization;
           }
 
+          const hasNickname = Boolean(
+            contactEntry.nickname?.familyName ||
+            contactEntry.nickname?.givenName
+          );
+
           return {
             name,
             email,
@@ -495,6 +503,16 @@ class Message {
             address,
             avatar,
             organization,
+            aciBinary: isAciString(contactEntry.aci)
+              ? toAciObject(contactEntry.aci).getServiceIdBinary()
+              : null,
+            note: contactEntry.note || null,
+            nickname: hasNickname
+              ? {
+                  given: contactEntry.nickname?.givenName || null,
+                  family: contactEntry.nickname?.familyName || null,
+                }
+              : null,
           };
         }
       );
@@ -511,6 +529,7 @@ class Message {
           this.quote.authorAci && isProtoBinaryEncodingEnabled()
             ? toAciObject(this.quote.authorAci).getRawUuidBytes()
             : null,
+        groupId: this.quote.groupId ? GroupId.encode(this.quote.groupId) : null,
         authorAci: isProtoBinaryEncodingEnabled()
           ? null
           : (this.quote.authorAci ?? null),
@@ -1713,6 +1732,42 @@ export class MessageSender {
     };
   }
 
+  static getConfigurationSyncMessage(): SingleProtoJobData {
+    const myAci = itemStorage.user.getCheckedAci();
+
+    const configuration: Proto.SyncMessage.Configuration = {
+      readReceipts: itemStorage.get('read-receipt-setting') ?? null,
+      unidentifiedDeliveryIndicators:
+        itemStorage.get('unidentifiedDeliveryIndicators') ?? null,
+      typingIndicators: itemStorage.get('typingIndicators') ?? null,
+      linkPreviews: itemStorage.get('linkPreviews') ?? null,
+      $unknown: [],
+    };
+
+    const syncMessage = this.padSyncMessage({
+      content: {
+        configuration,
+      },
+    });
+
+    return {
+      contentHint: ContentHint.Resendable,
+      serviceId: myAci,
+      isSyncMessage: true,
+      protoBase64: Bytes.toBase64(
+        Proto.Content.encode({
+          content: {
+            syncMessage,
+          },
+          pniSignatureMessage: null,
+          senderKeyDistributionMessage: null,
+        })
+      ),
+      type: 'configurationSync',
+      urgent: false,
+    };
+  }
+
   static getRequestContactSyncMessage(): SingleProtoJobData {
     const myAci = itemStorage.user.getCheckedAci();
 
@@ -1740,6 +1795,42 @@ export class MessageSender {
         })
       ),
       type: 'contactSyncRequest',
+      urgent: true,
+    };
+  }
+
+  static getContactSyncMessage(
+    pointer: Proto.AttachmentPointer,
+    complete: boolean
+  ): SingleProtoJobData {
+    const myAci = itemStorage.user.getCheckedAci();
+
+    const contacts: Proto.SyncMessage.Contacts = {
+      blob: pointer,
+      complete,
+      $unknown: [],
+    };
+
+    const syncMessage = this.padSyncMessage({
+      content: {
+        contacts,
+      },
+    });
+
+    return {
+      contentHint: ContentHint.Resendable,
+      serviceId: myAci,
+      isSyncMessage: true,
+      protoBase64: Bytes.toBase64(
+        Proto.Content.encode({
+          content: {
+            syncMessage,
+          },
+          pniSignatureMessage: null,
+          senderKeyDistributionMessage: null,
+        })
+      ),
+      type: 'contactSync',
       urgent: true,
     };
   }
@@ -1833,6 +1924,42 @@ export class MessageSender {
         })
       ),
       type: 'keySyncRequest',
+      urgent: true,
+    };
+  }
+
+  static getKeysSyncMessage(): SingleProtoJobData {
+    const myAci = itemStorage.user.getCheckedAci();
+
+    const masterKeyBase64 = itemStorage.get('masterKey');
+
+    const keys: Proto.SyncMessage.Keys = {
+      master: masterKeyBase64 ? Bytes.fromBase64(masterKeyBase64) : null,
+      accountEntropyPool: itemStorage.get('accountEntropyPool') ?? null,
+      mediaRootBackupKey: itemStorage.get('backupMediaRootKey') ?? null,
+      $unknown: [],
+    };
+
+    const syncMessage = this.padSyncMessage({
+      content: {
+        keys,
+      },
+    });
+
+    return {
+      contentHint: ContentHint.Resendable,
+      serviceId: myAci,
+      isSyncMessage: true,
+      protoBase64: Bytes.toBase64(
+        Proto.Content.encode({
+          content: {
+            syncMessage,
+          },
+          pniSignatureMessage: null,
+          senderKeyDistributionMessage: null,
+        })
+      ),
+      type: 'keySync',
       urgent: true,
     };
   }
@@ -1984,6 +2111,35 @@ export class MessageSender {
     };
   }
 
+  static getDeviceNameChangeSyncMessage(deviceId: number): SingleProtoJobData {
+    const myAci = itemStorage.user.getCheckedAci();
+
+    const syncMessage = this.padSyncMessage({
+      content: {
+        deviceNameChange: {
+          deviceId,
+        },
+      },
+    });
+
+    return {
+      contentHint: ContentHint.Resendable,
+      serviceId: myAci,
+      isSyncMessage: true,
+      protoBase64: Bytes.toBase64(
+        Proto.Content.encode({
+          content: {
+            syncMessage,
+          },
+          pniSignatureMessage: null,
+          senderKeyDistributionMessage: null,
+        })
+      ),
+      type: 'deviceNameChangeSync',
+      urgent: false,
+    };
+  }
+
   static getAttachmentBackfillSyncMessage(
     targetConversation: ConversationIdentifier,
     targetMessage: AddressableMessage
@@ -2013,7 +2169,44 @@ export class MessageSender {
         })
       ),
       type: 'attachmentBackfillRequestSync',
-      urgent: false,
+      urgent: true,
+    };
+  }
+
+  static getAttachmentBackfillResponseSyncMessage(
+    targetConversation: ConversationIdentifier,
+    targetMessage: AddressableMessage,
+    data: NonNullable<
+      Proto.SyncMessage.AttachmentBackfillResponse.Params['data']
+    >
+  ): SingleProtoJobData {
+    const myAci = itemStorage.user.getCheckedAci();
+
+    const syncMessage = this.padSyncMessage({
+      content: {
+        attachmentBackfillResponse: {
+          targetMessage: toAddressableMessage(targetMessage),
+          targetConversation: toConversationIdentifier(targetConversation),
+          data,
+        },
+      },
+    });
+
+    return {
+      contentHint: ContentHint.Resendable,
+      serviceId: myAci,
+      isSyncMessage: true,
+      protoBase64: Bytes.toBase64(
+        Proto.Content.encode({
+          content: {
+            syncMessage,
+          },
+          pniSignatureMessage: null,
+          senderKeyDistributionMessage: null,
+        })
+      ),
+      type: 'attachmentBackfillResponseSync',
+      urgent: true,
     };
   }
 

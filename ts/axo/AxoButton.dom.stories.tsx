@@ -1,7 +1,7 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { ReactNode, JSX } from 'react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { Meta } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { AxoButton } from './AxoButton.dom.tsx';
@@ -41,7 +41,7 @@ export function Basic(): JSX.Element {
     <div className={tw('grid gap-1 p-4')}>
       {allSizes.map(size => {
         return (
-          <div>
+          <div key={size}>
             <h2 className={tw('p-1 type-title-medium')}>Size: {size}</h2>
             {allVariants.map(variant => {
               return (
@@ -118,6 +118,7 @@ export function Spinner(): JSX.Element {
   const allSizes = AxoButton._getAllSizes();
 
   const [pending, setPending] = useState(true);
+  const labelId = useId();
 
   function handleClick() {
     setPending(true);
@@ -126,8 +127,12 @@ export function Spinner(): JSX.Element {
   return (
     <>
       <div className={tw('mb-4 flex gap-2')}>
-        <AxoSwitch.Root checked={pending} onCheckedChange={setPending} />
-        <span>Loading</span>
+        <AxoSwitch.Root
+          labelledby={labelId}
+          checked={pending}
+          onCheckedChange={setPending}
+        />
+        <span id={labelId}>Loading</span>
       </div>
       <div className={tw('flex flex-col gap-2')}>
         {allSizes.map(size => {
@@ -136,6 +141,7 @@ export function Spinner(): JSX.Element {
               {allVariants.map(variant => {
                 return (
                   <AxoButton.Root
+                    key={variant}
                     variant={variant}
                     size={size}
                     disabled={pending}

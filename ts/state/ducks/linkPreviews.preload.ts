@@ -1,30 +1,21 @@
 // Copyright 2021 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-
-import type { ThunkAction } from 'redux-thunk';
-
 import type { ReadonlyDeep } from 'type-fest';
 import type { BoundActionCreatorsMapObject } from '../../hooks/useBoundActions.std.ts';
-import type {
-  LinkPreviewType,
-  LinkPreviewForUIType,
-} from '../../types/message/LinkPreviews.std.ts';
-import type { AttachmentForUIType } from '../../types/Attachment.std.ts';
+import type { LinkPreviewDraftType } from '../../types/LinkPreview.std.ts';
 import type { MaybeGrabLinkPreviewOptionsType } from '../../types/LinkPreview.std.ts';
 import { noopAction, type NoopActionType } from './noop.std.ts';
-import type { StateType as RootStateType } from '../reducer.preload.ts';
 import { LinkPreviewSourceType } from '../../types/LinkPreview.std.ts';
 import { assignWithNoUnnecessaryAllocation } from '../../util/assignWithNoUnnecessaryAllocation.std.ts';
 import { maybeGrabLinkPreview } from '../../services/LinkPreview.preload.ts';
 import { strictAssert } from '../../util/assert.std.ts';
 import { useBoundActions } from '../../hooks/useBoundActions.std.ts';
-import { getPropsForAttachment } from '../selectors/message.preload.ts';
-import { backupsService } from '../../services/backups/index.preload.ts';
+import type { SyncStateThunk } from '../types.std.ts';
 
 // State
 
 export type LinkPreviewsStateType = ReadonlyDeep<{
-  linkPreview?: LinkPreviewForUIType;
+  linkPreview?: LinkPreviewDraftType;
   source?: LinkPreviewSourceType;
 }>;
 
@@ -37,7 +28,7 @@ export type AddLinkPreviewActionType = ReadonlyDeep<{
   type: 'linkPreviews/ADD_PREVIEW';
   payload: {
     conversationId?: string;
-    linkPreview: LinkPreviewForUIType;
+    linkPreview: LinkPreviewDraftType;
     source: LinkPreviewSourceType;
   };
 }>;
@@ -59,7 +50,7 @@ function debouncedMaybeGrabLinkPreview(
   message: string,
   source: LinkPreviewSourceType,
   options?: MaybeGrabLinkPreviewOptionsType
-): ThunkAction<void, RootStateType, unknown, NoopActionType> {
+): SyncStateThunk<NoopActionType> {
   return dispatch => {
     maybeGrabLinkPreview(message, source, options);
 
@@ -68,7 +59,7 @@ function debouncedMaybeGrabLinkPreview(
 }
 
 function addLinkPreview(
-  linkPreview: LinkPreviewType,
+  linkPreview: LinkPreviewDraftType,
   source: LinkPreviewSourceType,
   conversationId?: string
 ): AddLinkPreviewActionType {
@@ -76,34 +67,11 @@ function addLinkPreview(
     strictAssert(conversationId, 'no conversationId provided');
   }
 
-  let image: AttachmentForUIType | undefined;
-  if (linkPreview.image != null) {
-    image = {
-      ...getPropsForAttachment(
-        linkPreview.image,
-        'preview',
-        {
-          type:
-            source === LinkPreviewSourceType.StoryCreator
-              ? 'story'
-              : 'outgoing',
-        },
-        { hasMediaBackups: backupsService.hasMediaBackups() }
-      ),
-
-      // Save URL to the blob (it gets stripped by `getPropsForAttachment`)
-      url: linkPreview.image.url,
-    };
-  }
-
   return {
     type: ADD_PREVIEW,
     payload: {
       conversationId,
-      linkPreview: {
-        ...linkPreview,
-        image,
-      },
+      linkPreview,
       source,
     },
   };

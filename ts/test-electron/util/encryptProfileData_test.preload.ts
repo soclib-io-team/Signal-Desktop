@@ -41,8 +41,7 @@ describe('encryptProfileData', () => {
 
   it('encrypts and decrypts properly', async () => {
     const [encrypted] = await encryptProfileData(conversation, {
-      oldAvatar: undefined,
-      newAvatar: undefined,
+      type: 'clear',
     });
 
     assert.isDefined(encrypted.version);
@@ -93,21 +92,37 @@ describe('encryptProfileData', () => {
     }
   });
 
-  it('sets sameAvatar to true when avatars are the same', async () => {
-    const [encrypted] = await encryptProfileData(conversation, {
-      oldAvatar: new Uint8Array([1, 2, 3]),
-      newAvatar: new Uint8Array([1, 2, 3]),
-    });
+  it('keeps the server avatar when unchanged', async () => {
+    const [encrypted, encryptedAvatar] = await encryptProfileData(
+      conversation,
+      { type: 'unchanged' }
+    );
 
+    assert.isTrue(encrypted.avatar);
     assert.isTrue(encrypted.sameAvatar);
+    assert.isUndefined(encryptedAvatar);
   });
 
-  it('sets sameAvatar to false when avatars are different', async () => {
-    const [encrypted] = await encryptProfileData(conversation, {
-      oldAvatar: new Uint8Array([1, 2, 3]),
-      newAvatar: new Uint8Array([4, 5, 6, 7]),
-    });
+  it('clears the server avatar when cleared', async () => {
+    const [encrypted, encryptedAvatar] = await encryptProfileData(
+      conversation,
+      { type: 'clear' }
+    );
 
+    assert.isFalse(encrypted.avatar);
+    assert.isUndefined(encryptedAvatar);
+  });
+
+  it('encrypts the avatar when updated', async () => {
+    const avatar = new Uint8Array([1, 2, 3]);
+    const [encrypted, encryptedAvatar] = await encryptProfileData(
+      conversation,
+      { type: 'update', avatar }
+    );
+
+    assert.isTrue(encrypted.avatar);
     assert.isFalse(encrypted.sameAvatar);
+    assert.isDefined(encryptedAvatar);
+    assert.deepEqual(decryptProfile(encryptedAvatar, keyBuffer), avatar);
   });
 });

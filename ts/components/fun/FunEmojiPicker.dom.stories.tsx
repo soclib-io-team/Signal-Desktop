@@ -1,7 +1,6 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 import { useCallback, useState, type JSX } from 'react';
-import { Button } from 'react-aria-components';
 import { action } from '@storybook/addon-actions';
 import { type ComponentMeta } from '../../storybook/types.std.ts';
 import type { FunEmojiPickerProps } from './FunEmojiPicker.dom.tsx';
@@ -11,7 +10,11 @@ import {
   MOCK_THIS_MESSAGE_EMOJIS,
 } from '../../test-helpers/funPickerMocks.dom.tsx';
 import { FunProvider } from './FunProvider.dom.tsx';
-import { packs, recentStickers } from '../../test-helpers/stickersMocks.std.ts';
+import {
+  favoriteStickers,
+  packs,
+  recentStickers,
+} from '../../test-helpers/stickersMocks.std.ts';
 import { Select } from '../Select.dom.tsx';
 import { Emoji } from '../../axo/emoji.std.ts';
 
@@ -56,11 +59,15 @@ function Template(props: TemplateProps): JSX.Element {
       onOpenCustomizePreferredReactionsModal={() => null}
       onSelectEmoji={action('onSelectEmoji')}
       // Stickers
+      favoriteStickers={favoriteStickers}
+      isFavoriteStickersEnabled
       isStickerReplySendEnabled
       installedStickerPacks={packs}
       showStickerPickerHint={false}
       onClearStickerPickerHint={() => null}
       onSelectSticker={() => null}
+      onMarkStickerAsFavorite={() => null}
+      showToast={action('showToast')}
       // Gifs
       fetchGiphySearch={() => Promise.reject()}
       fetchGiphyTrending={() => Promise.reject()}
@@ -74,10 +81,9 @@ function Template(props: TemplateProps): JSX.Element {
           options={skinToneOptions}
           value={skinTone}
           onChange={handleSkinToneChange}
-          moduleClassName="emoji-skin-tone-select"
         />
         <FunEmojiPicker {...props} open={open} onOpenChange={handleOpenChange}>
-          <Button>Open EmojiPicker</Button>
+          <button type="button">Open EmojiPicker</button>
         </FunEmojiPicker>
       </div>
     </FunProvider>

@@ -109,7 +109,9 @@ describe('pnp/send gv2 invite', function (this: Mocha.Suite) {
     debug('inviting ACI member');
 
     await leftPane
-      .locator('.module-left-pane__compose-search-form__input')
+      .locator(
+        '.module-left-pane__compose-search-form .module-SearchInput__input'
+      )
       .fill('ACI');
 
     await leftPane.locator('.ListTile >> "ACI Contact"').click();
@@ -117,7 +119,9 @@ describe('pnp/send gv2 invite', function (this: Mocha.Suite) {
     debug('inviting PNI member');
 
     await leftPane
-      .locator('.module-left-pane__compose-search-form__input')
+      .locator(
+        '.module-left-pane__compose-search-form .module-SearchInput__input'
+      )
       .fill('PNI');
 
     await leftPane.locator('.ListTile >> "PNI Contact"').click();
@@ -137,18 +141,19 @@ describe('pnp/send gv2 invite', function (this: Mocha.Suite) {
     debug('waiting for invitation modal');
 
     {
-      const modal = window.locator(
-        '.module-GroupDialog:has-text("Invitation sent")'
-      );
+      const modal = window.getByRole('dialog', { name: 'Invitation sent' });
 
-      await modal.locator('button >> "Okay"').click();
+      await modal.getByRole('button', { name: 'OK' }).click();
     }
 
     debug('waiting for group data from storage service');
 
     let group: Group;
     {
-      state = await phone.waitForStorageState({ after: state });
+      state = await phone.waitForStorageState({
+        after: state,
+        predicate: storageState => storageState.getAllGroupRecords().length > 0,
+      });
       const groups = await phone.getAllGroups(state);
       assert.strictEqual(groups.length, 1);
 

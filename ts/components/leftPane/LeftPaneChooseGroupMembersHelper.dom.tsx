@@ -23,6 +23,7 @@ import {
   isFetchingByUsername,
   isFetchingByE164,
 } from '../../util/uuidFetchState.std.ts';
+import { NavSidebarBackButton } from '../NavSidebar.dom.tsx';
 
 export type LeftPaneChooseGroupMembersPropsType = {
   uuidFetchState: UUIDFetchStateType;
@@ -132,13 +133,12 @@ export class LeftPaneChooseGroupMembersHelper extends LeftPaneHelper<LeftPaneCho
 
     return (
       <div className="module-left-pane__header__contents">
-        <button
-          aria-label={backButtonLabel}
-          className="module-left-pane__header__contents__back-button"
-          onClick={this.getBackAction({ startComposing })}
-          title={backButtonLabel}
-          type="button"
-        />
+        <div className="module-left-pane__header__contents__back-button">
+          <NavSidebarBackButton
+            label={backButtonLabel}
+            onClick={this.getBackAction({ startComposing })}
+          />
+        </div>
         <div className="module-left-pane__header__contents__text">
           {i18n('icu:chooseGroupMembers__title')}
         </div>
@@ -166,7 +166,7 @@ export class LeftPaneChooseGroupMembersHelper extends LeftPaneHelper<LeftPaneCho
     return (
       <SearchInput
         i18n={i18n}
-        moduleClassName="module-left-pane__compose-search-form"
+        className="module-left-pane__compose-search-form"
         onChange={onChangeComposeSearchTerm}
         placeholder={i18n('icu:contactSearchPlaceholder')}
         ref={focusRef}

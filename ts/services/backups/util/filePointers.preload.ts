@@ -1,6 +1,5 @@
 // Copyright 2024 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
-import { BackupLevel } from '@signalapp/libsignal-client/zkgroup.js';
 
 import {
   APPLICATION_OCTET_STREAM,
@@ -34,6 +33,7 @@ import {
   type BackupCdnInfoType,
   getLocalBackupFileNameForAttachment,
   getLocalBackupFileName,
+  getPlaintextExportFileNameForAttachment,
 } from './mediaId.preload.ts';
 import { missingCaseError } from '../../../util/missingCaseError.std.ts';
 import { bytesToUuid } from '../../../util/uuidToBytes.std.ts';
@@ -45,7 +45,8 @@ import {
   isValidDigest,
   isValidPlaintextHash,
 } from '../../../types/Crypto.std.ts';
-import type { BackupExportOptions, BackupImportOptions } from '../types.std.ts';
+import type { BackupImportOptions } from '../types.std.ts';
+import type { BackupContentPolicy } from '../policy.std.ts';
 import { isTestOrMockEnvironment } from '../../../environment.std.ts';
 import { toNumber } from '../../../util/toNumber.std.ts';
 import { isKnownProtoEnumMember } from '../../../util/isKnownProtoEnumMember.std.ts';
@@ -82,8 +83,9 @@ export function convertFilePointerToAttachment(
     blurHash: blurHash ?? undefined,
     incrementalMac: undefined,
     chunkSize: undefined,
-    audioWaveform:
-      audioWaveform == null ? undefined : Array.from(audioWaveform),
+    audioWaveform: Bytes.isNotEmpty(audioWaveform)
+      ? Array.from(audioWaveform)
+      : undefined,
     duration:
       audioDurationSeconds == null
         ? undefined
@@ -219,12 +221,12 @@ export function convertBackupMessageAttachmentToAttachment(
 export async function getFilePointerForAttachment({
   attachment: rawAttachment,
   getBackupCdnInfo,
-  backupOptions,
+  policy,
   messageReceivedAt,
 }: {
   attachment: Readonly<AttachmentType>;
   getBackupCdnInfo: GetBackupCdnInfoType;
-  backupOptions: BackupExportOptions;
+  policy: BackupContentPolicy;
   messageReceivedAt: number;
 }): Promise<{
   filePointer: Backups.FilePointer.Params;
@@ -241,10 +243,9 @@ export async function getFilePointerForAttachment({
     blurHash: attachment.blurHash ?? null,
     incrementalMac: null,
     incrementalMacChunkSize: null,
-    audioWaveform:
-      attachment.audioWaveform == null
-        ? null
-        : new Uint8Array(attachment.audioWaveform),
+    audioWaveform: attachment.audioWaveform?.length
+      ? new Uint8Array(attachment.audioWaveform)
+      : null,
     audioDurationSeconds: isAudio(attachment.contentType)
       ? (attachment.duration ?? null)
       : null,
@@ -276,12 +277,13 @@ export async function getFilePointerForAttachment({
     ? await getBackupCdnInfo(remoteMediaId.string)
     : { isInBackupTier: false };
 
+  const isPlaintextExport = policy.attachmentTarget === 'local-plaintext';
   const isLocalBackup =
-    backupOptions.type === 'local-encrypted' ||
-    backupOptions.type === 'plaintext-export';
+    policy.attachmentTarget === 'local-encrypted' ||
+    policy.attachmentTarget === 'local-plaintext';
   filePointer.locatorInfo = getLocatorInfoForAttachment({
     attachment,
-    backupOptions,
+    policy,
     isOnDisk: isAttachmentOnDisk,
     backupTierInfo: remoteBackupStatus,
   });
@@ -294,8 +296,10 @@ export async function getFilePointerForAttachment({
       return {
         filePointer,
         backupJob: {
-          isPlaintextExport: backupOptions.type === 'plaintext-export',
-          mediaName: getLocalBackupFileNameForAttachment(attachment),
+          isPlaintextExport,
+          mediaName: isPlaintextExport
+            ? getPlaintextExportFileNameForAttachment(attachment)
+            : getLocalBackupFileNameForAttachment(attachment),
           type: 'local',
           data: {
             contentType: attachment.contentType,
@@ -311,10 +315,6 @@ export async function getFilePointerForAttachment({
       filePointer,
       backupJob: undefined,
     };
-  }
-
-  if (backupOptions.level !== BackupLevel.Paid) {
-    return { filePointer, backupJob: undefined };
   }
 
   if (remoteBackupStatus.isInBackupTier) {
@@ -389,18 +389,18 @@ function maybeFixupAttachment(attachment: AttachmentType): AttachmentType {
 }
 function getLocatorInfoForAttachment({
   attachment,
-  backupOptions,
+  policy,
   isOnDisk,
   backupTierInfo,
 }: {
   attachment: AttachmentType;
-  backupOptions: BackupExportOptions;
+  policy: BackupContentPolicy;
   isOnDisk: boolean;
   backupTierInfo: BackupCdnInfoType;
 }): Backups.FilePointer.LocatorInfo.Params {
   const isLocalBackup =
-    backupOptions.type === 'local-encrypted' ||
-    backupOptions.type === 'plaintext-export';
+    policy.attachmentTarget === 'local-encrypted' ||
+    policy.attachmentTarget === 'local-plaintext';
 
   const shouldBeLocallyBackedUp =
     isLocalBackup &&
@@ -439,15 +439,10 @@ function getLocatorInfoForAttachment({
     integrityCheck = null;
   }
 
-  let mediaTierCdnNumber: Backups.FilePointer.LocatorInfo.Params['mediaTierCdnNumber'];
-
-  if (backupTierInfo.isInBackupTier && backupTierInfo.cdnNumber != null) {
-    mediaTierCdnNumber = backupTierInfo.cdnNumber;
-  } else if (backupOptions.type === 'cross-client-integration-test') {
-    mediaTierCdnNumber = attachment.backupCdnNumber ?? null;
-  } else {
-    mediaTierCdnNumber = null;
-  }
+  const mediaTierCdnNumber =
+    backupTierInfo.isInBackupTier && backupTierInfo.cdnNumber != null
+      ? backupTierInfo.cdnNumber
+      : null;
 
   return {
     size: attachment.size,

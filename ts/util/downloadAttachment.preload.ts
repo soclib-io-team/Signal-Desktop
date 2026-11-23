@@ -26,10 +26,10 @@ import { createLogger } from '../logging/log.std.ts';
 import { HTTPError } from '../types/HTTPError.std.ts';
 import { toLogFormat } from '../types/errors.std.ts';
 import type { ReencryptedAttachmentV2 } from '../AttachmentCrypto.node.ts';
-import * as RemoteConfig from '../RemoteConfig.dom.ts';
-import { ToastType } from '../types/Toast.dom.tsx';
+import * as RemoteConfig from '../RemoteConfig.std.ts';
+import { ToastType } from '../types/Toast.std.ts';
 import { isAbortError } from './isAbortError.std.ts';
-import { expiresTooSoonForBackup } from '../services/backups/util/expiration.std.ts';
+import { MINIMUM_LIFETIME as MINIMUM_LIFETIME_FOR_BACKUP } from '../services/backups/util/expiration.std.ts';
 import { AttachmentBackfill } from '../jobs/helpers/attachmentBackfill.preload.ts';
 
 const log = createLogger('downloadAttachment');
@@ -121,9 +121,8 @@ export async function downloadAttachment({
         error instanceof HTTPError &&
         error.code >= 400 &&
         error.code < 500 &&
-        !expiresTooSoonForBackup({
-          messageExpiresAt,
-        })
+        (messageExpiresAt == null ||
+          messageExpiresAt > Date.now() + MINIMUM_LIFETIME_FOR_BACKUP)
       ) {
         log.warn(`${logId}: attachment unexpectedly missing from backup tier`);
         if (RemoteConfig.isEnabled('desktop.internalUser')) {

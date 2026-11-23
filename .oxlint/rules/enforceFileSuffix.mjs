@@ -16,7 +16,7 @@ import { assert } from './utils/assert.mjs';
  */
 
 /**
- * @typedef {'std' | 'node' | 'dom' | 'preload' | 'main'} Suffix
+ * @typedef {'std' | 'node' | 'dom' | 'preload' | 'sandbox' | 'main'} Suffix
  */
 
 const ELECTRON_MAIN_MODULES = new Set([
@@ -26,6 +26,7 @@ const ELECTRON_MAIN_MODULES = new Set([
   'BrowserView',
   'BrowserWindow',
   'ClipboardItem',
+  'clipboard',
   'contentTracing',
   'desktopCapturer',
   'dialog',
@@ -59,17 +60,13 @@ const ELECTRON_MAIN_MODULES = new Set([
   'webFrameMain',
   'View',
 ]);
-const ELECTRON_RENDERER_MODULES = new Set([
+const ELECTRON_SANDBOX_MODULES = new Set([
   'contextBridge',
   'ipcRenderer',
   'webFrame',
   'webUtils',
 ]);
-const ELECTRON_SHARED_MODULES = new Set([
-  'clipboard',
-  'crashReporter',
-  'nativeImage',
-]);
+const ELECTRON_SHARED_MODULES = new Set(['crashReporter', 'nativeImage']);
 
 // Packages that use Node.js APIs (file system, etc)
 const NODE_PACKAGES = new Set([
@@ -80,6 +77,7 @@ const NODE_PACKAGES = new Set([
   '@indutny/simple-windows-notifications',
   '@signalapp/libsignal-client',
   '@signalapp/mute-state-change',
+  '@signalapp/clonefile',
   '@signalapp/ringrtc',
   '@signalapp/sqlcipher',
   '@signalapp/windows-ucv',
@@ -126,7 +124,6 @@ const NODE_PACKAGES = new Set([
   'node-gyp-build',
   'npm-run-all',
   'p-limit',
-  'pe-library',
   'pixelmatch',
   'playwright',
   'postcss-loader',
@@ -147,6 +144,7 @@ const NODE_PACKAGES = new Set([
   'tsdown',
   'tsx',
   'typescript',
+  '@vitest/browser-playwright',
   'wait-on',
   'webpack',
   'webpack-cli',
@@ -165,6 +163,7 @@ const DOM_PACKAGES = new Set([
   'blueimp-load-image',
   'dom-accessibility-api',
   'fabric',
+  'mediabunny',
   'radix-ui',
   'react-aria',
   'react-aria-components',
@@ -190,6 +189,7 @@ const DOM_PACKAGES = new Set([
   '@storybook/test-runner',
   '@storybook/types',
   'storybook',
+  'vitest-browser-react',
 ]);
 
 // Packages that can run in both browser/node
@@ -217,6 +217,7 @@ const STD_PACKAGES = new Set([
   'babel-core',
   'babel-loader',
   'babel-plugin-lodash',
+  'binary-search',
   'blurhash',
   'buffer',
   'card-validator',
@@ -277,9 +278,20 @@ const STD_PACKAGES = new Set([
   'unicode-number',
   'url',
   'uuid',
+  'vitest',
   'zod',
   'oauth4webapi',
 ]);
+
+// Optional segments allowed between the suffix and the extension
+// ex: `Foo.dom.stories.tsx`, `Foo.dom.test.tsx`, `foo.std.bench.ts`
+const SUFFIX_MODIFIERS = '(?:\\.stories|\\.test|\\.visual\\.test|\\.bench)?';
+const LOCAL_DEP_REGEXP = new RegExp(
+  `\\.([^.\\/]+)${SUFFIX_MODIFIERS}\\.m?tsx?$`
+);
+const FILENAME_REGEXP = new RegExp(
+  `\\.([^.\\/]+)${SUFFIX_MODIFIERS}\\.(?:ts|tsx|mts|js|mjs)$`
+);
 
 export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
   name: 'enforce-file-suffix',
@@ -288,13 +300,13 @@ export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
     messages: {
       missingFileSuffix: 'Missing file suffix in {{source}} import',
       unrecognizedFileSuffix:
-        'Unrecognized file suffix in {{source}}, expected: node/preload/main/std, found: {{depSuffix}}',
+        'Unrecognized file suffix in {{source}}, expected: node/sandbox/preload/main/std, found: {{depSuffix}}',
       commonJsImportOfElectronNoAllowed:
         'CJS import of electron is not allowed',
       uncategorizedElectronApi:
         'Uncategorized electron API: "{{name}}". ' +
         'Please update .oxlint/rules/file-suffix.js and add it to ' +
-        'ELECTRON_MAIN_MODULES/ELECTRON_RENDERER_MODULES/' +
+        'ELECTRON_MAIN_MODULES/ELECTRON_SANDBOX_MODULES/' +
         'ELECTRON_SHARED_MODULES',
       unsupportedNamespaceImportForElectron:
         'Unsupported namespace import specifier for electron',
@@ -328,15 +340,18 @@ export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
     /** @type {Node[]} */
     const preloadUses = [];
     /** @type {Node[]} */
+    const sandboxUses = [];
+    /** @type {Node[]} */
     const mainUses = [];
 
     /** @type Record<Suffix, Node[][]> */
     const invalidUsesBySuffix = {
-      std: [nodeUses, domUses, preloadUses, mainUses],
-      node: [domUses, preloadUses, mainUses],
-      dom: [nodeUses, preloadUses, mainUses],
+      std: [nodeUses, domUses, sandboxUses, mainUses],
+      node: [domUses, sandboxUses, mainUses],
+      dom: [nodeUses, sandboxUses, mainUses],
       preload: [mainUses],
-      main: [domUses, preloadUses],
+      sandbox: [mainUses, nodeUses, preloadUses],
+      main: [domUses, preloadUses, sandboxUses],
     };
 
     /**
@@ -344,11 +359,11 @@ export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
      * @param {string} source
      */
     function trackLocalDep(node, source) {
-      if (!/\.tsx?/.test(source)) {
+      if (!/\.m?tsx?/.test(source)) {
         return;
       }
 
-      const match = source.match(/\.([^.\/]+)(?:\.stories)?\.tsx?$/);
+      const match = source.match(LOCAL_DEP_REGEXP);
       if (match == null) {
         context.report({
           node,
@@ -365,6 +380,8 @@ export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
         domUses.push(node);
       } else if (depSuffix === 'preload') {
         preloadUses.push(node);
+      } else if (depSuffix === 'sandbox') {
+        sandboxUses.push(node);
       } else if (depSuffix === 'main') {
         mainUses.push(node);
       } else if (depSuffix === 'std') {
@@ -420,8 +437,8 @@ export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
 
             if (ELECTRON_MAIN_MODULES.has(importName)) {
               mainUses.push(s);
-            } else if (ELECTRON_RENDERER_MODULES.has(importName)) {
-              preloadUses.push(s);
+            } else if (ELECTRON_SANDBOX_MODULES.has(importName)) {
+              sandboxUses.push(s);
             } else if (ELECTRON_SHARED_MODULES.has(importName)) {
               // no-op
             } else {
@@ -462,9 +479,12 @@ export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
         nodeUses.push(node);
       } else if (source === 'react-dom/server') {
         // no-op
+      } else if (source === 'vitest/node' || source === 'vitest/config') {
+        nodeUses.push(node);
       } else if (
         DOM_PACKAGES.has(moduleName) ||
-        source === 'react-dom/client'
+        source === 'react-dom/client' ||
+        source === 'vitest/browser'
       ) {
         domUses.push(node);
       } else if (!STD_PACKAGES.has(moduleName)) {
@@ -524,9 +544,7 @@ export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
           return;
         }
 
-        const match = filename.match(
-          /\.([^.\/]+)(?:\.stories)?\.(?:ts|tsx|js|mjs)$/
-        );
+        const match = filename.match(FILENAME_REGEXP);
         if (match == null) {
           context.report({
             node,
@@ -551,11 +569,13 @@ export const enforceFileSuffix = ESLintUtils.RuleCreator.withoutDocs({
         } else if (preloadUses.length > 0) {
           expectedSuffix = 'preload';
         } else if (nodeUses.length > 0) {
-          if (domUses.length > 0) {
+          if (domUses.length > 0 || sandboxUses.length > 0) {
             expectedSuffix = 'preload';
           } else {
             expectedSuffix = 'node';
           }
+        } else if (sandboxUses.length > 0) {
+          expectedSuffix = 'sandbox';
         } else if (domUses.length > 0) {
           expectedSuffix = 'dom';
         } else {

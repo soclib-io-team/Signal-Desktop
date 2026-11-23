@@ -1,19 +1,19 @@
 // Copyright 2026 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useId } from 'react';
 
 import type { JSX } from 'react';
 
 import { normalizeProfileName } from '../../../util/normalizeProfileName.std.ts';
-import { AvatarColors } from '../../../types/Colors.std.ts';
+import { AvatarColors } from '../../../types/Avatar.std.ts';
 import { PhoneNumberDiscoverability } from '../../../util/phoneNumberDiscoverability.std.ts';
 import { AvatarPreview } from '../../AvatarPreview.dom.tsx';
 import { AvatarEditor } from '../../AvatarEditor.dom.tsx';
 import { tw } from '../../../axo/tw.dom.tsx';
 import { AxoSymbol } from '../../../axo/AxoSymbol.dom.tsx';
 import { AxoButton } from '../../../axo/AxoButton.dom.tsx';
-import { AxoDialog } from '../../../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../../../axo/dialogs/AxoDialog.dom.tsx';
 import { AxoRadioGroup } from '../../../axo/controls/AxoRadioGroup.dom.tsx';
 import { AxoTextField } from '../../../axo/fields/AxoTextField.dom.tsx';
 
@@ -85,7 +85,34 @@ export function ProfileEntryScreen({
 
   const fullName = `${firstName} ${lastName}`;
   const { status } = workflow;
+
+  const normalizedFirstName = normalizeProfileName(firstName);
   const pending = status.type === 'in-progress';
+  const disabled = !normalizedFirstName;
+  const handleSubmit = useCallback(() => {
+    if (disabled || pending || !normalizedFirstName) {
+      return;
+    }
+
+    finishProfileEntryStage({
+      profileData: {
+        firstName: normalizedFirstName,
+        lastName: normalizeProfileName(lastName),
+        avatarData,
+        phoneNumberDiscoverability,
+      },
+      workflow,
+    });
+  }, [
+    avatarData,
+    disabled,
+    normalizedFirstName,
+    finishProfileEntryStage,
+    lastName,
+    pending,
+    phoneNumberDiscoverability,
+    workflow,
+  ]);
 
   return (
     <Container className={tw('h-125')}>
@@ -137,37 +164,53 @@ export function ProfileEntryScreen({
         {i18n('icu:StandaloneRegistration--ProfileEntry--add-photo')}
       </AxoButton.Root>
       <Spacer className={tw('h-7')} />
-      <InputContainer className={tw('w-100')}>
-        <AxoTextField.Root
-          disabled={pending}
-          value={firstName}
-          onValueChange={onChangeFirstName}
-          maxGraphemes={30}
-          maxBytes={30}
-        >
-          <AxoTextField.Input
-            placeholder={i18n(
-              'icu:StandaloneRegistration--ProfileEntry--first-name'
-            )}
-          />
-        </AxoTextField.Root>
-      </InputContainer>
+      <form
+        className={tw('max-w-full')}
+        onSubmit={event => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+      >
+        <InputContainer className={tw('w-100')}>
+          <AxoTextField.Root
+            disabled={pending}
+            value={firstName}
+            onValueChange={onChangeFirstName}
+            maxGraphemes={30}
+            maxBytes={30}
+          >
+            <AxoTextField.Input
+              placeholder={i18n(
+                'icu:StandaloneRegistration--ProfileEntry--first-name'
+              )}
+            />
+          </AxoTextField.Root>
+        </InputContainer>
+      </form>
       <Spacer />
-      <InputContainer className={tw('w-100')}>
-        <AxoTextField.Root
-          disabled={pending}
-          value={lastName}
-          onValueChange={onChangeLastName}
-          maxGraphemes={30}
-          maxBytes={30}
-        >
-          <AxoTextField.Input
-            placeholder={i18n(
-              'icu:StandaloneRegistration--ProfileEntry--last-name'
-            )}
-          />
-        </AxoTextField.Root>
-      </InputContainer>
+      <form
+        className={tw('max-w-full')}
+        onSubmit={event => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+      >
+        <InputContainer className={tw('w-100')}>
+          <AxoTextField.Root
+            disabled={pending}
+            value={lastName}
+            onValueChange={onChangeLastName}
+            maxGraphemes={30}
+            maxBytes={30}
+          >
+            <AxoTextField.Input
+              placeholder={i18n(
+                'icu:StandaloneRegistration--ProfileEntry--last-name'
+              )}
+            />
+          </AxoTextField.Root>
+        </InputContainer>
+      </form>
       <Spacer className={tw('h-4')} />
       <div
         className={tw(
@@ -176,10 +219,10 @@ export function ProfileEntryScreen({
       >
         <AxoSymbol.Icon symbol="group" size={18} label={null} />
         <div className={tw('flex grow flex-col items-start')}>
-          <div className={tw('type-body-medium')}>
+          <div className={tw('text-start type-body-medium')}>
             {i18n('icu:StandaloneRegistration--ProfileEntry--discoverability')}
           </div>
-          <div className={tw('type-body-small text-secondary')}>
+          <div className={tw('text-start type-body-small text-secondary')}>
             {phoneNumberDiscoverability ===
             PhoneNumberDiscoverability.Discoverable
               ? i18n('icu:Preferences__pnp__discoverability__everyone')
@@ -205,26 +248,8 @@ export function ProfileEntryScreen({
           variant="strong-primary"
           size="md"
           pending={pending}
-          disabled={!normalizeProfileName(firstName) || pending}
-          onClick={() => {
-            const normalizedFirstName = normalizeProfileName(firstName);
-            if (!normalizedFirstName) {
-              throw new Error(
-                'ProfileEntryScreen: Somehow clicked Continue with blank firstname'
-              );
-            }
-
-            finishProfileEntryStage({
-              profileData: {
-                firstName: normalizedFirstName,
-                lastName: normalizeProfileName(lastName),
-                avatarData,
-                phoneNumberDiscoverability:
-                  PhoneNumberDiscoverability.Discoverable,
-              },
-              workflow,
-            });
-          }}
+          disabled={disabled}
+          onClick={handleSubmit}
         >
           {i18n('icu:StandaloneRegistration--ProfileEntry--continue')}
         </AxoButton.Root>
@@ -244,7 +269,11 @@ export function ProfileEntryScreen({
           }
         }}
       >
-        <AxoDialog.Content size="sm" escape="cancel-is-destructive">
+        <AxoDialog.Content
+          size="sm"
+          escape="cancel-is-destructive"
+          disableMissingAriaDescriptionWarning
+        >
           <AxoDialog.Header>
             <AxoDialog.Title>
               {i18n(
@@ -296,6 +325,7 @@ function PhoneNumberDiscoverabilityDialog({
   phoneNumberDiscoverability: PhoneNumberDiscoverability;
   setPhoneNumberDiscoverability: (value: PhoneNumberDiscoverability) => unknown;
 }): JSX.Element {
+  const radioGroupId = useId();
   return (
     <AxoDialog.Root
       open={isOpen}
@@ -305,7 +335,11 @@ function PhoneNumberDiscoverabilityDialog({
         }
       }}
     >
-      <AxoDialog.Content size="sm" escape="cancel-is-destructive">
+      <AxoDialog.Content
+        size="sm"
+        escape="cancel-is-destructive"
+        disableMissingAriaDescriptionWarning
+      >
         <AxoDialog.Header>
           <AxoDialog.Title>
             {i18n('icu:Preferences__pnp--page-title')}
@@ -313,10 +347,14 @@ function PhoneNumberDiscoverabilityDialog({
           <AxoDialog.Close />
         </AxoDialog.Header>
         <AxoDialog.Body>
-          <div className={tw('mt-5 mb-4 type-body-medium font-semibold')}>
+          <div
+            id={radioGroupId}
+            className={tw('mb-4 font-semibold text-primary')}
+          >
             {i18n('icu:Preferences__pnp__discoverability--title')}
           </div>
           <AxoRadioGroup.Root
+            labelledby={radioGroupId}
             value={phoneNumberDiscoverability}
             onValueChange={value => {
               if (
@@ -332,22 +370,18 @@ function PhoneNumberDiscoverabilityDialog({
           >
             <AxoRadioGroup.Item value={PhoneNumberDiscoverability.Discoverable}>
               <AxoRadioGroup.Label>
-                <div className={tw('type-body-medium')}>
-                  {i18n('icu:Preferences__pnp__discoverability__everyone')}
-                </div>
+                {i18n('icu:Preferences__pnp__discoverability__everyone')}
               </AxoRadioGroup.Label>
             </AxoRadioGroup.Item>
             <AxoRadioGroup.Item
               value={PhoneNumberDiscoverability.NotDiscoverable}
             >
               <AxoRadioGroup.Label>
-                <div className={tw('type-body-medium')}>
-                  {i18n('icu:Preferences__pnp__discoverability__nobody')}
-                </div>
+                {i18n('icu:Preferences__pnp__discoverability__nobody')}
               </AxoRadioGroup.Label>
             </AxoRadioGroup.Item>
           </AxoRadioGroup.Root>
-          <div className={tw('mt-3 mb-8 type-body-small text-secondary')}>
+          <div className={tw('mt-3 type-body-small')}>
             {phoneNumberDiscoverability ===
             PhoneNumberDiscoverability.Discoverable
               ? i18n(

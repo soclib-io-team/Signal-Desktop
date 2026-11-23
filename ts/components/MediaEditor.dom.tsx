@@ -42,13 +42,12 @@ import {
 import { createLogger } from '../logging/log.std.ts';
 import { Button, ButtonVariant } from './Button.dom.tsx';
 import { CompositionInput } from './CompositionInput.dom.tsx';
-import { ContextMenu } from './ContextMenu.dom.tsx';
 import { IMAGE_PNG } from '../types/MIME.std.ts';
 import { SizeObserver } from '../hooks/useSizeObserver.dom.tsx';
 import { Slider } from './Slider.dom.tsx';
 import { Theme } from '../util/theme.std.ts';
 import { ThemeType } from '../types/Util.std.ts';
-import { canvasToBytes } from '../util/canvasToBytes.std.ts';
+import { canvasToBytes } from '../util/canvasToBytes.dom.ts';
 import { loadImage } from '../util/loadImage.std.ts';
 import { useConfirmDiscard } from '../hooks/useConfirmDiscard.dom.tsx';
 import { useFabricHistory } from '../mediaEditor/useFabricHistory.dom.ts';
@@ -68,6 +67,8 @@ import { tw } from '../axo/tw.dom.tsx';
 import type { FunTimeStickerStyle } from './fun/constants.dom.tsx';
 import * as Errors from '../types/errors.std.ts';
 import { AxoTheme } from '../axo/AxoTheme.dom.tsx';
+import { AxoDropdownMenu } from '../axo/menus/AxoDropdownMenu.dom.tsx';
+import type { StickerReferenceType } from '../types/Stickers.preload.ts';
 
 const { get, has, noop } = lodash;
 
@@ -92,6 +93,10 @@ export type PropsType = {
   imageToBlurHash: typeof imageToBlurHash;
   onClose: () => unknown;
   onDone: (result: MediaEditorResultType) => unknown;
+  onMarkStickerAsFavorite: (
+    stickerRef: StickerReferenceType,
+    markAsFavorite: boolean
+  ) => void;
   convertDraftBodyRangesIntoHydrated: (
     bodyRanges: DraftBodyRanges | undefined
   ) => HydratedBodyRangesType | undefined;
@@ -172,6 +177,7 @@ export function MediaEditor({
   isFormattingEnabled,
   emojiSkinToneDefault,
   onSelectEmoji,
+  onMarkStickerAsFavorite,
   onTextTooLong,
   ourConversationId,
   platform,
@@ -314,6 +320,19 @@ export function MediaEditor({
       );
     },
     [handlePickSticker]
+  );
+
+  const handleMarkStickerAsFavorite = useCallback(
+    (stickerSelection: FunStickerSelection, markAsFavorite: boolean) => {
+      onMarkStickerAsFavorite(
+        {
+          packId: stickerSelection.stickerPackId,
+          stickerId: stickerSelection.stickerId,
+        },
+        markAsFavorite
+      );
+    },
+    [onMarkStickerAsFavorite]
   );
 
   const [cropPreset, setCropPreset] = useState<CropPreset>(CropPreset.Freeform);
@@ -964,6 +983,25 @@ export function MediaEditor({
     return null;
   }
 
+  const textStyleLabels: Record<TextStyle, string> = {
+    [TextStyle.Regular]: i18n('icu:MediaEditor__text--regular'),
+    [TextStyle.Highlight]: i18n('icu:MediaEditor__text--highlight'),
+    [TextStyle.Outline]: i18n('icu:MediaEditor__text--outline'),
+  };
+  const drawToolLabels: Record<DrawTool, string> = {
+    [DrawTool.Pen]: i18n('icu:MediaEditor__draw--pen'),
+    [DrawTool.Highlighter]: i18n('icu:MediaEditor__draw--highlighter'),
+  };
+  const drawWidthLabels: Record<DrawWidth, string> = {
+    [DrawWidth.Thin]: i18n('icu:MediaEditor__draw--thin'),
+    [DrawWidth.Regular]: i18n('icu:MediaEditor__draw--regular'),
+    [DrawWidth.Medium]: i18n('icu:MediaEditor__draw--medium'),
+    [DrawWidth.Heavy]: i18n('icu:MediaEditor__draw--heavy'),
+  };
+  const textStyleLabel = textStyleLabels[textStyle];
+  const drawToolLabel = drawToolLabels[drawTool];
+  const drawWidthLabel = drawWidthLabels[drawWidth];
+
   let toolElement: JSX.Element | undefined;
   if (editMode === EditMode.Text) {
     toolElement = (
@@ -974,43 +1012,59 @@ export function MediaEditor({
             <Slider
               handleStyle={{ backgroundColor: getHSL(sliderValue) }}
               label={i18n('icu:CustomColorEditor__hue')}
-              moduleClassName="HueSlider MediaEditor__toolbar__tool"
+              className="HueSlider MediaEditor__toolbar__tool"
               onChange={setSliderValue}
               value={sliderValue}
             />
-            <ContextMenu
-              i18n={i18n}
-              menuOptions={[
-                {
-                  icon: 'MediaEditor__icon--text-regular',
-                  label: i18n('icu:MediaEditor__text--regular'),
-                  onClick: () => setTextStyle(TextStyle.Regular),
-                  value: TextStyle.Regular,
-                },
-                {
-                  icon: 'MediaEditor__icon--text-highlight',
-                  label: i18n('icu:MediaEditor__text--highlight'),
-                  onClick: () => setTextStyle(TextStyle.Highlight),
-                  value: TextStyle.Highlight,
-                },
-                {
-                  icon: 'MediaEditor__icon--text-outline',
-                  label: i18n('icu:MediaEditor__text--outline'),
-                  onClick: () => setTextStyle(TextStyle.Outline),
-                  value: TextStyle.Outline,
-                },
-              ]}
-              moduleClassName={classNames('MediaEditor__toolbar__tool', {
-                'MediaEditor__toolbar__button--text-regular':
-                  textStyle === TextStyle.Regular,
-                'MediaEditor__toolbar__button--text-highlight':
-                  textStyle === TextStyle.Highlight,
-                'MediaEditor__toolbar__button--text-outline':
-                  textStyle === TextStyle.Outline,
-              })}
-              theme={Theme.Dark}
-              value={textStyle}
-            />
+            <AxoDropdownMenu.Root>
+              <AxoDropdownMenu.Trigger>
+                <button
+                  type="button"
+                  aria-label={textStyleLabel}
+                  className="MediaEditor__toolbar__tool MediaEditor__toolbar__menu-button"
+                >
+                  <span
+                    aria-hidden
+                    className={classNames(
+                      'MediaEditor__toolbar__menu-button-icon',
+                      {
+                        'MediaEditor__toolbar__button--text-regular':
+                          textStyle === TextStyle.Regular,
+                        'MediaEditor__toolbar__button--text-highlight':
+                          textStyle === TextStyle.Highlight,
+                        'MediaEditor__toolbar__button--text-outline':
+                          textStyle === TextStyle.Outline,
+                      }
+                    )}
+                  />
+                </button>
+              </AxoDropdownMenu.Trigger>
+              <AxoDropdownMenu.Content>
+                <AxoDropdownMenu.RadioGroup
+                  value={textStyle}
+                  onValueChange={value => setTextStyle(value as TextStyle)}
+                >
+                  <AxoDropdownMenu.RadioItem
+                    value={TextStyle.Regular}
+                    symbol="text-square"
+                  >
+                    {i18n('icu:MediaEditor__text--regular')}
+                  </AxoDropdownMenu.RadioItem>
+                  <AxoDropdownMenu.RadioItem
+                    value={TextStyle.Highlight}
+                    symbol="text-square-fill"
+                  >
+                    {i18n('icu:MediaEditor__text--highlight')}
+                  </AxoDropdownMenu.RadioItem>
+                  <AxoDropdownMenu.RadioItem
+                    value={TextStyle.Outline}
+                    symbol="text-outline"
+                  >
+                    {i18n('icu:MediaEditor__text--outline')}
+                  </AxoDropdownMenu.RadioItem>
+                </AxoDropdownMenu.RadioGroup>
+              </AxoDropdownMenu.Content>
+            </AxoDropdownMenu.Root>
           </div>
           <Button
             onClick={() => {
@@ -1038,76 +1092,102 @@ export function MediaEditor({
             <Slider
               handleStyle={{ backgroundColor: getHSL(sliderValue) }}
               label={i18n('icu:CustomColorEditor__hue')}
-              moduleClassName="HueSlider MediaEditor__toolbar__tool"
+              className="HueSlider MediaEditor__toolbar__tool"
               onChange={setSliderValue}
               value={sliderValue}
             />
-            <ContextMenu
-              i18n={i18n}
-              menuOptions={[
-                {
-                  icon: 'MediaEditor__icon--draw-pen',
-                  label: i18n('icu:MediaEditor__draw--pen'),
-                  onClick: () => setDrawTool(DrawTool.Pen),
-                  value: DrawTool.Pen,
-                },
-                {
-                  icon: 'MediaEditor__icon--draw-highlighter',
-                  label: i18n('icu:MediaEditor__draw--highlighter'),
-                  onClick: () => setDrawTool(DrawTool.Highlighter),
-                  value: DrawTool.Highlighter,
-                },
-              ]}
-              moduleClassName={classNames('MediaEditor__toolbar__tool', {
-                'MediaEditor__toolbar__button--draw-pen':
-                  drawTool === DrawTool.Pen,
-                'MediaEditor__toolbar__button--draw-highlighter':
-                  drawTool === DrawTool.Highlighter,
-              })}
-              theme={Theme.Dark}
-              value={drawTool}
-            />
-            <ContextMenu
-              i18n={i18n}
-              menuOptions={[
-                {
-                  icon: 'MediaEditor__icon--width-thin',
-                  label: i18n('icu:MediaEditor__draw--thin'),
-                  onClick: () => setDrawWidth(DrawWidth.Thin),
-                  value: DrawWidth.Thin,
-                },
-                {
-                  icon: 'MediaEditor__icon--width-regular',
-                  label: i18n('icu:MediaEditor__draw--regular'),
-                  onClick: () => setDrawWidth(DrawWidth.Regular),
-                  value: DrawWidth.Regular,
-                },
-                {
-                  icon: 'MediaEditor__icon--width-medium',
-                  label: i18n('icu:MediaEditor__draw--medium'),
-                  onClick: () => setDrawWidth(DrawWidth.Medium),
-                  value: DrawWidth.Medium,
-                },
-                {
-                  icon: 'MediaEditor__icon--width-heavy',
-                  label: i18n('icu:MediaEditor__draw--heavy'),
-                  onClick: () => setDrawWidth(DrawWidth.Heavy),
-                  value: DrawWidth.Heavy,
-                },
-              ]}
-              moduleClassName={classNames('MediaEditor__toolbar__tool', {
-                'MediaEditor__toolbar__button--width-thin':
-                  drawWidth === DrawWidth.Thin,
-                'MediaEditor__toolbar__button--width-regular':
-                  drawWidth === DrawWidth.Regular,
-                'MediaEditor__toolbar__button--width-medium':
-                  drawWidth === DrawWidth.Medium,
-                'MediaEditor__toolbar__button--width-heavy':
-                  drawWidth === DrawWidth.Heavy,
-              })}
-              theme={Theme.Dark}
-              value={drawWidth}
-            />
+            <AxoDropdownMenu.Root>
+              <AxoDropdownMenu.Trigger>
+                <button
+                  type="button"
+                  aria-label={drawToolLabel}
+                  className="MediaEditor__toolbar__tool MediaEditor__toolbar__menu-button"
+                >
+                  <span
+                    aria-hidden
+                    className={classNames(
+                      'MediaEditor__toolbar__menu-button-icon',
+                      {
+                        'MediaEditor__toolbar__button--draw-pen':
+                          drawTool === DrawTool.Pen,
+                        'MediaEditor__toolbar__button--draw-highlighter':
+                          drawTool === DrawTool.Highlighter,
+                      }
+                    )}
+                  />
+                </button>
+              </AxoDropdownMenu.Trigger>
+              <AxoDropdownMenu.Content>
+                <AxoDropdownMenu.RadioGroup
+                  value={drawTool}
+                  onValueChange={value => setDrawTool(value as DrawTool)}
+                >
+                  <AxoDropdownMenu.RadioItem value={DrawTool.Pen}>
+                    {i18n('icu:MediaEditor__draw--pen')}
+                  </AxoDropdownMenu.RadioItem>
+                  <AxoDropdownMenu.RadioItem value={DrawTool.Highlighter}>
+                    {i18n('icu:MediaEditor__draw--highlighter')}
+                  </AxoDropdownMenu.RadioItem>
+                </AxoDropdownMenu.RadioGroup>
+              </AxoDropdownMenu.Content>
+            </AxoDropdownMenu.Root>
+            <AxoDropdownMenu.Root>
+              <AxoDropdownMenu.Trigger>
+                <button
+                  type="button"
+                  aria-label={drawWidthLabel}
+                  className="MediaEditor__toolbar__tool MediaEditor__toolbar__menu-button"
+                >
+                  <span
+                    aria-hidden
+                    className={classNames(
+                      'MediaEditor__toolbar__menu-button-icon',
+                      {
+                        'MediaEditor__toolbar__button--width-thin':
+                          drawWidth === DrawWidth.Thin,
+                        'MediaEditor__toolbar__button--width-regular':
+                          drawWidth === DrawWidth.Regular,
+                        'MediaEditor__toolbar__button--width-medium':
+                          drawWidth === DrawWidth.Medium,
+                        'MediaEditor__toolbar__button--width-heavy':
+                          drawWidth === DrawWidth.Heavy,
+                      }
+                    )}
+                  />
+                </button>
+              </AxoDropdownMenu.Trigger>
+              <AxoDropdownMenu.Content>
+                <AxoDropdownMenu.RadioGroup
+                  value={`${drawWidth}`}
+                  onValueChange={value => setDrawWidth(parseInt(value, 10))}
+                >
+                  <AxoDropdownMenu.RadioItem
+                    value={`${DrawWidth.Thin}`}
+                    symbol="brushsize-thin"
+                  >
+                    {i18n('icu:MediaEditor__draw--thin')}
+                  </AxoDropdownMenu.RadioItem>
+                  <AxoDropdownMenu.RadioItem
+                    value={`${DrawWidth.Regular}`}
+                    symbol="brushsize-regular"
+                  >
+                    {i18n('icu:MediaEditor__draw--regular')}
+                  </AxoDropdownMenu.RadioItem>
+                  <AxoDropdownMenu.RadioItem
+                    value={`${DrawWidth.Medium}`}
+                    symbol="brushsize-medium"
+                  >
+                    {i18n('icu:MediaEditor__draw--medium')}
+                  </AxoDropdownMenu.RadioItem>
+                  <AxoDropdownMenu.RadioItem
+                    value={`${DrawWidth.Heavy}`}
+                    symbol="brushsize-heavy"
+                  >
+                    {i18n('icu:MediaEditor__draw--heavy')}
+                  </AxoDropdownMenu.RadioItem>
+                </AxoDropdownMenu.RadioGroup>
+              </AxoDropdownMenu.Content>
+            </AxoDropdownMenu.Root>
           </div>
           <Button
             onClick={() => setEditMode(undefined)}
@@ -1131,39 +1211,30 @@ export function MediaEditor({
       <>
         <div className="MediaEditor__tools-row-1">
           <button
-            className={classNames(
-              'MediaEditor__crop-preset MediaEditor__crop-preset--free',
-              {
-                'MediaEditor__crop-preset--selected':
-                  cropPreset === CropPreset.Freeform,
-              }
-            )}
+            className={classNames('MediaEditor__crop-preset', {
+              'MediaEditor__crop-preset--selected':
+                cropPreset === CropPreset.Freeform,
+            })}
             onClick={() => setCropPreset(CropPreset.Freeform)}
             type="button"
           >
             {i18n('icu:MediaEditor__crop-preset--freeform')}
           </button>
           <button
-            className={classNames(
-              'MediaEditor__crop-preset MediaEditor__crop-preset--square',
-              {
-                'MediaEditor__crop-preset--selected':
-                  cropPreset === CropPreset.Square,
-              }
-            )}
+            className={classNames('MediaEditor__crop-preset', {
+              'MediaEditor__crop-preset--selected':
+                cropPreset === CropPreset.Square,
+            })}
             onClick={() => setCropPreset(CropPreset.Square)}
             type="button"
           >
             {i18n('icu:MediaEditor__crop-preset--square')}
           </button>
           <button
-            className={classNames(
-              'MediaEditor__crop-preset MediaEditor__crop-preset--vertical',
-              {
-                'MediaEditor__crop-preset--selected':
-                  cropPreset === CropPreset.Vertical,
-              }
-            )}
+            className={classNames('MediaEditor__crop-preset', {
+              'MediaEditor__crop-preset--selected':
+                cropPreset === CropPreset.Vertical,
+            })}
             onClick={() => setCropPreset(CropPreset.Vertical)}
             type="button"
           >
@@ -1253,9 +1324,9 @@ export function MediaEditor({
               aria-label={i18n('icu:MediaEditor__crop--lock')}
               className={classNames(
                 'MediaEditor__toolbar__crop__button',
-                `MediaEditor__toolbar__button--crop-${
-                  cropAspectRatioLock ? '' : 'un'
-                }locked`
+                cropAspectRatioLock
+                  ? 'MediaEditor__toolbar__button--crop-locked'
+                  : 'MediaEditor__toolbar__button--crop-unlocked'
               )}
               onClick={() => {
                 if (fabricCanvas) {
@@ -1437,6 +1508,7 @@ export function MediaEditor({
                   onSelectSticker={handleSelectSticker}
                   showTimeStickers
                   onSelectTimeSticker={handlePickTimeSticker}
+                  onMarkStickerAsFavorite={handleMarkStickerAsFavorite}
                   placement="top"
                   theme={pickerTheme}
                 >
@@ -1480,7 +1552,7 @@ export function MediaEditor({
                     inputApi={inputApiRef}
                     isActive
                     isFormattingEnabled={isFormattingEnabled}
-                    moduleClassName="StoryViewsNRepliesModal__input"
+                    className="StoryViewsNRepliesModal__input"
                     onCloseLinkPreview={noop}
                     onEditorStateChange={({ bodyRanges, messageText }) => {
                       setCaptionBodyRanges(bodyRanges);

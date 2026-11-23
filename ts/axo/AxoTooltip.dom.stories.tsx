@@ -8,7 +8,7 @@ import { AxoTooltip } from './AxoTooltip.dom.tsx';
 import { AxoButton } from './AxoButton.dom.tsx';
 import { tw } from './tw.dom.tsx';
 import { AxoScrollArea } from './AxoScrollArea.dom.tsx';
-import { AxoDialog } from './AxoDialog.dom.tsx';
+import { AxoDialog } from './dialogs/AxoDialog.dom.tsx';
 
 export default {
   title: 'Axo/AxoTooltip',
@@ -169,7 +169,11 @@ export function InScrollArea(): JSX.Element {
 export function InDialog(): JSX.Element {
   return (
     <AxoDialog.Root open>
-      <AxoDialog.Content size="md" escape="cancel-is-destructive">
+      <AxoDialog.Content
+        size="md"
+        escape="cancel-is-destructive"
+        disableMissingAriaDescriptionWarning
+      >
         <AxoDialog.Header>
           <AxoDialog.Title>Title</AxoDialog.Title>
           <AxoDialog.Close />

@@ -3,24 +3,20 @@
 
 import { createSelector } from 'reselect';
 
-import { isCountryPpmCsvBucketEnabled } from '../../RemoteConfig.dom.ts';
-import type { ConfigKeyType, ConfigMapType } from '../../RemoteConfig.dom.ts';
+import type { ConfigKeyType, ConfigMapType } from '../../RemoteConfig.std.ts';
 import type { StateType } from '../reducer.preload.ts';
 import type { ItemsStateType } from '../ducks/items.preload.ts';
 import type {
-  ConversationColorType,
-  CustomColorType,
-} from '../../types/Colors.std.ts';
-import type { AciString } from '../../types/ServiceId.std.ts';
-import type { UnreadCountBadgeType } from '../../types/StorageKeys.std.ts';
+  BlockedGroup,
+  BlockedNumber,
+  BlockedServiceId,
+  UnreadCountBadgeType,
+} from '../../types/StorageKeys.std.ts';
 import { STORAGE_KEY_DEFAULTS } from '../../types/StorageKeys.std.ts';
-import { DEFAULT_CONVERSATION_COLOR } from '../../types/Colors.std.ts';
 import { getPreferredReactionEmoji as getPreferredReactionEmojiFromStoredValue } from '../../reactions/preferredReactionEmoji.std.ts';
 import type { NotifyWhileMuted } from '../../util/notifyWhileMuted.std.ts';
 import { DEFAULT_NOTIFY_IF_MUTED } from '../../util/notifyWhileMuted.std.ts';
 import { DurationInSeconds } from '../../util/durations/index.std.ts';
-import * as Bytes from '../../Bytes.std.ts';
-import { contactByEncryptedUsernameRoute } from '../../util/signalRoutes.std.ts';
 import { isNotUpdatable } from '../../util/version.std.ts';
 import { BackupLevel } from '../../services/backups/types.std.ts';
 import type { StateSelector } from '../types.std.ts';
@@ -53,18 +49,6 @@ const isRemoteConfigFlagEnabled = (
   config: Readonly<ConfigMapType>,
   key: ConfigKeyType
 ): boolean => Boolean(config[key]?.enabled);
-
-// See isBucketValueEnabled in RemoteConfig.ts
-/** @knipignore Keep around for future features that might need it */
-export const isRemoteConfigBucketEnabled = (
-  config: Readonly<ConfigMapType>,
-  name: ConfigKeyType,
-  e164: string | undefined,
-  aci: AciString | undefined
-): boolean => {
-  const flagValue = config[name]?.value;
-  return isCountryPpmCsvBucketEnabled(name, flagValue, e164, aci);
-};
 
 export const getRemoteConfig = createSelector(
   getItems,
@@ -100,21 +84,15 @@ export const getUsernameLinkColor = createSelector(
 
 export const getUsernameLink = createSelector(
   getItems,
-  ({ usernameLink }: ItemsStateType): string | undefined => {
-    if (!usernameLink) {
-      return undefined;
-    }
-    const { entropy, serverId } = usernameLink;
-
-    if (!entropy.length || !serverId.length) {
-      return undefined;
-    }
-
-    const content = Bytes.concatenate([entropy, serverId]);
-
-    return contactByEncryptedUsernameRoute
-      .toWebUrl({ encryptedUsername: Bytes.toBase64url(content) })
-      .toString();
+  ({
+    usernameLink,
+  }: ItemsStateType):
+    | {
+        entropy: Uint8Array<ArrayBuffer>;
+        serverId: Uint8Array<ArrayBuffer>;
+      }
+    | undefined => {
+    return usernameLink;
   }
 );
 
@@ -134,25 +112,6 @@ export const getStoriesEnabled = createSelector(
 export const getKeyTransparencyEnabled = createSelector(
   getItems,
   (state: ItemsStateType): boolean => !state.hasKeyTransparencyDisabled
-);
-
-export const getDefaultConversationColor = createSelector(
-  getItems,
-  (
-    state: ItemsStateType
-  ): {
-    color: ConversationColorType;
-    customColorData?: {
-      id: string;
-      value: CustomColorType;
-    };
-  } => state.defaultConversationColor ?? DEFAULT_CONVERSATION_COLOR
-);
-
-export const getCustomColors = createSelector(
-  getItems,
-  (state: ItemsStateType): Record<string, CustomColorType> | undefined =>
-    state.customColors?.colors
 );
 
 export const getEmojiSkinToneDefault: StateSelector<Emoji.SkinTone | null> =
@@ -339,3 +298,21 @@ export const getHasSeenAdminDeleteEducationDialog: StateSelector<boolean> =
     getItems,
     state => state.hasSeenAdminDeleteEducationDialog ?? false
   );
+
+export const getBlockedUuids: StateSelector<
+  ReadonlyArray<BlockedServiceId> | undefined
+> = createSelector(getItems, state => state['blocked-uuids']);
+
+export const getBlockedNumbers: StateSelector<
+  ReadonlyArray<BlockedNumber> | undefined
+> = createSelector(getItems, state => state.blocked);
+
+export const getBlockedGroups: StateSelector<
+  ReadonlyArray<BlockedGroup> | undefined
+> = createSelector(getItems, state => state['blocked-groups']);
+
+export const getReleaseNotesChatBlocked: StateSelector<boolean> =
+  createSelector(getItems, state => state.releaseNotesChatBlocked ?? false);
+
+export const getReleaseNotesChatBlockedAt: StateSelector<number | undefined> =
+  createSelector(getItems, state => state.releaseNotesChatBlockedAt);

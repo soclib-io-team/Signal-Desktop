@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import type { LocalizerType } from '../../types/Util.std.ts';
 import { GroupDescriptionText } from '../GroupDescriptionText.dom.tsx';
-import { AxoDialog } from '../../axo/AxoDialog.dom.tsx';
+import { AxoDialog } from '../../axo/dialogs/AxoDialog.dom.tsx';
 import { tw } from '../../axo/tw.dom.tsx';
 import { strictAssert } from '../../util/assert.std.ts';
 
@@ -53,7 +53,9 @@ export function GroupDescription({
           </AxoDialog.Header>
           <AxoDialog.Body>
             <AxoDialog.Description>
-              <GroupDescriptionText text={text} />
+              <div className={tw('text-primary')}>
+                <GroupDescriptionText text={text} />
+              </div>
             </AxoDialog.Description>
           </AxoDialog.Body>
         </AxoDialog.Content>

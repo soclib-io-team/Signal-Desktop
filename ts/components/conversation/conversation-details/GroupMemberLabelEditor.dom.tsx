@@ -18,10 +18,10 @@ import {
   MessageInteractivity,
   TextDirection,
 } from '../Message.dom.tsx';
-import type { ContactNameColorType } from '../../../types/Colors.std.ts';
-import { ConversationColors } from '../../../types/Colors.std.ts';
+import type { BubbleColorRenderData } from '../../../types/ChatStyle.std.ts';
+import type { ContactNameColorType } from '../../../types/ContactNameColor.std.ts';
 import { WidthBreakpoint } from '../../_util.std.ts';
-import { AxoAlertDialog } from '../../../axo/AxoAlertDialog.dom.tsx';
+import { AxoAlertDialog } from '../../../axo/dialogs/AxoAlertDialog.dom.tsx';
 import { Avatar, AvatarSize } from '../../Avatar.dom.tsx';
 import { UserText } from '../../UserText.dom.tsx';
 import { GroupMemberLabel } from '../ContactName.dom.tsx';
@@ -41,6 +41,7 @@ import { AxoList } from '../../../axo/items/AxoList.dom.tsx';
 import { AxoItem } from '../../../axo/items/AxoItem.dom.tsx';
 
 export type PropsDataType = {
+  bubbleColor: BubbleColorRenderData;
   canAddLabel: boolean;
   existingLabelEmoji: Emoji.Variant | undefined;
   existingLabelString: string | undefined;
@@ -81,6 +82,7 @@ export function getLeafPanelOnly(
 }
 
 export function GroupMemberLabelEditor({
+  bubbleColor,
   canAddLabel,
   group,
   me,
@@ -185,7 +187,7 @@ export function GroupMemberLabelEditor({
             }
             maxLengthCount={STRING_GRAPHEME_LIMIT}
             maxByteCount={STRING_BYTE_LIMIT}
-            moduleClassName="GroupMemberLabelEditor"
+            className="GroupMemberLabelEditor"
             onChange={value => {
               if (!value) {
                 setLabelEmoji(undefined);
@@ -222,9 +224,7 @@ export function GroupMemberLabelEditor({
                   renderingContext="ConversationDetails/GroupMemberLabelEditor"
                   theme={theme}
                   id="fake-id"
-                  conversationColor={
-                    group.conversationColor ?? ConversationColors[0]
-                  }
+                  bubbleColor={bubbleColor}
                   conversationTitle={group.title}
                   conversationId={group.id}
                   textDirection={TextDirection.LeftToRight}
@@ -261,8 +261,7 @@ export function GroupMemberLabelEditor({
                   renderAudioAttachment={() => <div />}
                   doubleCheckMissingQuoteReference={noop}
                   messageExpanded={noop}
-                  checkForAccount={noop}
-                  startConversation={noop}
+                  startConversationWithSharedContact={noop}
                   showConversation={noop}
                   openGiftBadge={noop}
                   pushPanelForConversation={noop}

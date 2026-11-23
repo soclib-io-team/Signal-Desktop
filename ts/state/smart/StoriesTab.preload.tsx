@@ -7,7 +7,7 @@ import { SmartStoryCreator } from './StoryCreator.preload.tsx';
 import { renderToastManagerWithoutMegaphone } from './ToastManager.preload.tsx';
 import { StoriesTab } from '../../components/StoriesTab.dom.tsx';
 import { getMaximumOutgoingVideoSize } from '../../types/AttachmentSize.std.ts';
-import { getValue, type ConfigKeyType } from '../../RemoteConfig.dom.ts';
+import { getValue, type ConfigKeyType } from '../../RemoteConfig.std.ts';
 import {
   getMe,
   getOtherTabsUnreadCount,
@@ -29,7 +29,7 @@ import {
 import { useConversationsActions } from '../ducks/conversations.preload.ts';
 import { useGlobalModalActions } from '../ducks/globalModals.preload.ts';
 import { useStoriesActions } from '../ducks/stories.preload.ts';
-import { useToastActions } from '../ducks/toast.preload.ts';
+import { useToastActions } from '../ducks/toast.dom.ts';
 import { useAudioPlayerActions } from '../ducks/audioPlayer.preload.ts';
 import { useItemsActions } from '../ducks/items.preload.ts';
 import { getHasPendingUpdate } from '../selectors/updates.std.ts';
@@ -89,7 +89,7 @@ export const SmartStoriesTab = memo(function SmartStoriesTab() {
 
   const handleForwardStory = useCallback(
     (messageId: string) => {
-      toggleForwardMessagesModal({
+      void toggleForwardMessagesModal({
         type: ForwardMessagesModalType.Forward,
         messageIds: [messageId],
       });
@@ -100,7 +100,7 @@ export const SmartStoriesTab = memo(function SmartStoriesTab() {
   const handleSaveStory = useCallback(
     (story: StoryViewType) => {
       if (story.attachment) {
-        saveAttachment(story.attachment, story.timestamp);
+        void saveAttachment(story.attachment, story.timestamp);
       }
     },
     [saveAttachment]

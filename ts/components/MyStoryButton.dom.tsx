@@ -6,13 +6,13 @@ import classNames from 'classnames';
 import type { ConversationType } from '../state/ducks/conversations.preload.ts';
 import type { LocalizerType } from '../types/Util.std.ts';
 import type { MyStoryType, StoryViewType } from '../types/Stories.std.ts';
-import type { ShowToastAction } from '../state/ducks/toast.preload.ts';
+import type { ShowToastAction } from '../state/ducks/toast.dom.ts';
 import { Avatar, AvatarSize } from './Avatar.dom.tsx';
 import { HasStories, ResolvedSendStatus } from '../types/Stories.std.ts';
 import { MessageTimestamp } from './conversation/MessageTimestamp.dom.tsx';
 import { StoriesAddStoryButton } from './StoriesAddStoryButton.dom.tsx';
 import { StoryImage } from './StoryImage.dom.tsx';
-import { getAvatarColor } from '../types/Colors.std.ts';
+import { getAvatarColor } from '../types/Avatar.std.ts';
 import { reduceStorySendStatus } from '../util/resolveStorySendStatus.std.ts';
 
 export type PropsType = {
@@ -57,31 +57,36 @@ export function MyStoryButton({
       <StoriesAddStoryButton
         i18n={i18n}
         maxAttachmentVideoSize={maxAttachmentVideoSize}
-        moduleClassName="StoryListItem StoryListItem--active-opactiy"
         onAddStory={onAddStory}
         showToast={showToast}
       >
-        <div className="MyStories__avatar-container">
-          <Avatar
-            avatarUrl={avatarUrl}
-            badge={undefined}
-            color={getAvatarColor(color)}
-            conversationType="direct"
-            i18n={i18n}
-            profileName={profileName}
-            size={AvatarSize.FORTY_EIGHT}
-            title={title}
-          />
-          <div className="MyStories__avatar__add-story" />
-        </div>
-        <div className="StoryListItem__info">
-          <div className="StoryListItem__info--title">
-            {i18n('icu:Stories__mine')}
+        <button
+          type="button"
+          aria-label={i18n('icu:Stories__add')}
+          className="StoryListItem__button"
+        >
+          <div className="MyStories__avatar-container">
+            <Avatar
+              avatarUrl={avatarUrl}
+              badge={undefined}
+              color={getAvatarColor(color)}
+              conversationType="direct"
+              i18n={i18n}
+              profileName={profileName}
+              size={AvatarSize.FORTY_EIGHT}
+              title={title}
+            />
+            <div className="MyStories__avatar__add-story" />
           </div>
-          <div className="StoryListItem__info--timestamp">
-            {i18n('icu:Stories__add')}
+          <div className="StoryListItem__info">
+            <div className="StoryListItem__info--title">
+              {i18n('icu:Stories__mine')}
+            </div>
+            <div className="StoryListItem__info--timestamp">
+              {i18n('icu:Stories__add')}
+            </div>
           </div>
-        </div>
+        </button>
       </StoriesAddStoryButton>
     );
   }
@@ -108,23 +113,28 @@ export function MyStoryButton({
         <StoriesAddStoryButton
           i18n={i18n}
           maxAttachmentVideoSize={maxAttachmentVideoSize}
-          moduleClassName="StoryListItem--active-opacity"
           onAddStory={onAddStory}
           showToast={showToast}
           onContextMenuShowingChanged={setActive}
         >
-          <Avatar
-            avatarUrl={avatarUrl}
-            badge={undefined}
-            color={getAvatarColor(color)}
-            conversationType="direct"
-            i18n={i18n}
-            profileName={profileName}
-            size={AvatarSize.FORTY_EIGHT}
-            storyRing={HasStories.Read}
-            title={title}
-          />
-          <div className="MyStories__avatar__add-story" />
+          <button
+            type="button"
+            aria-label={i18n('icu:Stories__add')}
+            className="MyStories__avatar-button StoryListItem--active-opacity"
+          >
+            <Avatar
+              avatarUrl={avatarUrl}
+              badge={undefined}
+              color={getAvatarColor(color)}
+              conversationType="direct"
+              i18n={i18n}
+              profileName={profileName}
+              size={AvatarSize.FORTY_EIGHT}
+              storyRing={HasStories.Read}
+              title={title}
+            />
+            <div className="MyStories__avatar__add-story" />
+          </button>
         </StoriesAddStoryButton>
       </div>
       <div
@@ -163,7 +173,7 @@ export function MyStoryButton({
             <MessageTimestamp
               i18n={i18n}
               isRelativeTime
-              module="StoryListItem__info--timestamp"
+              className="StoryListItem__info--timestamp"
               timestamp={newestStory.timestamp}
             />
           )}
@@ -182,7 +192,7 @@ export function MyStoryButton({
             isMe
             isThumbnail
             label=""
-            moduleClassName="StoryListItem__previews--image"
+            className="StoryListItem__previews--image"
             queueStoryDownload={queueStoryDownload}
             storyId={newestStory.messageId}
             onMediaPlaybackStart={onMediaPlaybackStart}

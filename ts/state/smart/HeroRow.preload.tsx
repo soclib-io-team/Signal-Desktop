@@ -17,7 +17,7 @@ import { useSharedGroupNamesOnMount } from '../../util/sharedGroupNames.dom.ts';
 import { useConversationsActions } from '../ducks/conversations.preload.ts';
 import { useGlobalModalActions } from '../ducks/globalModals.preload.ts';
 import { useStoriesActions } from '../ducks/stories.preload.ts';
-import { getGroupMemberships } from '../../util/getGroupMemberships.dom.ts';
+import { getGroupMemberships } from '../../util/getGroupMemberships.std.ts';
 import { useNavActions } from '../ducks/nav.std.ts';
 import { tw } from '../../axo/tw.dom.tsx';
 import { isInSystemContacts } from '../../util/isInSystemContacts.std.ts';
@@ -58,7 +58,7 @@ export const SmartHeroRow = memo(function SmartHeroRow({
   const { toggleAboutContactModal, toggleProfileNameWarningModal } =
     useGlobalModalActions();
   const openConversationDetails = useCallback(() => {
-    pushPanelForConversation({ type: PanelType.ConversationDetails });
+    void pushPanelForConversation({ type: PanelType.ConversationDetails });
   }, [pushPanelForConversation]);
   const { viewUserStories } = useStoriesActions();
   const {

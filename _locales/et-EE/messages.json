@@ -2,8 +2,20 @@
   "icu:AxoAlertDialog.Cancel": {
     "messageformat": "Loobu"
   },
+  "icu:AxoAlertDialog.Ok": {
+    "messageformat": "Sobib"
+  },
   "icu:AxoButton.Pending": {
     "messageformat": "Ootel"
+  },
+  "icu:AxoColorSlider.Hue": {
+    "messageformat": "Toon"
+  },
+  "icu:AxoColorSlider.Saturation": {
+    "messageformat": "Küllastus"
+  },
+  "icu:AxoColorSlider.Lightness": {
+    "messageformat": "Heledus"
   },
   "icu:AxoDialog.Back": {
     "messageformat": "Tagasi"
@@ -11,8 +23,44 @@
   "icu:AxoDialog.Close": {
     "messageformat": "Sulge"
   },
+  "icu:AxoLoadingIndicator.Loading": {
+    "messageformat": "Laadimine"
+  },
+  "icu:AxoMediaButton.Play": {
+    "messageformat": "Esita"
+  },
+  "icu:AxoMediaButton.Pause": {
+    "messageformat": "Pane pausile"
+  },
+  "icu:AxoMediaButton.Download": {
+    "messageformat": "Laadi alla"
+  },
+  "icu:AxoMediaButton.CancelDownload": {
+    "messageformat": "Tühista allalaadimine"
+  },
+  "icu:AxoOutgoingStatus.Sending": {
+    "messageformat": "Saatmine"
+  },
+  "icu:AxoOutgoingStatus.Sent": {
+    "messageformat": "Saadetud"
+  },
+  "icu:AxoOutgoingStatus.Delivered": {
+    "messageformat": "Kohale toimetatud"
+  },
+  "icu:AxoOutgoingStatus.Read": {
+    "messageformat": "Loetud"
+  },
+  "icu:AxoOutgoingStatus.Paused": {
+    "messageformat": "Saatmine peatatud"
+  },
+  "icu:AxoOutgoingStatus.Error": {
+    "messageformat": "Saatmine ebaõnnestus"
+  },
   "icu:AxoPasswordField.Reveal": {
     "messageformat": "Näita parooli"
+  },
+  "icu:AxoProgressIndicator.Loading": {
+    "messageformat": "Laadimine"
   },
   "icu:AxoTextField.Clear": {
     "messageformat": "Eemalda"
@@ -73,12 +121,6 @@
   },
   "icu:LinkedDevicesOnboardingDialog__bullet--2": {
     "messageformat": "Oma põhiseadme kaudu saad hallata lingitud seadmeid, mida võib olla kuni 5."
-  },
-  "icu:LinkedDevicesOnboardingDialog__bullet--3": {
-    "messageformat": "Kontosätteid saad hallata ainult oma põhiseadmes, sh kontosätteid ja varukoopiaid."
-  },
-  "icu:LinkedDevicesOnboardingDialog__bullet--3--1": {
-    "messageformat": "Konto sätteid ja varukoopiaid saab hallata ainult su peamisest seadmest."
   },
   "icu:LinkedDevicesOnboardingDialog__bullet--3--2": {
     "messageformat": "Konto sätteid ja Signali turvalisi varukoopiaid saad hallata ainult oma peamisest seadmest."
@@ -260,6 +302,12 @@
   "icu:messageContextMenuButton": {
     "messageformat": "Rohkem tegevusi"
   },
+  "icu:messageContextMenu__sticker--addFavorite": {
+    "messageformat": "Lisa lemmikute hulka"
+  },
+  "icu:messageContextMenu__sticker--removeFavorite": {
+    "messageformat": "Eemalda lemmikute hulgast"
+  },
   "icu:contextMenuCopyLink": {
     "messageformat": "Kopeeri link"
   },
@@ -280,6 +328,9 @@
   },
   "icu:archivedConversations": {
     "messageformat": "Arhiveeritud vestlused"
+  },
+  "icu:LeftPane__MoreActionsLabel": {
+    "messageformat": "Rohkem tegevusi"
   },
   "icu:LeftPane__MoreActionsMenu__AddChatFolder": {
     "messageformat": "Lisa vestluste kaust"
@@ -641,9 +692,6 @@
   "icu:SafetyNumberViewer__KeyTransparency__popup--unavailable__body": {
     "messageformat": "Signal saab krüpteeringut automaatselt kontrollida ainult vestlustes, kus oled kellegagi telefoninumbri kaudu ühendatud. Kui vestlust alustati ühise kasutajanime või grupiga, kontrolli otspunktkrüpteeringut, võrreldes eelmisel kuval olevaid numbreid või skannides tema seadmes kuvatavat koodi."
   },
-  "icu:SafetyNumberViewer__KeyTransparency__popup__okay": {
-    "messageformat": "Sobib"
-  },
   "icu:SafetyNumberNotReady__body": {
     "messageformat": "Pärast seda, kui te omavahel sõnumeid vahetate, luuakse selle isikuga turvanumber."
   },
@@ -671,8 +719,8 @@
   "icu:KeyTransparencyOnboardingDialog__Title": {
     "messageformat": "Signal saab nüüd krüptimist automaatselt kontrollida"
   },
-  "icu:KeyTransparencyOnboardingDialog__Description": {
-    "messageformat": "Kontaktide puhul, kellega lõid ühenduse telefoninumbri kaudu, kinnitab Signal automaatselt, kas ühendus on turvaline, kasutades protsessi nimega võtme läbipaistvus. Täiendava turvalisuse eesmärgil saab ühendusi endiselt kinnitada ka käsitsi QR-koodi abil või turvanumbreid võrreldes."
+  "icu:KeyTransparencyOnboardingDialog__Description-v2": {
+    "messageformat": "<paragraph>Kontaktide puhul, kellega lõid ühenduse telefoninumbri kaudu, kinnitab Signal automaatselt, kas ühendus on turvaline, kasutades protsessi nimega võtme läbipaistvus.</paragraph><paragraph>Täiendava turvalisuse eesmärgil saab ühendusi endiselt kinnitada ka käsitsi QR-koodi abil või turvanumbreid võrreldes.</paragraph>"
   },
   "icu:KeyTransparencyOnboardingDialog__Continue": {
     "messageformat": "Jätka"
@@ -755,6 +803,18 @@
   "icu:Toast--ChatFolderCreated": {
     "messageformat": "Lisatud kaust: „{chatFolderName}“"
   },
+  "icu:Toast--LinkedDeviceAdded": {
+    "messageformat": "New device \"{name}\" successfully linked"
+  },
+  "icu:Toast--LinkedDeviceRemoved": {
+    "messageformat": "\"{name}\" unlinked"
+  },
+  "icu:Toast--LinkedDeviceNameUpdated": {
+    "messageformat": "Device name updated"
+  },
+  "icu:Toast--LinkedDeviceSyncComplete": {
+    "messageformat": "Message sync complete"
+  },
   "icu:cannotSelectPhotosAndVideosAlongWithFiles": {
     "messageformat": "Sa ei saa fotosid ja videoid koos failidega valida."
   },
@@ -769,6 +829,9 @@
   },
   "icu:videoFileTooLargeWarning": {
     "messageformat": "Seda videofaili ei saa saata, sest see on liiga suur. Sa saad saata videofaile suurusega kuni {limit,number} {units}."
+  },
+  "icu:videoFileTooLongWarning": {
+    "messageformat": "Videot ei saa saata, sest see on pikem kui {maxDuration}"
   },
   "icu:unableToLoadAttachment": {
     "messageformat": "Valitud manuse laadimine ei õnnestunud."
@@ -919,24 +982,6 @@
   },
   "icu:sendMessageToContact": {
     "messageformat": "Saada sõnum"
-  },
-  "icu:home": {
-    "messageformat": "kodu"
-  },
-  "icu:work": {
-    "messageformat": "töö"
-  },
-  "icu:mobile": {
-    "messageformat": "mobiil"
-  },
-  "icu:email": {
-    "messageformat": "e-post"
-  },
-  "icu:phone": {
-    "messageformat": "telefon"
-  },
-  "icu:address": {
-    "messageformat": "aadress"
   },
   "icu:poBox": {
     "messageformat": "postkast"
@@ -1349,9 +1394,6 @@
   "icu:PinMessageDisappearingMessagesWarningDialog__Description": {
     "messageformat": "Kaduvate sõnumite esiletõstud eemaldatakse, kui nende taimer aegub ja sõnum vestlusest eemaldatakse."
   },
-  "icu:PinMessageDisappearingMessagesWarningDialog__Okay": {
-    "messageformat": "Sobib"
-  },
   "icu:PinnedMessagesBar__AccessibilityLabel": {
     "messageformat": "{pinsCount, plural, one {Esiletõstetud sõnum} other {Esiletõstetud sõnumid}}"
   },
@@ -1480,6 +1522,9 @@
   },
   "icu:ConversationMerge--learn-more": {
     "messageformat": "Uuri täpsemalt"
+  },
+  "icu:ConversationMerge--explainer-dialog--label": {
+    "messageformat": "Sõnumiajalugu liidetud"
   },
   "icu:ConversationMerge--explainer-dialog--line-1": {
     "messageformat": "Pärast sõnumite saatmist vestluses {obsoleteConversationTitle} said sa teada, et see number kuulub vestlusesse {conversationTitle}. Tema telefoninumber on privaatne."
@@ -1742,6 +1787,9 @@
   "icu:Preferences__EditChatFolderPage__SelectChatsDialog__Search__Placeholder": {
     "messageformat": "Otsi"
   },
+  "icu:Preferences__EditChatFolderPage__SelectChatsDialog__NoChats": {
+    "messageformat": "Vestlusi ei ole"
+  },
   "icu:Preferences__EditChatFolderPage__SelectChatsDialog__ChatTypesSection__Title": {
     "messageformat": "Vestluste tüübid"
   },
@@ -1804,6 +1852,15 @@
   },
   "icu:Preferences__EditChatFolderPage__CancelButton": {
     "messageformat": "Loobu"
+  },
+  "icu:Preferences__PrivacyPage__SealedSender": {
+    "messageformat": "Varjatud saatja"
+  },
+  "icu:Preferences__PrivacyPage__AllowFromAnyone__Label": {
+    "messageformat": "Luba kõigilt"
+  },
+  "icu:Preferences__PrivacyPage__AllowFromAnyone__Description": {
+    "messageformat": "Luba varjatud saatja sissetulevate sõnumite puhul, mis tulevad kontaktiks mitte olevatelt isikutelt ja nendelt, kellega sa pole oma profiili jaganud. <learnMoreLink>Rohkem teavet</learnMoreLink>."
   },
   "icu:Preferences__PrivacyPage__ShowStatusIcon__Label": {
     "messageformat": "Näita olekuikooni"
@@ -2234,6 +2291,24 @@
   "icu:deleteAccountDialogBody": {
     "messageformat": "See toiming kustutab sinu konto teabe, profiili ja kõik su sõnumid. Sind eemaldatakse ka kõigist Signali gruppidest. Rakendus sulgub pärast selle protsessi lõpuleviimist."
   },
+  "icu:DeleteAccountConfirmDialog--Title": {
+    "messageformat": "Kustuta konto"
+  },
+  "icu:DeleteAccountConfirmDialog--Description": {
+    "messageformat": "See toiming kustutab sinu konto teabe, profiili ja kõik su sõnumid. Sind eemaldatakse ka kõigist Signali gruppidest."
+  },
+  "icu:DeleteAccountConfirmDialog--ConfirmNumber": {
+    "messageformat": "Kinnita oma telefoninumber"
+  },
+  "icu:DeleteAccountConfirmDialog--CountryCodePlaceholder": {
+    "messageformat": "Riigikood"
+  },
+  "icu:DeleteAccountConfirmDialog--NumberPlaceholder": {
+    "messageformat": "Telefoninumber"
+  },
+  "icu:DeleteAccountConfirmDialog--DeleteButton": {
+    "messageformat": "Kustuta"
+  },
   "icu:deleteOldIndexedDBData": {
     "messageformat": "Sul on Signal Desktop-i varasematest paigaldustest jäänud üleliigseid andmeid. Kui valid jätkamise, siis need andmed kustutatakse ja sa alustad algusest peale."
   },
@@ -2386,9 +2461,6 @@
   },
   "icu:callRingtoneNotificationDescription": {
     "messageformat": "Mängi helistamistoone"
-  },
-  "icu:callSystemNotificationDescription": {
-    "messageformat": "Kuva kõnede korral teavitust"
   },
   "icu:incomingCallNotificationDescription": {
     "messageformat": "Luba sissetulevad kõned"
@@ -2828,17 +2900,38 @@
   "icu:stickers--StickerManager--UninstallWarning": {
     "messageformat": "Sa ei saa seda kleebisepakki uuesti paigaldada, kui sul pole enam algsõnumit."
   },
+  "icu:stickers--StickerManager--UninstallWarning--Title": {
+    "messageformat": "Remove Sticker Pack?"
+  },
+  "icu:stickers--StickerManager--UninstallWarning--Body": {
+    "messageformat": "This will remove the sticker pack. You can't add it again without a link or sticker message."
+  },
+  "icu:stickers--StickerManager--UninstallWarning--Remove": {
+    "messageformat": "Remove"
+  },
   "icu:stickers--StickerManagerHeader--All": {
     "messageformat": "Kõik"
   },
   "icu:stickers--StickerManagerHeader--MyStickers": {
     "messageformat": "Minu kleebised"
   },
+  "icu:stickers--StickerManagerHidePackDialog--Title": {
+    "messageformat": "Hide Sticker Pack?"
+  },
+  "icu:stickers--StickerManagerHidePackDialog--Body": {
+    "messageformat": "This will remove the sticker pack. You can't add it again without a link or sticker message."
+  },
+  "icu:stickers--StickerManagerHidePackDialog--Hide": {
+    "messageformat": "Hide"
+  },
   "icu:stickers--StickerManagerPackContextMenu--Add": {
     "messageformat": "Lisa"
   },
   "icu:stickers--StickerManagerPackContextMenu--Remove": {
     "messageformat": "Eemalda"
+  },
+  "icu:stickers--StickerManagerPackContextMenu--Hide": {
+    "messageformat": "Hide"
   },
   "icu:stickers--StickerManagerPackDragHandle--Label": {
     "messageformat": "Lohista kleebiste komplekti järjekorra muutmiseks"
@@ -2876,8 +2969,41 @@
   "icu:stickers--StickerPreview--StickerNoEmojiAriaLabel": {
     "messageformat": "Kleebis ilma emojita"
   },
+  "icu:stickers--StickerPreview--SeeStickerDetails": {
+    "messageformat": "Vaata kleebise andmeid"
+  },
+  "icu:stickers--StickerPreview--StickerDetailsTitle": {
+    "messageformat": "Kleebise andmed"
+  },
+  "icu:stickers--StickerPreview--AddFavorite": {
+    "messageformat": "Lisa lemmikute hulka"
+  },
+  "icu:stickers--StickerPreview--RemoveFavorite": {
+    "messageformat": "Eemalda lemmikute hulgast"
+  },
   "icu:stickers--StickerPackLinkPreviewDescription": {
     "messageformat": "Kleebiste komplekt kasutajalt {author}"
+  },
+  "icu:stickers--Toast--StickerFavoriteAdded": {
+    "messageformat": "Kleebis on lisatud lemmikute hulka"
+  },
+  "icu:stickers--Toast--StickerFavoriteRemoved": {
+    "messageformat": "Kleebis on lemmikute hulgast eemaldatud"
+  },
+  "icu:stickers--Toast--StickerFavoritesHint": {
+    "messageformat": "Right click a sticker to add to Favorites"
+  },
+  "icu:stickers--Toast--StickerFavoritesTooMany": {
+    "messageformat": "{count, plural, one {Saad lemmikute hulka lisada vaid {count,number} kleebise} other {Saad lemmikute hulka lisada vaid {count,number} kleebist}}"
+  },
+  "icu:stickers--Toast--StickerPackHidden": {
+    "messageformat": "Sticker pack hidden"
+  },
+  "icu:stickers--Toast--StickerPackHidden--Undo": {
+    "messageformat": "Undo"
+  },
+  "icu:stickers--Toast--StickerPackUnhidden": {
+    "messageformat": "Sticker pack unhidden"
   },
   "icu:stickers--ViewPack": {
     "messageformat": "Vaata komplekti"
@@ -2987,6 +3113,9 @@
   "icu:FunPanelSticker__SubNavLabel": {
     "messageformat": "Kleebiste komplektid"
   },
+  "icu:FunPanelStickers__SubNavCategoryLabel--Favorites": {
+    "messageformat": "Lemmikud"
+  },
   "icu:FunPanelStickers__SubNavCategoryLabel--Recents": {
     "messageformat": "Hiljuti kasutatud"
   },
@@ -2999,11 +3128,20 @@
   "icu:FunPanelStickers__SectionTitle--Recents": {
     "messageformat": "Hiljuti kasutatud"
   },
+  "icu:FunPanelStickers__SectionTitle--Favorites": {
+    "messageformat": "Lemmikud"
+  },
   "icu:FunPanelStickers__SectionTitle--Featured": {
     "messageformat": "Esiletõstetud"
   },
   "icu:FunPanelStickers__SearchResults__EmptyHeading": {
     "messageformat": "Kleebiseid ei leitud"
+  },
+  "icu:FunPanelStickers__StickerContextMenu--AddFavorite": {
+    "messageformat": "Lisa lemmikute hulka"
+  },
+  "icu:FunPanelStickers__StickerContextMenu--RemoveFavorite": {
+    "messageformat": "Eemalda lemmikute hulgast"
   },
   "icu:FunPanelStickers__LightboxDialog__Label": {
     "messageformat": "Kleebise eelvaade"
@@ -3061,9 +3199,6 @@
   },
   "icu:FunPanelGifs__GiphyAttribution__AccessibilityLabel": {
     "messageformat": "GIPHY poolt"
-  },
-  "icu:FunSearch__ClearButtonLabel": {
-    "messageformat": "Tühjenda otsing"
   },
   "icu:FunSkinTones__List": {
     "messageformat": "Nahatoon"
@@ -3512,6 +3647,9 @@
   "icu:MessageRequests--unblock-group-confirm-body": {
     "messageformat": "Grupi liikmetel on võimalik sind sellesse gruppi uuesti lisada."
   },
+  "icu:MessageRequests--unblock-signal-confirm-body": {
+    "messageformat": "Sa saad Signali värskendusi ja uudiseid."
+  },
   "icu:MessageRequests--block-and-report-spam-success-toast": {
     "messageformat": "Rämpspostitusest teatatud ja blokeeritud."
   },
@@ -3526,6 +3664,9 @@
   },
   "icu:MessageRequests--block-group-confirm-body": {
     "messageformat": "Sa ei saa enam sellelt grupilt sõnumeid ega värskendusi ja liikmed ei saa sind uuesti sellesse gruppi lisada."
+  },
+  "icu:MessageRequests--block-signal-confirm-body": {
+    "messageformat": "Sa ei saa enam Signali värskendusi ega uudiseid."
   },
   "icu:MessageRequests--reportAndMaybeBlock": {
     "messageformat": "Teata …"
@@ -3854,6 +3995,9 @@
   "icu:callingDeviceSelection__settings": {
     "messageformat": "Sätted"
   },
+  "icu:callingDeviceSelection__settings-v2": {
+    "messageformat": "Kõne sätted"
+  },
   "icu:calling__participants--pluralized": {
     "messageformat": "{people, plural, one {{people,number} kõnes} other {{people,number} kõnes}}"
   },
@@ -3959,6 +4103,15 @@
   "icu:callingDeviceSelection__select--default": {
     "messageformat": "Vaikimisi"
   },
+  "icu:callingDeviceSelection__select--default-nonwin": {
+    "messageformat": "Vaikimisi: {deviceName}"
+  },
+  "icu:callingDeviceSelection__select--default_console": {
+    "messageformat": "Vaikimisi: {deviceName}"
+  },
+  "icu:callingDeviceSelection__select--default_communications": {
+    "messageformat": "Vaikimisi suhtlus: {deviceName}"
+  },
   "icu:muteNotificationsTitle": {
     "messageformat": "Vaigista teavitused"
   },
@@ -4027,9 +4180,6 @@
   },
   "icu:DebugLogErrorModal__SubmitDebugLog__Cancel": {
     "messageformat": "Tänan, ei"
-  },
-  "icu:Confirmation--confirm": {
-    "messageformat": "Sobib"
   },
   "icu:MessageMaxEditsModal__Title": {
     "messageformat": "Sõnumit ei saa muuta"
@@ -4811,6 +4961,69 @@
   "icu:CompositionArea__AttachMenu__Poll": {
     "messageformat": "Küsitlus"
   },
+  "icu:CompositionArea__AttachMenu__Contact": {
+    "messageformat": "Kontakt"
+  },
+  "icu:ShareContactDialog__SelectContact__Title": {
+    "messageformat": "Vali kontakt"
+  },
+  "icu:ShareContactDialog__SelectContact__SearchPlaceholder": {
+    "messageformat": "Otsi"
+  },
+  "icu:ShareContactDialog__SelectContact__EmptyState": {
+    "messageformat": "Kontakte pole"
+  },
+  "icu:ShareContactDialog__SelectContact__NoResults": {
+    "messageformat": "„{searchQuery}“ ei andnud otsingutulemusi"
+  },
+  "icu:ShareContactDialog__ShareContact__Title": {
+    "messageformat": "Jaga kontakti"
+  },
+  "icu:ShareContactDialog__ShareContact__Description": {
+    "messageformat": "Kõik, kellega seda profiili jagad, saavad saata kasutajale {name} sõnumi."
+  },
+  "icu:ShareContactDialog__ShareContact__Send": {
+    "messageformat": "Saada kontakt"
+  },
+  "icu:ShareContactDialog__ShareContact__EditName": {
+    "messageformat": "Muuda nime"
+  },
+  "icu:ShareContactDialog__EditName__Title": {
+    "messageformat": "Muuda nime"
+  },
+  "icu:ShareContactDialog__EditName__Prefix": {
+    "messageformat": "Eesliide"
+  },
+  "icu:ShareContactDialog__EditName__GivenName": {
+    "messageformat": "Eesnimi"
+  },
+  "icu:ShareContactDialog__EditName__MiddleName": {
+    "messageformat": "Keskmine nimi"
+  },
+  "icu:ShareContactDialog__EditName__FamilyName": {
+    "messageformat": "Perekonnanimi"
+  },
+  "icu:ShareContactDialog__EditName__Suffix": {
+    "messageformat": "Järelliide"
+  },
+  "icu:ShareContactDialog__EditName__Organization": {
+    "messageformat": "Organisatsioon"
+  },
+  "icu:ShareContactDialog__ShareContact__EditPhoto": {
+    "messageformat": "Muuda fotot"
+  },
+  "icu:ShareContactDialog__SelectPhoto__Title": {
+    "messageformat": "Vali foto"
+  },
+  "icu:ShareContactDialog__SelectPhoto__ContactPhoto": {
+    "messageformat": "Kontakti foto"
+  },
+  "icu:ShareContactDialog__SelectPhoto__ProfilePhoto": {
+    "messageformat": "Profiilifoto"
+  },
+  "icu:ShareContactDialog__SelectPhoto__DefaultAvatar": {
+    "messageformat": "Vaikimisi avatar"
+  },
   "icu:CompositionArea--attach-plus": {
     "messageformat": "Lisa manus või küsitlus"
   },
@@ -4849,9 +5062,6 @@
   },
   "icu:CompositionInput__editing-message": {
     "messageformat": "Muuda sõnumit"
-  },
-  "icu:countMutedConversationsDescription": {
-    "messageformat": "Arvesta vaigistatud vestlused märkide arvu hulka"
   },
   "icu:ContactModal--nickname": {
     "messageformat": "Hüüdnimi"
@@ -5432,9 +5642,6 @@
   },
   "icu:DeleteAttachmentModal__Delete": {
     "messageformat": "Kustuta"
-  },
-  "icu:DeleteAttachmentModal__Cancel": {
-    "messageformat": "Loobu"
   },
   "icu:SelectModeActions__toast--TooManyMessagesToForward": {
     "messageformat": "Saad edastada vaid kuni 30 sõnumit"
@@ -6079,6 +6286,9 @@
   "icu:Preferences__button--account": {
     "messageformat": "Konto"
   },
+  "icu:Preferences__button--linked-devices": {
+    "messageformat": "Linked Devices"
+  },
   "icu:Preferences__button--general": {
     "messageformat": "Üldine"
   },
@@ -6148,6 +6358,186 @@
   "icu:Preferences--system": {
     "messageformat": "Süsteem"
   },
+  "icu:LinkDevice--OSPrompt--Mac": {
+    "messageformat": "link a new device"
+  },
+  "icu:LinkDevice--OSPrompt--Windows": {
+    "messageformat": "Verify your identity to link a new device."
+  },
+  "icu:LinkDevice--OSPrompt--description--Linux": {
+    "messageformat": "Link a device"
+  },
+  "icu:LinkDevice--OSPrompt--message--Linux": {
+    "messageformat": "Authentication is required to link a new device."
+  },
+  "icu:Preferences--LinkedDevices--title": {
+    "messageformat": "Linked devices"
+  },
+  "icu:Preferences--LinkedDevices--description": {
+    "messageformat": "Use Signal on another device. Your messages will sync to your linked devices. <learnMore>Learn more</learnMore>"
+  },
+  "icu:Preferences--LinkedDevices--button": {
+    "messageformat": "Link a new device"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--title": {
+    "messageformat": "Linked devices"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--defaultName": {
+    "messageformat": "Linked device"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--createdAt": {
+    "messageformat": "Linked {date}"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--lastSeenAt": {
+    "messageformat": "Last active {date}"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--openMenu": {
+    "messageformat": "Open menu"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--Menu--rename": {
+    "messageformat": "Rename"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--Menu--unlink": {
+    "messageformat": "Unlink"
+  },
+  "icu:Preferences--LinkedDevices--DeviceList--footer": {
+    "messageformat": "Messages and chat info are protected by end-to-end encryption on all devices"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--title": {
+    "messageformat": "Signal on a linked device"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet1": {
+    "messageformat": "All messaging on linked devices is private"
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet2": {
+    "messageformat": "Signal messages are synchronized with Signal on your desktop after it is linked."
+  },
+  "icu:Preferences--LinkedDevices--LearnMoreDialog--bullet3": {
+    "messageformat": "On your other device, visit <linkToSignal>signal.org/download</linkToSignal> to install Signal"
+  },
+  "icu:Preferences--LinkedDevices--EditDeviceNameDialog--title": {
+    "messageformat": "Edit device name"
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--title": {
+    "messageformat": "Unlink \"{name}\""
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--description": {
+    "messageformat": "This device will no longer be able to send or receive messages if it is unlinked."
+  },
+  "icu:Preferences--LinkedDevices--ConfirmUnlinkDialog--unlinkButton": {
+    "messageformat": "Unlink"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--title": {
+    "messageformat": "Scan QR code"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--description": {
+    "messageformat": "Scan the QR code displayed on the device to link"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--title": {
+    "messageformat": "Linking device failed"
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--description": {
+    "messageformat": "Make sure you are on the latest version of Signal, and scanning a QR code from within Signal and not another app."
+  },
+  "icu:Preferences--LinkedDevices--ScanQRCodeDialog--ErrorDialog--retry-button": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--title": {
+    "messageformat": "Finish linking"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--linkNSync--title": {
+    "messageformat": "Transfer Message History"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--linkNSync--description": {
+    "messageformat": "Transfer your text messages and your last 45 days of media"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--doNotTransfer--title": {
+    "messageformat": "Don't transfer"
+  },
+  "icu:Preferences--LinkedDevices--ChooseTransferMessageDialog--doNotTransfer--description": {
+    "messageformat": "No old messages or media will be transferred to your linked device"
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--title": {
+    "messageformat": "Syncing messages..."
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--progress": {
+    "messageformat": "{percentage,number,percent} complete"
+  },
+  "icu:Preferences--LinkedDevices--TransferringMessagesDialog--do-not-close": {
+    "messageformat": "Do not close Signal"
+  },
+  "icu:Preferences--LinkedDevices--LinkingDeviceDialog--title": {
+    "messageformat": "Linking device"
+  },
+  "icu:Preferences--LinkedDevices--LinkingDeviceDialog--progress": {
+    "messageformat": "Your device is being linked..."
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--title": {
+    "messageformat": "Linking device failed"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--description": {
+    "messageformat": "Something went wrong! Please ensure that both devices are connected to the internet and try again."
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--learn-more": {
+    "messageformat": "Learn more"
+  },
+  "icu:Preferences--LinkedDevices--GenericErrorDialog--retry": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--NotEnoughSpaceDialog--title": {
+    "messageformat": "Not enough storage space"
+  },
+  "icu:Preferences--LinkedDevices--NotEnoughSpaceDialog--description": {
+    "messageformat": "You don’t have enough free storage space on your device to transfer your messages. Free up some space and try again, or link your device without transferring your messages."
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--title": {
+    "messageformat": "Message sync failed"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--description": {
+    "messageformat": "Your device was successfully linked, but your messages could not be transferred."
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--learn-more": {
+    "messageformat": "Learn more"
+  },
+  "icu:Preferences--LinkedDevices--FailedToMakeBackupDialog--continue": {
+    "messageformat": "Continue"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--title": {
+    "messageformat": "Message sync failed"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--description": {
+    "messageformat": "Your messages couldn’t be transferred to your linked device. You can try re-linking and transferring again, or continue without transferring your message history."
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--continue-no-transfer": {
+    "messageformat": "Continue without transferring"
+  },
+  "icu:Preferences--LinkedDevices--FailedToUploadError--retry": {
+    "messageformat": "Retry"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--title": {
+    "messageformat": "Include a debug log?"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--description": {
+    "messageformat": "Including your debug log helps us diagnose and fix the issue, and does not contain identifying information. This is optional."
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--include-log-checkbox": {
+    "messageformat": "Include debug log"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--view": {
+    "messageformat": "View"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--no-thanks": {
+    "messageformat": "No thanks"
+  },
+  "icu:Preferences--LinkedDevices--ContactSupportDialog--contact-support": {
+    "messageformat": "Contact support"
+  },
   "icu:Preferences--signal-login": {
     "messageformat": "Signal Login"
   },
@@ -6168,9 +6558,6 @@
   },
   "icu:Preferences__SignalAccountKeys__Description": {
     "messageformat": "Hoia seda turvalises kohas, sisselogimisinfot on vaja sinu andmete ja konto taastamiseks. Ära jaga seda kunagi kellegagi."
-  },
-  "icu:Preferences__SignalAccountKeys__AccountKey": {
-    "messageformat": "Konto võti"
   },
   "icu:Preferences__SignalAccountKeys__AccountID": {
     "messageformat": "Konto ID"
@@ -6271,9 +6658,6 @@
   "icu:Preferences--pin-reminders--header": {
     "messageformat": "PIN-koodi meeldetuletused"
   },
-  "icu:Preferences--pin-reminders--description": {
-    "messageformat": "Aja möödudes hakatakse seda sinult harvemini küsima"
-  },
   "icu:Preferences--registration-lock__label": {
     "messageformat": "Registreerimislukk"
   },
@@ -6291,9 +6675,6 @@
   },
   "icu:Preferences__Notifications__SoundsSection__Title": {
     "messageformat": "Helid"
-  },
-  "icu:Preferences__Notifications__AppBadgeSection__Title": {
-    "messageformat": "Äpi märk"
   },
   "icu:Preferences__Notifications__AppBadgeSection__Title-v2": {
     "messageformat": "Lugemata märgid"
@@ -6673,6 +7054,9 @@
   "icu:Preferences--blocked-users--description": {
     "messageformat": "Blokeeritud kasutajad ei saa sulle helistada ega sõnumeid saata"
   },
+  "icu:Preferences--add-blocked": {
+    "messageformat": "Lisa blokeeritud kasutaja või grupp"
+  },
   "icu:Preferences--blocked-users": {
     "messageformat": "Blokeeritud kasutajad"
   },
@@ -6681,6 +7065,12 @@
   },
   "icu:Preferences--blocked--blocked-on": {
     "messageformat": "Blokeerimise aeg: {blockedAt}"
+  },
+  "icu:Preferences--BlockChooser--Done": {
+    "messageformat": "Valmis"
+  },
+  "icu:Preferences--BlockChooser--Search--Placeholder": {
+    "messageformat": "Otsi"
   },
   "icu:Preferences--signal-backups": {
     "messageformat": "Signali turvalised varukoopiad"
@@ -7078,6 +7468,36 @@
   "icu:InstallScreenUpdateDialog--cannot-update__body": {
     "messageformat": "Signal Desktopi uuendamine nurjus, kuid uus versioon on saadaval. Ava {downloadUrl} ja paigalda uus versioon käsitsi ning teavita probleemist kasutajatuge või saada veateade."
   },
+  "icu:EntryPoint--signal-logo": {
+    "messageformat": "Signali logo"
+  },
+  "icu:EntryPoint--Title--Line1": {
+    "messageformat": "Võta privaatsus endaga kaasa."
+  },
+  "icu:EntryPoint--Title--Line2": {
+    "messageformat": "Ole igas sõnumis sina ise."
+  },
+  "icu:EntryPoint--link-button": {
+    "messageformat": "Seo oma konto"
+  },
+  "icu:EntryPoint--more-options-button": {
+    "messageformat": "Rohkem valikuid"
+  },
+  "icu:EntryPoint--nonprofit": {
+    "messageformat": "Signal on mittetulundusühing"
+  },
+  "icu:EntryPoint--terms": {
+    "messageformat": "Tingimused ja privaatsuseeskirjad"
+  },
+  "icu:EntryPoint--MoreOptions--Title": {
+    "messageformat": "Rohkem valikuid"
+  },
+  "icu:EntryPoint--MoreOptions--RegistrationButton--Title": {
+    "messageformat": "Loo uus konto"
+  },
+  "icu:EntryPoint--MoreOptions--RegistrationButton--Description": {
+    "messageformat": "Loo oma telefoninumbri abil uus Signali konto."
+  },
   "icu:StandaloneRegistration--signal-logo": {
     "messageformat": "Signali logo"
   },
@@ -7097,7 +7517,7 @@
     "messageformat": "Palun proovi uuesti {duration} pärast"
   },
   "icu:StandaloneRegistration--PhoneNumber--RegionCodeSelector--Label": {
-    "messageformat": "Select region code"
+    "messageformat": "Vali riigi suunakood"
   },
   "icu:StandaloneRegistration--PhoneNumber--placeholder": {
     "messageformat": "Telefoninumber"
@@ -7272,6 +7692,21 @@
   },
   "icu:StandaloneRegistration--VerificationCode--CannotSendCodeTemporary--ok-button": {
     "messageformat": "Sobib"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Title": {
+    "messageformat": "Probleemid registreerimisega?"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet1": {
+    "messageformat": "Kontrolli, et su telefon oleks SMS-i või kõne saamiseks levis."
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet2": {
+    "messageformat": "Kinnita, kas saad numbril telefonikõnesid vastu võtta"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Bullet3": {
+    "messageformat": "Veendu, et oled oma telefoninumbri õigesti sisestanud"
+  },
+  "icu:StandaloneRegistration--VerificationCode--HavingTrouble--Footer": {
+    "messageformat": "Kui sa endiselt registreeruda ei saa, proovi <troubleshootingLink>tõrkeotsingu juhiseid</troubleshootingLink> või <contactSupportLink>võta ühendust kasutajatoega</contactSupportLink>."
   },
   "icu:StandaloneRegistration--ProfileEntry--header": {
     "messageformat": "Seadista oma profiil"
@@ -8008,6 +8443,9 @@
   "icu:StoryDetailsModal__download-attachment": {
     "messageformat": "Laadi manus alla"
   },
+  "icu:StoryDetailsModal__more-actions": {
+    "messageformat": "More actions"
+  },
   "icu:StoryViewsNRepliesModal__read-receipts-off": {
     "messageformat": "Luba kättesaamiskinnitused, et näha, kes on su lugusid vaadanud. Ava enda nutiseadmes Signali äpp ja vali Sätted -> Lood."
   },
@@ -8561,12 +8999,6 @@
   "icu:CallLinkPendingParticipantModal__DenyButtonLabel": {
     "messageformat": "Keela sisenemine"
   },
-  "icu:CallLinkRestrictionsSelect__Option--Off": {
-    "messageformat": "Väljas"
-  },
-  "icu:CallLinkRestrictionsSelect__Option--On": {
-    "messageformat": "Sees"
-  },
   "icu:CallLinkAddNameModal__Title": {
     "messageformat": "Lisa kõne nimi"
   },
@@ -8614,6 +9046,39 @@
   },
   "icu:SaveMultiDialog__title": {
     "messageformat": "Salvesta manused"
+  },
+  "icu:EmbeddedContact__message": {
+    "messageformat": "Sõnum"
+  },
+  "icu:ContactDetail__message": {
+    "messageformat": "Sõnum"
+  },
+  "icu:ContactDetail__add-to-group": {
+    "messageformat": "Lisa gruppi"
+  },
+  "icu:ContactDetail__nickname": {
+    "messageformat": "Hüüdnimi"
+  },
+  "icu:ContactDetail__note": {
+    "messageformat": "Märkmed"
+  },
+  "icu:email-v2": {
+    "messageformat": "E-post"
+  },
+  "icu:home-v2": {
+    "messageformat": "Avaleht"
+  },
+  "icu:mobile-v2": {
+    "messageformat": "Mobiil"
+  },
+  "icu:work-v2": {
+    "messageformat": "Töö"
+  },
+  "icu:phone-v2": {
+    "messageformat": "Telefon"
+  },
+  "icu:address-v2": {
+    "messageformat": "Aadress"
   },
   "icu:WhatsNew__modal-title": {
     "messageformat": "Mis on uut"
@@ -8781,7 +9246,7 @@
     "messageformat": "Aitäh, et toetad Signalit. Sinu panus annab tõuke missioonile kaitsta väljendusvabadust ja võimaldada turvalist suhtlust miljonitele inimestele üle kogu maailma avatud lähtekoodiga privaatsustehnoloogia abil. Kui elad Ameerika Ühendriikides, jäta see kviitung alles oma maksude deklareerimiseks. Signal Technology Foundation on Ameerika Ühendriikides maksuseadustiku (US Internal Revenue Code) jao 501c3 järgi registreeritud maksuvaba mittetulundusühing. Meie föderaalne maksukood (Federal Tax ID) on 82-4506840. Signal ei paku selle annetuse eest vastutasuks kaupu ega teenuseid."
   },
   "icu:MessageCta__Donate": {
-    "messageformat": "Donate Now"
+    "messageformat": "Anneta kohe"
   },
   "icu:Donations__OfflineTooltip": {
     "messageformat": "Oled võrguühenduseta. Annetuse tegemiseks loo internetiühendus."
@@ -8981,6 +9446,9 @@
   "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__AccessibilityLabel": {
     "messageformat": "Probleemide kirjeldus"
   },
+  "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__Placeholder": {
+    "messageformat": "Kirjelda probleemi"
+  },
   "icu:CallQualitySurvey__WhatIssuesDidYouHave__SomethingElse__TextArea__HelpText": {
     "messageformat": "Palun lisa kõik probleemiga seotud üksikasjad. Kogu infot, mida siin jagad, hoitakse privaatsena ja seda kasutatakse ainult Signali kõnede täiustamiseks."
   },
@@ -9090,10 +9558,16 @@
     "messageformat": "Väikesed muudatused, vigade parandused ja jõudluse täiustused. Aitäh, et kasutad Signalit!",
     "ignoreUnused": true
   },
-  "icu:WhatsNew__8.30--0": {
-    "messageformat": "Parandasime videokõnede jõudlust."
+  "icu:WhatsNew__8.34--0": {
+    "messageformat": "Kontaktide jagamise tugi."
   },
-  "icu:WhatsNew__8.30--1": {
-    "messageformat": "Samuti lisasime mugava otsetee süsteemi sätete avamiseks Windowsis, kui proovid liituda videokõnega ja Signalil ei ole kaamerale juurdepääsu."
+  "icu:WhatsNew__8.34--1": {
+    "messageformat": "Ühendatud audioseadmete parem haldamine ja jõudlus."
+  },
+  "icu:WhatsNew__8.36--0": {
+    "messageformat": "Your top stickers now have a place to remain stuck. Add any sticker pack to your list of favorites so it's easy to stick with the ones you love."
+  },
+  "icu:WhatsNew__8.36--0--fix": {
+    "messageformat": "Nüüd saad mis tahes kleebise oma lemmikute hulka lisada, et seda oleks lihtne leida."
   }
 }

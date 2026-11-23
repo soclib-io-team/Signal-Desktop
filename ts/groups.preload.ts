@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import lodash from 'lodash';
-import type { ClientZkGroupCipher } from '@signalapp/libsignal-client/zkgroup.js';
+import { v4 as generateGuid } from 'uuid';
 import { LRUCache } from 'lru-cache';
+
+import type { ClientZkGroupCipher } from '@signalapp/libsignal-client/zkgroup.js';
+
 import { createLogger } from './logging/log.std.ts';
 import {
   getCheckedGroupCredentialsForToday,
@@ -35,14 +38,14 @@ import type {
   GroupV2PendingMemberType,
   GroupV2BannedMemberType,
   MessageAttributesType,
-} from './model-types.d.ts';
+} from './model-types.std.ts';
 import {
   createProfileKeyCredentialPresentation,
   decodeProfileKeyCredentialPresentation,
-  decryptGroupBlob,
-  decryptProfileKey,
   decryptAci,
+  decryptGroupBlob,
   decryptPni,
+  decryptProfileKey,
   decryptServiceId,
   deriveGroupID,
   deriveGroupPublicParams,
@@ -77,7 +80,7 @@ import {
 import { HTTPError } from './types/HTTPError.std.ts';
 import { CURRENT_SCHEMA_VERSION as MAX_MESSAGE_SCHEMA } from './types/Message2.preload.ts';
 import type { ConversationModel } from './models/conversations.preload.ts';
-import { getGroupSizeHardLimit } from './groups/limits.dom.ts';
+import { getGroupSizeHardLimit } from './groups/limits.std.ts';
 import {
   isGroupV1 as getIsGroupV1,
   isGroupV2 as getIsGroupV2,
@@ -117,6 +120,7 @@ import {
   validateGroupSendEndorsementsExpiration,
 } from './util/groupSendEndorsements.preload.ts';
 import { getProfile } from './util/getProfile.preload.ts';
+import { profileService } from './services/profiles.preload.ts';
 import { generateMessageId } from './util/generateMessageId.node.ts';
 import { postSaveUpdates } from './util/cleanup.preload.ts';
 import { MessageModel } from './models/messages.preload.ts';
@@ -133,19 +137,21 @@ import {
 } from './types/GroupMemberLabels.std.ts';
 import { getConversationIdForLogging } from './util/idForLogging.preload.ts';
 import { toNumber } from './util/toNumber.std.ts';
+import { computeGroupNameHash } from './util/Conversation.preload.ts';
+import { Emoji } from './axo/emoji.std.ts';
+import { areWeInGroupWith } from './util/areWeInGroupWith.preload.ts';
+import { registrationJobQueue } from './jobs/registrationJobQueue.preload.ts';
 
 import Actions = Proto.GroupChange.Actions;
 import AccessRequired = Proto.AccessControl.AccessRequired;
 import MemberRole = Proto.Member.Role;
-import { computeGroupNameHash } from './util/Conversation.preload.ts';
-import { Emoji } from './axo/emoji.std.ts';
 
 const { compact, difference, flatten, fromPairs, isNumber, omit, values } =
   lodash;
 
 const log = createLogger('groups');
 
-export { joinViaLink } from './groups/joinViaLink.preload.ts';
+export { startJoinViaLink } from './groups/joinViaLink.preload.ts';
 
 export type GroupFields = {
   readonly id: Uint8Array<ArrayBuffer>;
@@ -274,6 +280,9 @@ export async function getPreJoinGroupInfo(
   masterKeyBase64: string
 ): Promise<Proto.GroupJoinInfo> {
   const data = deriveGroupFields(Bytes.fromBase64(masterKeyBase64));
+
+  // Ensure we have the credentials we need before attempting GroupsV2 operations
+  await maybeFetchNewCredentials();
 
   return makeRequestWithCredentials({
     // oxlint-disable-next-line typescript/restrict-template-expressions
@@ -661,13 +670,8 @@ export async function buildAddMembersChange(
         return;
       }
 
-      // Refresh our local data to be sure
-      if (!contact.get('profileKey') || !contact.get('profileKeyCredential')) {
-        await contact.getProfiles();
-      }
-
-      const profileKey = contact.get('profileKey');
-      const profileKeyCredential = contact.get('profileKeyCredential');
+      const profileKeyCredential =
+        await profileService.getProfileKeyCredential(contact);
 
       const member = {
         userId: encryptServiceId(clientZkGroupCipher, serviceId),
@@ -681,7 +685,7 @@ export async function buildAddMembersChange(
       // This is inspired by [Android's equivalent code][0].
       //
       // [0]: https://github.com/signalapp/Signal-Android/blob/2be306867539ab1526f0e49d1aa7bd61e783d23f/libsignal/service/src/main/java/org/whispersystems/signalservice/api/groupsv2/GroupsV2Operations.java#L152-L174
-      if (profileKey && profileKeyCredential) {
+      if (profileKeyCredential != null) {
         const presentation = createProfileKeyCredentialPresentation(
           clientZkProfileCipher,
           profileKeyCredential,
@@ -860,6 +864,42 @@ export function buildInviteLinkPasswordChange(
     modifyInviteLinkPassword: {
       inviteLinkPassword: Bytes.fromBase64(inviteLinkPassword),
     },
+  });
+}
+
+export function buildModifyMemberProfileKeyChange({
+  group,
+  profileKeyCredentialBase64,
+  serverPublicParamsBase64,
+}: {
+  group: ConversationAttributesType;
+  profileKeyCredentialBase64: string;
+  serverPublicParamsBase64: string;
+}): Actions.Params {
+  if (!group.secretParams) {
+    throw new Error(
+      'buildModifyMemberProfileKeyChange: group was missing secretParams!'
+    );
+  }
+
+  const clientZkProfileCipher = getClientZkProfileOperations(
+    serverPublicParamsBase64
+  );
+  const presentation = createProfileKeyCredentialPresentation(
+    clientZkProfileCipher,
+    profileKeyCredentialBase64,
+    group.secretParams
+  );
+
+  return toGroupActionsParams({
+    version: (group.revision || 0) + 1,
+    modifyMemberProfileKeys: [
+      {
+        presentation,
+        userId: null,
+        profileKey: null,
+      },
+    ],
   });
 }
 
@@ -1542,27 +1582,12 @@ export async function modifyGroupV2({
       // oxlint-disable-next-line no-await-in-loop
       await window.waitForEmptyEventQueue();
 
-      // Fetch profiles for contacts that do not have credentials (or have
-      // expired credentials)
-      {
-        const membersMissingCredentials = usingCredentialsFrom.filter(member =>
-          member.hasProfileKeyCredentialExpired()
-        );
-        const logIds = membersMissingCredentials.map(member =>
-          member.idForLogging()
-        );
-
-        if (logIds.length !== 0) {
-          log.info(
-            `modifyGroupV2/${logId}: Fetching profiles for ${logIds.join(', ')}`
-          );
-        }
-
-        // oxlint-disable-next-line no-await-in-loop
-        await Promise.all(
-          membersMissingCredentials.map(member => member.getProfiles())
-        );
-      }
+      // oxlint-disable-next-line no-await-in-loop
+      await Promise.all(
+        usingCredentialsFrom.map(member => {
+          return profileService.getProfileKeyCredential(member);
+        })
+      );
 
       log.info(`modifyGroupV2/${logId}: Queuing attempt ${attempt}`);
 
@@ -1681,21 +1706,17 @@ export async function modifyGroupV2({
         if (logIds.length !== 0) {
           log.warn(
             `modifyGroupV2/${logId}: Profile key credentials were not ` +
-              `up-to-date. Updating profiles for ${logIds.join(', ')} and retrying`
+              `up-to-date. Refetching for ${logIds.join(', ')} and retrying`
           );
         }
 
+        // The next attempt fetches new credentials
         for (const member of usingCredentialsFrom) {
           member.set({
             profileKeyCredential: null,
             profileKeyCredentialExpiration: null,
           });
         }
-
-        // oxlint-disable-next-line no-await-in-loop
-        await Promise.all(
-          usingCredentialsFrom.map(member => member.getProfiles())
-        );
 
         // Fetch credentials only once
         refreshedCredentials = true;
@@ -1843,10 +1864,7 @@ export async function createGroupV2(
 
   const ourConversation =
     window.ConversationController.getOurConversationOrThrow();
-  if (ourConversation.hasProfileKeyCredentialExpired()) {
-    log.info(`createGroupV2/${logId}: fetching our own credentials`);
-    await ourConversation.getProfiles();
-  }
+  await profileService.getProfileKeyCredential(ourConversation);
 
   const membersV2: Array<GroupV2MemberType> = [
     {
@@ -1879,12 +1897,9 @@ export async function createGroupV2(
         return;
       }
 
-      // Refresh our local data to be sure
-      if (contact.hasProfileKeyCredentialExpired()) {
-        await contact.getProfiles();
-      }
-
-      if (contact.get('profileKey') && contact.get('profileKeyCredential')) {
+      const profileKeyCredential =
+        await profileService.getProfileKeyCredential(contact);
+      if (profileKeyCredential != null) {
         strictAssert(isAciString(contactServiceId), 'profile key without ACI');
         membersV2.push({
           aci: contactServiceId,
@@ -2251,12 +2266,9 @@ export async function getGroupMigrationMembers(
           return null;
         }
 
-        // Refresh our local data to be sure
-        if (!contact.get('profileKeyCredential')) {
-          await contact.getProfiles();
-        }
-
-        if (!contact.get('profileKeyCredential')) {
+        const profileKeyCredential =
+          await profileService.getProfileKeyCredential(contact);
+        if (profileKeyCredential == null) {
           log.warn(
             `getGroupMigrationMembers/${logId}: membersV2 - no profileKeyCredential for ${e164}, skipping.`
           );
@@ -3323,6 +3335,13 @@ async function updateGroup(
       });
     }
   }
+  const justLeft = conversation.hasMember(ourAci) && !isMemberOrPending;
+  const previousMemberACIs = (conversation.get('membersV2') || []).map(
+    member => member.aci
+  );
+  const currentMemberACIs = (newAttributes.membersV2 || []).map(
+    member => member.aci
+  );
 
   // We update group membership last to ensure that all notifications are in place before
   //   the group updates happen on the model.
@@ -3362,6 +3381,72 @@ async function updateGroup(
 
   // Save these most recent updates to conversation
   await updateConversation(conversation.attributes);
+
+  // Do these checks after group was updated - we want areWeInGroupWith to be accurate
+  const profileKey = itemStorage.get('profileKey');
+  if (
+    window.ConversationController.areWePrimaryDevice() &&
+    Bytes.isNotEmpty(profileKey)
+  ) {
+    const shouldWeRotate = getShouldWeRotateProfileKey({
+      logId: `updateGroup/${logId}`,
+      justLeft,
+      previousMemberACIs,
+      currentMemberACIs,
+    });
+    if (shouldWeRotate) {
+      await registrationJobQueue.add({
+        type: 'RotateProfileKey',
+        id: generateGuid(),
+        oldProfileKeyBase64: Bytes.toBase64(profileKey),
+      });
+    }
+  }
+}
+
+export function getShouldWeRotateProfileKey({
+  logId,
+  justLeft,
+  previousMemberACIs,
+  currentMemberACIs,
+}: {
+  logId: string;
+  justLeft: boolean;
+  previousMemberACIs: Array<AciString>;
+  currentMemberACIs: Array<AciString>;
+}): boolean {
+  if (justLeft) {
+    const blockedAcis = previousMemberACIs.filter(aci =>
+      itemStorage.blocked.isServiceIdBlocked(aci)
+    );
+    const result = blockedAcis.some(aci => !areWeInGroupWith(aci));
+
+    if (result) {
+      log.info(
+        `${logId}: We just left group; a former member was blocked and is no longer in any shared groups`
+      );
+    }
+
+    return result;
+  }
+
+  const justLeftGroupAcis = difference(previousMemberACIs, currentMemberACIs);
+  if (justLeftGroupAcis.length > 0) {
+    const blockedAcis = justLeftGroupAcis.filter(aci =>
+      itemStorage.blocked.isServiceIdBlocked(aci)
+    );
+    const result = blockedAcis.some(aci => !areWeInGroupWith(aci));
+
+    if (result) {
+      log.info(
+        `${logId}: Group member who left group was blocked and is no longer in any shared groups`
+      );
+    }
+
+    return result;
+  }
+
+  return false;
 }
 
 // Exported for testing

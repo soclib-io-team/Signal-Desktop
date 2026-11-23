@@ -3,7 +3,7 @@
 
 import type { JSX } from 'react';
 import type { LocalizerType } from '../types/Util.std.ts';
-import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import { AxoConfirmDialog } from '../axo/dialogs/AxoConfirmDialog.dom.tsx';
 
 export type PropsType = Readonly<{
   i18n: LocalizerType;
@@ -19,7 +19,7 @@ export function DonationStillProcessingModal(props: PropsType): JSX.Element {
       title={i18n('icu:Donations__StillProcessing')}
       description={i18n('icu:Donations__StillProcessing__Description')}
     >
-      <AxoConfirmDialog.Cancel>{i18n('icu:ok')}</AxoConfirmDialog.Cancel>
+      <AxoConfirmDialog.Ok />
     </AxoConfirmDialog.Root>
   );
 }

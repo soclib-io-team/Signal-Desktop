@@ -390,6 +390,7 @@ function CollapseSetButton(
       onDownload={null}
       onEdit={null}
       onReplyToMessage={null}
+      onReplyPrivately={null}
       onReact={null}
       onEndPoll={null}
       onRetryMessageSend={null}
@@ -400,6 +401,8 @@ function CollapseSetButton(
       onMoreInfo={null}
       onPinMessage={null}
       onUnpinMessage={null}
+      onFavoriteSticker={null}
+      onUnfavoriteSticker={null}
     >
       <AxoButton.Root
         size="md"

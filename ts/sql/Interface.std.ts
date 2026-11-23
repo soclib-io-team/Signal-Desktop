@@ -10,16 +10,12 @@ import type {
   ConversationAttributesType,
   MessageAttributesType,
   SenderKeyInfoType,
-} from '../model-types.d.ts';
+} from '../model-types.std.ts';
 import type { StoredJob } from '../jobs/types.std.ts';
 import type {
   ReactionType,
   ReactionReadStatus,
 } from '../types/Reactions.std.ts';
-import type {
-  ConversationColorType,
-  CustomColorType,
-} from '../types/Colors.std.ts';
 import type { StorageAccessType } from '../types/Storage.d.ts';
 import type { BytesToStrings } from '../types/Util.std.ts';
 import type { QualifiedAddressStringType } from '../types/QualifiedAddress.std.ts';
@@ -70,6 +66,8 @@ import type { NotificationProfileType } from '../types/NotificationProfile.std.t
 import type { DonationReceipt } from '../types/Donations.std.ts';
 import type { InsertOrUpdateCallLinkFromSyncResult } from './server/callLinks.node.ts';
 import type { ChatFolderId, ChatFolder } from '../types/ChatFolder.std.ts';
+import type { ChatStyle } from '../types/ChatStyle.std.ts';
+import type { Account } from '../types/Account.std.ts';
 import type { CurrentChatFolder } from '../types/CurrentChatFolders.std.ts';
 import type {
   PinnedMessage,
@@ -90,6 +88,12 @@ import type {
   SentTimestampMs,
   ServerTimestampMs,
 } from '@signalapp/types';
+import type {
+  FavoriteStickerStatusType,
+  FavoriteStickerType,
+  HiddenStickerPackType,
+  StickerReferenceType,
+} from '../types/Stickers.preload.ts';
 
 export type ReadableDB = Database & { __readable_db: never };
 export type WritableDB = ReadableDB & { __writable_db: never };
@@ -144,6 +148,15 @@ export type StoredIdentityKeyType = {
   verified: number;
 };
 export type IdentityKeyIdType = IdentityKeyType['id'];
+
+export type LinkedDevice = {
+  readonly id: number;
+
+  readonly createdAt: number | null;
+  readonly lastSeenAt: number;
+  readonly name: string | null;
+  readonly registrationId: number;
+};
 
 export type ItemKeyType = keyof StorageAccessType;
 export type AllItemsType = Partial<StorageAccessType>;
@@ -416,7 +429,7 @@ export type StickerPackInfoType =
 
 export type StickerPackType = InstalledStickerPackType &
   Readonly<{
-    attemptedStatus?: 'downloaded' | 'installed' | 'ephemeral';
+    attemptedStatus?: 'downloaded' | 'installed' | 'ephemeral' | 'known';
     author: string;
     coverStickerId: number;
     createdAt: number;
@@ -757,6 +770,7 @@ export const MESSAGE_ATTACHMENT_COLUMNS = [
   'thumbnailContentType',
   'thumbnailLocalKey',
   'thumbnailVersion',
+  'transcodingTargetQuality',
   'screenshotPath',
   'screenshotSize',
   'screenshotContentType',
@@ -813,6 +827,7 @@ export type MessageAttachmentDBType = {
   transitCdnNumber: number | null;
   transitCdnUploadTimestamp: number | null;
   backupCdnNumber: number | null;
+  transcodingTargetQuality: number | null;
   thumbnailPath: string | null;
   thumbnailSize: number | null;
   thumbnailContentType: string | null;
@@ -1086,9 +1101,23 @@ type ReadableInterface = {
   getAllStickerPacks: () => Array<StickerPackType>;
   getInstalledStickerPacks: () => Array<StickerPackType>;
   getUninstalledStickerPacks: () => Array<UninstalledStickerPackType>;
+  getSticker: (stickerRef: StickerReferenceType) => StickerType | undefined;
   getStickerPackInfo: (packId: string) => StickerPackInfoType | undefined;
   getAllStickers: () => Array<StickerType>;
   getRecentStickers: (options?: { limit?: number }) => Array<StickerType>;
+  getAllInstalledFavoriteStickers: () => ReadonlyArray<StickerType>;
+  getAllFavoriteStickers: () => ReadonlyArray<FavoriteStickerType>;
+  getAllFavoriteStickersForBackup: () => ReadonlyArray<FavoriteStickerType>;
+  getFavoriteStickersFromPack: (
+    packId: string
+  ) => ReadonlyArray<FavoriteStickerType>;
+  getFavoriteSticker: (
+    stickerRef: StickerReferenceType
+  ) => FavoriteStickerType | undefined;
+  getAllHiddenStickerPacks: () => ReadonlyArray<HiddenStickerPackType>;
+  getAllHiddenStickerPacksActive: () => ReadonlyArray<HiddenStickerPackType>;
+  getHiddenStickerPack: (packId: string) => HiddenStickerPackType | undefined;
+  getKeyFromStickerPack: (packId: string) => string | undefined;
 
   getRecentEmojis: (limit: number) => ReadonlyArray<Emoji.Parent>;
   getRecentGifs: (limit: number) => ReadonlyArray<GifType>;
@@ -1123,6 +1152,9 @@ type ReadableInterface = {
   getChatFolder: (id: ChatFolderId) => ChatFolder | null;
   hasAllChatsChatFolder: () => boolean;
   getOldestDeletedChatFolder: () => ChatFolder | null;
+
+  getAllCustomChatColors: () => ReadonlyArray<ChatStyle.CustomChatColor>;
+  getAccount: () => Account;
 
   getAllMegaphones: () => ReadonlyArray<RemoteMegaphoneType>;
   getAllMegaphoneIds: () => ReadonlyArray<RemoteMegaphoneId>;
@@ -1168,6 +1200,8 @@ type ReadableInterface = {
   getMostRecentAttachmentUploadData: (
     plaintextHash: string
   ) => ExistingAttachmentUploadData | undefined;
+
+  getAllLinkedDevices: () => ReadonlyArray<LinkedDevice>;
 
   __dangerouslyRunAbitraryReadOnlySqlQuery: (
     readOnlySqlQuery: string
@@ -1251,13 +1285,7 @@ type WritableInterface = {
   /** @internal use ts/util/Conversation.preload.ts */
   _removeConversation: (id: string) => void;
   _removeAllConversations: () => void;
-  updateAllConversationColors: (
-    conversationColor?: ConversationColorType,
-    customColorData?: {
-      id: string;
-      value: CustomColorType;
-    }
-  ) => void;
+  removeAllConversationColors: () => void;
   removeAllProfileKeyCredentials: () => void;
 
   replaceAllEndorsementsForGroup: (data: GroupSendEndorsementsData) => void;
@@ -1458,6 +1486,27 @@ type WritableInterface = {
   uninstallStickerPack: (packId: string, timestamp: number) => boolean;
   removeUninstalledStickerPack: (packId: string) => void;
   clearAllErrorStickerPackAttempts: () => void;
+  clearStickerPackAttempts: (packId: string) => void;
+  createFavoriteSticker: (sticker: FavoriteStickerType) => void;
+  addFavoriteStickerFromStickerRef: (
+    stickerRef: StickerReferenceType
+  ) => FavoriteStickerType | undefined;
+  updateFavoriteSticker: (sticker: FavoriteStickerType) => void;
+  updateFavoriteStickerStatus: (
+    stickerRef: StickerReferenceType,
+    status: FavoriteStickerStatusType
+  ) => void;
+  markFavoriteStickerDeleted: (
+    stickerRef: StickerReferenceType
+  ) => { deletedAtTimestampMs: number; storageNeedsSync: boolean } | undefined;
+  deleteFavoriteSticker: (stickerRef: StickerReferenceType) => void;
+  maybeDeleteSticker: (stickerRef: StickerReferenceType) => string | undefined;
+  createHiddenStickerPack: (hiddenPack: HiddenStickerPackType) => void;
+  updateHiddenStickerPack: (hiddenPack: HiddenStickerPackType) => void;
+  markHiddenStickerPackDeleted: (
+    packId: string
+  ) => { storageNeedsSync: boolean } | undefined;
+  deleteHiddenStickerPack: (packId: string) => void;
 
   updateEmojiUsage: (emoji: Emoji.Parent, lastUsedAt: number) => void;
 
@@ -1525,6 +1574,18 @@ type WritableInterface = {
   ) => ReadonlyArray<ChatFolderId>;
   deleteChatFolderById: (id: ChatFolderId) => void;
 
+  createCustomChatColor: (
+    color: ChatStyle.CustomChatColor['color']
+  ) => ChatStyle.CustomChatColor;
+  createCustomChatColors: (
+    colors: ReadonlyArray<ChatStyle.CustomChatColor['color']>
+  ) => ReadonlyArray<ChatStyle.CustomChatColor>;
+  updateCustomChatColor: (customChatColor: ChatStyle.CustomChatColor) => void;
+  deleteCustomChatColor: (id: ChatStyle.CustomChatColorId) => void;
+  updateAccountDefaultBubbleColor: (
+    bubbleColor: ChatStyle['bubbleColor'] | null
+  ) => void;
+
   createMegaphone: (megaphone: RemoteMegaphoneType) => void;
   updateMegaphone: (megaphone: RemoteMegaphoneType) => void;
   deleteMegaphone: (megaphoneId: RemoteMegaphoneId) => void;
@@ -1553,12 +1614,18 @@ type WritableInterface = {
     version: number;
     contentType: MIMEType;
   }) => (ExistingAttachmentData & { reuseToken: string }) | undefined;
-  _protectAttachmentPathFromDeletion: ({ path }: { path: string }) => string;
+  releaseAttachmentPathProtections: (attachment: AttachmentType) => void;
+  protectAttachmentPathFromDeletion: ({ path }: { path: string }) => string;
   resetProtectedAttachmentPaths: () => void;
 
   removeAll: () => void;
   removeAllConfiguration: (isPrimary: boolean) => void;
   eraseStorageServiceState: () => void;
+
+  createOrUpdateLinkedDevice: (linkedDevice: LinkedDevice) => void;
+  removeAllLinkedDevices: () => void;
+  removeLinkedDeviceById: (id: number) => void;
+  replaceAllLinkedDevices: (linkedDevices: ReadonlyArray<LinkedDevice>) => void;
 
   insertJob: (job: Readonly<StoredJob>) => void;
   deleteJob: (id: string) => void;
